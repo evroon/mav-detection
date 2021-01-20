@@ -44,7 +44,7 @@ class Rectangle:
         return self.size[0] * self.size[1]
 
     @classmethod
-    def calculate_aoi(cls, r1, r2):
+    def calculate_iou(cls, r1, r2):
         left = max(r1.get_left(), r2.get_left())
         right = min(r1.get_right(), r2.get_right())
         bottom = min(r1.get_bottom(), r2.get_bottom())
