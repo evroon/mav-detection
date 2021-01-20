@@ -95,21 +95,6 @@ def get_kitti_capture(sequence):
     path = get_kitti_path(sequence)
     return cv2.VideoCapture(path + '/%6d.png'), count_dir(path)
 
-# MIDGARD
-def get_midgard_path(sequence):
-    kitti_path = os.environ['MIDGARD_PATH']
-    img_path = f'{kitti_path}/{sequence}/images'
-    ann_path = f'{kitti_path}/{sequence}/annotation'
-    return img_path, ann_path
-
-def get_midgard_capture(sequence):
-    path = get_midgard_path(sequence)[0]
-    return cv2.VideoCapture(f'{path}/image_%5d.png'), count_dir(path)
-
-def get_midgard_annotation(sequence, frame):
-    path = get_midgard_path(sequence)[1]
-    return f'{path}/annot_{frame:05d}.csv'
-
 # Cenek Albl et al.
 def get_cenek_path(sequence, camera):
     cenek_path = os.environ['CENEK_PATH']
@@ -150,3 +135,16 @@ def line_intersection(line1, line2):
 
 def line_angle(diff1, diff2):
     return np.arccos(np.dot(diff1, diff2) / (np.linalg.norm(diff1) * np.linalg.norm(diff2)))
+
+def read_flow(filename):
+    TAG_FLOAT = 202021.25
+
+    with open(filename, 'rb') as f:
+        flo_number = np.fromfile(f, np.float32, count=1)[0]
+        assert flo_number == TAG_FLOAT, 'Flow number %r incorrect. Invalid .flo file' % flo_number
+
+        w = np.fromfile(f, np.int32, count=1)[0]
+        h = np.fromfile(f, np.int32, count=1)[0]
+        data = np.fromfile(f, np.float32, count=2*w*h)
+
+        return np.resize(data, (int(h), int(w), 2))
