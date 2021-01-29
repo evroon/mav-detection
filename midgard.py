@@ -5,28 +5,32 @@ import numpy as np
 import flow_vis
 
 class Midgard:
-    def __init__(self, sequence):
+    def __init__(self, sequence, debug_mode=True):
         self.sequence = sequence
+        self.debug_mode = debug_mode
 
-        kitti_path = os.environ['MIDGARD_PATH']
-        self.img_path = f'{kitti_path}/{sequence}/images'
-        self.ann_path = f'{kitti_path}/{sequence}/annotation'
+        midgard_path = os.environ['MIDGARD_PATH']
+        self.img_path = f'{midgard_path}/{sequence}/images'
+        self.ann_path = f'{midgard_path}/{sequence}/annotation'
         self.orig_capture = cv2.VideoCapture(f'{self.img_path}/image_%5d.png')
         self.flow_capture = cv2.VideoCapture('media/flownet2-sports-hall.mp4')
         self.capture_size = utils.get_capture_size(self.orig_capture)
         self.flow_size = utils.get_capture_size(self.flow_capture)
-        self.N = utils.count_dir(self.img_path)
+        self.N = utils.get_frame_count(self.flow_capture)
         self.output = utils.get_output('detection', capture_size=(self.capture_size[0] * 2, self.capture_size[1] * 2))
         self.i = 0
+        self.is_exiting = False
 
         if self.capture_size != self.flow_size:
-            print(f'original capture has size {self.capture_size}, does not match flow, which has size {self.flow_size}')
+            print(f'Note: original capture with size {self.capture_size} does not match flow, which has size {self.flow_size}')
+
+        self.print_details()
 
     def print_details(self):
-        print(utils.get_frame_count(orig_capture))
-        print(utils.get_frame_count(flow_capture))
-        print(utils.get_fps(orig_capture))
-        print(utils.get_fps(flow_capture))
+        print(utils.get_frame_count(self.orig_capture))
+        print(utils.get_frame_count(self.flow_capture))
+        print(utils.get_fps(self.orig_capture))
+        print(utils.get_fps(self.flow_capture))
 
     def get_midgard_annotation(self):
         path = f'{self.ann_path}/annot_{self.i:05d}.csv'
@@ -75,18 +79,23 @@ class Midgard:
 
         return orig_frame
 
-    def iterate(self):
+    def is_active(self):
+        return self.i < self.N - 1 and not self.is_exiting
+
+    def write(self, frame):
+        self.output.write(frame)
+
+        if self.debug_mode:
+            cv2.imshow('output', frame)
+
+            k = cv2.waitKey(1) & 0xff
+            if k == 27:
+                self.is_exiting = True
+
         self.i += 1
 
         if self.i % int(self.N / 10) == 0:
             print('{:.2f}'.format(self.i / self.N * 100) + '%', self.i, '/', self.N)
-
-    def is_active(self):
-        return self.i < self.N - 1
-
-
-    def write(self, frame):
-        self.output.write(frame)
 
     def release(self):
         self.orig_capture.release()
