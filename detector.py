@@ -4,6 +4,9 @@ import os
 import numpy as np
 import flow_vis
 from midgard import Midgard
+from im_helpers import pyramid
+from im_helpers import sliding_window
+
 
 class Detector:
     def __init__(self, midgard: Midgard):
@@ -64,9 +67,10 @@ class Detector:
         flow_uv_warped_mag_vis = np.zeros_like(self.midgard.flow_vis)
         self.flow_max = np.unravel_index(flow_uv_warped_mag.argmax(), flow_uv_warped_mag.shape)
 
-
         for i in range(3):
             flow_uv_warped_mag_vis[..., i] = flow_uv_warped_mag / np.max(flow_uv_warped_mag) * 255
+
+        self.opt_window = self.analyze_pyramid(flow_uv_warped_mag_vis)
 
         self.flow_uv_warped_vis = flow_uv_warped_vis
         return flow_uv_warped_vis, flow_uv_warped_mag_vis
@@ -107,6 +111,29 @@ class Detector:
         self.flow_uv_warped_vis = cv2.circle(self.flow_uv_warped_vis, self.flow_max[::-1], 10, (0, 0, 0), 5)
         self.midgard.orig_frame = cv2.circle(self.midgard.orig_frame, self.flow_max[::-1], 10, (255, 255, 255), 5)
 
+        w = self.opt_window
+        self.midgard.orig_frame = cv2.rectangle(self.midgard.orig_frame, (w[1], w[2]), (w[1] + w[3].shape[1], w[2] + w[3].shape[0]), (0, 255, 0), 2)
+
+    def analyze_pyramid(self, img):
+        # Based on: https://www.pyimagesearch.com/2015/03/23/sliding-windows-for-object-detection-with-python-and-opencv/
+        width, height = (48, 48)
+        result = [0, 0, 0, 0]
+
+        for resized in pyramid(img, scale=1.5):
+            for (x, y, window) in sliding_window(resized, stepSize=16, windowSize=(width, height)):
+                if window.shape[0] != width or window.shape[1] != height:
+                    continue
+
+                # Check if window has higher score.
+                score = np.average(window)
+                if result[0] < score:
+                    result = [
+                        score,
+                        x, y,
+                        window
+                    ]
+
+        return result
 
     # def get_histogram(self):
     #     magnitude, gradient = midgard.get_gradient_and_magnitude(flow_uv)
