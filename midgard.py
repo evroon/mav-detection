@@ -17,14 +17,12 @@ class Midgard:
         self.capture_size = utils.get_capture_size(self.orig_capture)
         self.flow_size = utils.get_capture_size(self.flow_capture)
         self.N = utils.get_frame_count(self.flow_capture)
-        self.output = utils.get_output('detection', capture_size=(self.capture_size[0] * 2, self.capture_size[1] * 2))
+        self.output = utils.get_output('detection', capture_size=(self.capture_size[0] * 4, self.capture_size[1] * 2))
         self.i = 0
         self.is_exiting = False
 
         if self.capture_size != self.flow_size:
             print(f'Note: original capture with size {self.capture_size} does not match flow, which has size {self.flow_size}')
-
-        self.print_details()
 
     def print_details(self):
         print(utils.get_frame_count(self.orig_capture))
@@ -40,9 +38,9 @@ class Midgard:
                 values = line.split(',')
                 values = [round(float(x)) for x in values]
                 topleft = (values[1], values[2])
-                rect = utils.Rectangle(topleft, (values[3], values[4]))
+                ground_truth = utils.Rectangle(topleft, (values[3], values[4]))
 
-        return rect
+        self.ground_truth = ground_truth
 
     def get_flow_uv(self):
         flo_path = f'{self.img_path}/output/inference/run.epoch-0-flow-field/{self.i:06d}.flo'
@@ -63,19 +61,17 @@ class Midgard:
         flow_hsv[..., 2] = 255
         return cv2.cvtColor(flow_hsv, cv2.COLOR_HSV2BGR)
 
-    def get_fft(self, frame):
-        fft = np.fft.fft2(frame[..., 0])
-        fshift = np.fft.fftshift(fft)
-        magnitude_spectrum = 20*np.log(np.abs(fshift))
-        magnitude_rgb = np.zeros_like(frame)
-        magnitude_rgb[..., 0] = magnitude_spectrum
-        return magnitude_rgb
-
     def get_frame(self):
         s1, orig_frame = self.orig_capture.read()
 
         if not s1:
             return None
+
+        self.orig_frame = orig_frame
+        self.flow_uv = self.get_flow_uv()
+        self.flow_vis = self.get_flow_vis(self.flow_uv)
+        self.get_flow_radial(self.flow_vis)
+        self.get_midgard_annotation()
 
         return orig_frame
 
