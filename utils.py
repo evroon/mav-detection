@@ -20,10 +20,10 @@ class Rectangle:
         self.size = (int(self.size[0]), int(self.size[1]))
 
     def get_topleft(self):
-        return (self.topleft[1], self.topleft[0])
+        return (self.topleft[0], self.topleft[1])
 
     def get_bottomright(self):
-        return (self.topleft[1] + self.size[1], self.topleft[0] + self.size[0])
+        return (self.topleft[0] + self.size[0], self.topleft[1] + self.size[1])
 
     def get_center(self):
         return (self.topleft[1] + self.size[1] / 2, self.topleft[0] + self.size[0] / 2)
@@ -64,7 +64,7 @@ def get_output(filename, capture=None, capture_size=None, is_grey=False):
     if capture_size is None:
         capture_size = get_capture_size(capture)
 
-    return cv2.VideoWriter(path, fourcc, 30.0, capture_size, not is_grey)
+    return cv2.VideoWriter(path, fourcc, 15.0, capture_size, not is_grey)
 
 def get_sequence_length(path):
     return count_dir(path)
@@ -94,21 +94,6 @@ def get_kitti_path(sequence):
 def get_kitti_capture(sequence):
     path = get_kitti_path(sequence)
     return cv2.VideoCapture(path + '/%6d.png'), count_dir(path)
-
-# MIDGARD
-def get_midgard_path(sequence):
-    kitti_path = os.environ['MIDGARD_PATH']
-    img_path = f'{kitti_path}/{sequence}/images'
-    ann_path = f'{kitti_path}/{sequence}/annotation'
-    return img_path, ann_path
-
-def get_midgard_capture(sequence):
-    path = get_midgard_path(sequence)[0]
-    return cv2.VideoCapture(f'{path}/image_%5d.png'), count_dir(path)
-
-def get_midgard_annotation(sequence, frame):
-    path = get_midgard_path(sequence)[1]
-    return f'{path}/annot_{frame:05d}.csv'
 
 # Cenek Albl et al.
 def get_cenek_path(sequence, camera):
@@ -150,3 +135,33 @@ def line_intersection(line1, line2):
 
 def line_angle(diff1, diff2):
     return np.arccos(np.dot(diff1, diff2) / (np.linalg.norm(diff1) * np.linalg.norm(diff2)))
+
+def read_flow(filename):
+    TAG_FLOAT = 202021.25
+
+    with open(filename, 'rb') as f:
+        flo_number = np.fromfile(f, np.float32, count=1)[0]
+        assert flo_number == TAG_FLOAT, 'Flow number %r incorrect. Invalid .flo file' % flo_number
+
+        w = np.fromfile(f, np.int32, count=1)[0]
+        h = np.fromfile(f, np.int32, count=1)[0]
+        data = np.fromfile(f, np.float32, count=2*w*h)
+
+        return np.resize(data, (int(h), int(w), 2))
+
+def blockshaped(arr: np.ndarray, nrows: int, ncols: int) -> np.ndarray:
+    """
+    Return an array of shape (n, nrows, ncols) where
+    n * nrows * ncols = arr.size
+
+    If arr is a 2D array, the returned array should look like n subblocks with
+    each subblock preserving the "physical" layout of arr.
+
+    Source: https://stackoverflow.com/a/16858283
+    """
+    h, w = arr.shape
+    assert h % nrows == 0, "{} rows is not evenly divisble by {}".format(h, nrows)
+    assert w % ncols == 0, "{} cols is not evenly divisble by {}".format(w, ncols)
+    return (arr.reshape(h//nrows, nrows, -1, ncols)
+               .swapaxes(1,2)
+               .reshape(-1, nrows, ncols))
