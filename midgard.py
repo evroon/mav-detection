@@ -5,7 +5,7 @@ import numpy as np
 import flow_vis
 
 class Midgard:
-    def __init__(self, sequence, debug_mode=True):
+    def __init__(self, sequence, debug_mode=True) -> None:
         self.sequence = sequence
         self.debug_mode = debug_mode
 
@@ -17,7 +17,7 @@ class Midgard:
         self.capture_size = utils.get_capture_size(self.orig_capture)
         self.flow_size = utils.get_capture_size(self.flow_capture)
         self.N = utils.get_frame_count(self.flow_capture)
-        self.output = utils.get_output('detection', capture_size=(self.capture_size[0] * 4, self.capture_size[1] * 2))
+        self.output = utils.get_output('detection', capture_size=(self.capture_size[0] * 3, self.capture_size[1] * 2))
         self.i = 0
         self.is_exiting = False
 

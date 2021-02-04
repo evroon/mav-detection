@@ -15,6 +15,13 @@ class Rectangle:
             size
         )
 
+    @classmethod
+    def from_points(cls, topleft, bottomright):
+        return Rectangle(
+            topleft,
+            (bottomright[0] - topleft[0], bottomright[1] - topleft[1])
+        )
+
     def to_int(self):
         self.topleft = (int(self.topleft[0]), int(self.topleft[1]))
         self.size = (int(self.size[0]), int(self.size[1]))
@@ -26,7 +33,7 @@ class Rectangle:
         return (self.topleft[0] + self.size[0], self.topleft[1] + self.size[1])
 
     def get_center(self):
-        return (self.topleft[1] + self.size[1] / 2, self.topleft[0] + self.size[0] / 2)
+        return (self.topleft[0] + self.size[0] / 2, self.topleft[1] + self.size[1] / 2)
 
     def get_left(self):
         return self.topleft[0]
