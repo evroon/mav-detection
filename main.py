@@ -6,9 +6,13 @@ from lucas_kanade import LucasKanade
 from farneback import Farneback
 from midgard import Midgard
 from detector import Detector
+import argparse
 
-sequence = 'indoor-modern/sports-hall'
-midgard = Midgard(sequence)
+parser = argparse.ArgumentParser(description='Detects MAVs in the MIDGARD dataset using optical flow.')
+parser.add_argument('--sequence', type=str, help='sequence to process', default='countryside-natural/north-narrow')
+args = parser.parse_args()
+
+midgard = Midgard(args.sequence)
 detector = Detector(midgard)
 
 try:
