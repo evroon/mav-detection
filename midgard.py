@@ -17,8 +17,12 @@ class Midgard:
         self.capture_size = utils.get_capture_size(self.orig_capture)
         self.flow_size = utils.get_capture_size(self.flow_capture)
         self.N = utils.get_frame_count(self.flow_capture)
-        self.output = utils.get_output('detection', capture_size=(self.capture_size[0] * 3, self.capture_size[1] * 2))
+        self.frame_columns = 4
+        self.frame_rows = 2
+        self.output = utils.get_output('detection',
+            capture_size=(self.capture_size[0] * self.frame_columns, self.capture_size[1] * self.frame_rows))
         self.i = 0
+        self.start_frame = 100
         self.is_exiting = False
 
         if self.capture_size != self.flow_size:
@@ -63,6 +67,10 @@ class Midgard:
 
     def get_frame(self):
         s1, orig_frame = self.orig_capture.read()
+
+        while self.i < self.start_frame:
+            s1, orig_frame = self.orig_capture.read()
+            self.i += 1
 
         if not s1:
             return None

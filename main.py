@@ -15,19 +15,16 @@ try:
     while midgard.is_active():
         orig_frame = midgard.get_frame()
 
-        # while midgard.i < 100:
-        #     orig_frame = midgard.get_frame()
-        #     midgard.i += 1
-
         detector.get_affine_matrix()
         flow_uv_warped_vis, flow_uv_warped_mag_vis = detector.flow_vec_subtract()
         flow_diff_vis, blocks_vis = detector.block_method()
-        cluster_vis = detector.clustering(detector.flow_uv_warped_mag)
-        blocks_vis = detector.clustering(detector.flow_diff_mag)
+        cluster_vis, segment = detector.clustering(detector.flow_uv_warped_mag)
+        blocks_vis, _ = detector.clustering(detector.flow_diff_mag)
+        summed_mag = detector.get_history()
         detector.draw()
 
-        top_frames = np.hstack((orig_frame, flow_diff_vis, flow_uv_warped_vis))
-        bottom_frames = np.hstack((midgard.flow_vis, blocks_vis, cluster_vis))
+        top_frames = np.hstack((orig_frame, flow_diff_vis, flow_uv_warped_vis, summed_mag))
+        bottom_frames = np.hstack((midgard.flow_vis, blocks_vis, cluster_vis, summed_mag))
         midgard.write(np.vstack((top_frames, bottom_frames)))
 
 finally:

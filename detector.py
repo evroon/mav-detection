@@ -27,6 +27,11 @@ class Detector:
         self.y_coords = np.tile(np.arange(flow_height), (flow_width, 1)).T
 
         self.ious = np.zeros(self.midgard.N)
+        self.history_length = 5
+        self.flow_uv_history = np.zeros((self.history_length, flow_height, flow_width, 2))
+        self.flow_map_history = np.zeros((self.history_length, flow_height, flow_width))
+        self.history_index = 0
+        self.use_homography = False
 
         # feature_pos = np.array([220.0, 280.0])
         # min_coords = np.zeros(2)
@@ -55,27 +60,38 @@ class Detector:
     def get_affine_matrix(self):
         coords_flow = self.coords.astype(
             np.float64) + self.midgard.flow_uv[self.sample_y, self.sample_x]
-        aff, _ = cv2.estimateAffine2D(self.coords, coords_flow)
-        self.aff = np.array(aff)
+
+        if self.use_homography:
+            homography, _ = cv2.findHomography(self.coords, coords_flow)
+            self.homography = np.array(homography)
+        else:
+            aff, _ = cv2.estimateAffine2D(self.coords, coords_flow)
+            self.aff = np.array(aff)
 
     def flow_vec_subtract(self):
         flow_uv = self.midgard.flow_uv
         flow_uv_warped = np.zeros_like(flow_uv)
 
         # Manual matrix multiplication.
-        flow_uv_warped[..., 0] = self.aff[0, 0] * self.x_coords + \
-            self.aff[0, 1] * self.y_coords + self.aff[0, 2] - self.x_coords
-        flow_uv_warped[..., 1] = self.aff[1, 0] * self.x_coords + \
-            self.aff[1, 1] * self.y_coords + self.aff[1, 2] - self.y_coords
+        if self.use_homography:
+            flow_uv_warped[..., 0] = self.homography[0, 0] * self.x_coords + \
+                self.homography[0, 1] * self.y_coords + self.homography[0, 2] - self.x_coords
+            flow_uv_warped[..., 1] = self.homography[1, 0] * self.x_coords + \
+                self.homography[1, 1] * self.y_coords + self.homography[1, 2] - self.y_coords
+        else:
+            flow_uv_warped[..., 0] = self.aff[0, 0] * self.x_coords + \
+                self.aff[0, 1] * self.y_coords + self.aff[0, 2] - self.x_coords
+            flow_uv_warped[..., 1] = self.aff[1, 0] * self.x_coords + \
+                self.aff[1, 1] * self.y_coords + self.aff[1, 2] - self.y_coords
 
-        flow_uv_warped = flow_uv_warped - flow_uv
-        flow_uv_warped_vis = self.midgard.get_flow_vis(flow_uv_warped)
+        self.flow_uv_warped = flow_uv_warped - flow_uv
+        flow_uv_warped_vis = self.midgard.get_flow_vis(self.flow_uv_warped)
         self.flow_uv_warped_mag = np.sqrt(
-            flow_uv_warped[..., 0] ** 2.0 + flow_uv_warped[..., 1] ** 2.0)
+            self.flow_uv_warped[..., 0] ** 2.0 + self.flow_uv_warped[..., 1] ** 2.0)
         self.flow_max = np.unravel_index(
             self.flow_uv_warped_mag.argmax(), self.flow_uv_warped_mag.shape)
 
-        flow_uv_warped_mag_vis = cv2.cvtColor(self.flow_uv_warped_mag / np.max(self.flow_uv_warped_mag) * 255, cv2.COLOR_GRAY2RGB).astype(np.uint8)
+        flow_uv_warped_mag_vis = self.to_rgb(self.flow_uv_warped_mag)
 
         self.opt_window = self.analyze_pyramid(self.flow_uv_warped_mag)
         self.opt_window[1] = self.optimize_window(self.flow_uv_warped_mag, self.opt_window[1])[1]
@@ -85,7 +101,7 @@ class Detector:
         return flow_uv_warped_vis, flow_uv_warped_mag_vis
 
     def block_method(self):
-        flow_uv = self.midgard.flow_uv
+        flow_uv = self.midgard.flow_uv.copy()
         flow_uv_stable = cv2.warpAffine(flow_uv, self.aff, (752, 480))
         mask = flow_uv_stable[..., :] == np.array([0, 0])
         flow_uv[mask] = flow_uv_stable[mask]
@@ -97,12 +113,16 @@ class Detector:
             flow_diff_vis, flow_max[::-1], 10, (0, 0, 0), 5)
 
         blocks = utils.blockshaped(self.flow_diff_mag, 480 // 8, 752 // 8)
+        max_mag = np.max(self.flow_diff_mag)
+        if max_mag == 0.0:
+            max_mag = 1.0
+
         blocks = np.sum(blocks, 0)
-        blocks = blocks / np.max(blocks) * 255
+        blocks = blocks / max_mag * 255
         blocks = cv2.resize(blocks, self.flow_diff_mag.shape)
         blocks = np.transpose(blocks)
 
-        blocks_vis = cv2.cvtColor(self.flow_diff_mag / np.max(self.flow_diff_mag) * 255, cv2.COLOR_GRAY2RGB).astype(np.uint8)
+        blocks_vis = self.to_rgb(self.flow_diff_mag)
         return flow_diff_vis, blocks_vis
 
     def draw(self):
@@ -124,6 +144,15 @@ class Detector:
         g = self.midgard.ground_truth
         self.midgard.orig_frame = cv2.rectangle(
             self.midgard.orig_frame, w.get_topleft(), w.get_bottomright(), (0, 255, 0), 2)
+
+        cv2.putText(self.midgard.orig_frame,
+            f'IoU={self.iou:.02f}',
+            (g.get_left(), g.get_top() - 5),
+            cv2.FONT_HERSHEY_SIMPLEX,
+            1,
+            (255, 0, 0),
+            2
+        )
 
 
     def analyze_pyramid(self, img: np.ndarray) -> list:
@@ -185,7 +214,6 @@ class Detector:
             result = intermediate_result
             c += 1
 
-        # print(c, result[0])
         return result
 
     # def get_histogram(self):
@@ -207,26 +235,41 @@ class Detector:
     #         feature_pos = np.array(ground_truth.get_center())
     #         feature_pos = np.clip(feature_pos, min_coords, max_coords)
 
-    # def sample_box(self):
-    #     res2 = np.zeros_like(orig_frame)
+    def get_magnitude(self, img: np.ndarray) -> np.ndarray:
+        return np.sqrt(np.sum(img ** 2.0, axis=-1))
 
-    #     def clip_axis(axis, value):
-    #         return min(res2.shape[axis] - 1, max(0, value))
+    def to_rgb(self, img: np.ndarray)-> np.ndarray:
+        max_intensity = np.max(img)
+        if max_intensity == 0.0:
+            max_intensity = 1.0
 
-    #     left    = clip_axis(1, ground_truth.get_left())
-    #     right   = clip_axis(1, ground_truth.get_right())
-    #     top     = clip_axis(0, ground_truth.get_top() - 15)
-    #     bottom  = clip_axis(0, ground_truth.get_bottom() - 15)
+        return cv2.cvtColor(np.around(img * 255 / max_intensity).astype(np.uint8), cv2.COLOR_GRAY2RGB)
 
-    #     x_range = np.arange(left, right, 1)
-    #     y_range = np.arange(top, bottom, 1)
-    #     reference = flow_vis[int(y_range[len(y_range)//2]), int(x_range[len(x_range)//2]), :]
-    #     orig_frame = cv2.circle(orig_frame, (int(x_range[len(x_range)//2]), int(y_range[len(y_range)//2])), 10, (0, 255, 0))
+    def get_history(self) -> np.ndarray:
+        self.flow_uv_history[self.history_index, ...] = self.midgard.flow_uv
+        self.flow_map_history[self.history_index, ...] = self.flow_uv_warped_mag
+        k = (self.history_index + 2) % (self.history_length - 1)
+        summed_mag = self.flow_map_history[(self.history_index + 1) % (self.history_length - 1), ...]
 
-    #     for x in x_range:
-    #         for y in y_range:
-    #             if np.sum(flow_vis[y, x, :] - reference) < 40:
-    #                 res2[y, x, :] = 255
+        while k != (self.history_index  + 1) % (self.history_length - 1):
+            lookup_x = self.x_coords + self.flow_uv_history[k, ..., 0]
+            lookup_y = self.y_coords + self.flow_uv_history[k, ..., 1]
+            lookup_x = np.around(np.clip(lookup_x, 0.0, summed_mag.shape[1] - 1)).astype(np.uint16)
+            lookup_y = np.around(np.clip(lookup_y, 0.0, summed_mag.shape[0] - 1)).astype(np.uint16)
+
+            summed_mag = summed_mag[lookup_y, lookup_x]
+            summed_mag += self.flow_map_history[(k - 1) % (self.history_length - 1), ...]
+
+            k = (k + 1) % self.history_length
+
+        self.history_index = (self.history_index + 1) % self.history_length
+        return self.to_rgb(summed_mag)
+
+    def predict(self, segment: np.ndarray):
+        avg = np.average(self.midgard.flow_uv[segment], 0)
+        center = self.midgard.ground_truth.get_center_int()
+        self.prediction = (int(center[0] + avg[0]), int(center[1] + avg[1]))
+        self.midgard.orig_frame = cv2.line(self.midgard.orig_frame, center, self.prediction, (0, 0, 255), 5)
 
     def clustering(self, img):
         K = 8
@@ -237,10 +280,15 @@ class Detector:
         _, label, center = cv2.kmeans(Z, K, None, criteria, 10, cv2.KMEANS_RANDOM_CENTERS)
 
         # Now convert back into uint8, and make original image
-        center = np.uint8(center * 255 / np.max(center))
+        max_mag = np.max(center)
+        if max_mag == 0.0:
+            max_mag = 1.0
+
+        center = np.uint8(center * 255 / max_mag)
         res = center[label.flatten()]
         res = res.reshape((img.shape))
 
         rgb = cv2.cvtColor(res, cv2.COLOR_GRAY2RGB)
-        rgb[rgb[..., 0] >= 225, 1] = 0
-        return rgb
+        mask = rgb[..., 0] >= 225
+        rgb[mask, 1] = 0
+        return rgb, mask

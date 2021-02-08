@@ -25,6 +25,7 @@ class Rectangle:
     def to_int(self):
         self.topleft = (int(self.topleft[0]), int(self.topleft[1]))
         self.size = (int(self.size[0]), int(self.size[1]))
+        return self
 
     def get_topleft(self):
         return (self.topleft[0], self.topleft[1])
@@ -34,6 +35,9 @@ class Rectangle:
 
     def get_center(self):
         return (self.topleft[0] + self.size[0] / 2, self.topleft[1] + self.size[1] / 2)
+
+    def get_center_int(self):
+        return (int(self.topleft[0] + self.size[0] / 2), int(self.topleft[1] + self.size[1] / 2))
 
     def get_left(self):
         return self.topleft[0]
