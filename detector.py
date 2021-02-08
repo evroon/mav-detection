@@ -95,7 +95,8 @@ class Detector:
 
         self.opt_window = self.analyze_pyramid(self.flow_uv_warped_mag)
         self.opt_window[1] = self.optimize_window(self.flow_uv_warped_mag, self.opt_window[1])[1]
-        self.iou = utils.Rectangle.calculate_iou(self.opt_window[1], self.midgard.ground_truth) / self.midgard.ground_truth.get_area()
+        gt_area = max(1.0, self.midgard.ground_truth.get_area())
+        self.iou = utils.Rectangle.calculate_iou(self.opt_window[1], self.midgard.ground_truth) / gt_area
 
         self.flow_uv_warped_vis = flow_uv_warped_vis
         return flow_uv_warped_vis, flow_uv_warped_mag_vis
