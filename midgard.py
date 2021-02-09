@@ -5,7 +5,7 @@ import numpy as np
 import flow_vis
 
 class Midgard:
-    def __init__(self, sequence, debug_mode=True) -> None:
+    def __init__(self, sequence: str, debug_mode: bool) -> None:
         self.sequence = sequence
         self.debug_mode = debug_mode
 
@@ -17,8 +17,11 @@ class Midgard:
         self.capture_size = utils.get_capture_size(self.orig_capture)
         self.flow_size = utils.get_capture_size(self.flow_capture)
         self.N = utils.get_frame_count(self.flow_capture)
-        self.frame_columns = 4
-        self.frame_rows = 2
+        self.frame_columns, self.frame_rows = 1, 1
+
+        if debug_mode:
+            self.frame_columns, self.frame_rows = 4, 2
+
         self.output = utils.get_output('detection',
             capture_size=(self.capture_size[0] * self.frame_columns, self.capture_size[1] * self.frame_rows))
         self.i = 0
@@ -27,6 +30,10 @@ class Midgard:
 
         if self.capture_size != self.flow_size:
             print(f'Note: original capture with size {self.capture_size} does not match flow, which has size {self.flow_size}')
+
+        if self.N != utils.get_frame_count(self.orig_capture) - 1:
+            print('Input counts: (images, flow fields):', utils.get_frame_count(self.orig_capture), self.N)
+            raise ValueError('Input sizes do not match.')
 
     def print_details(self):
         print(utils.get_frame_count(self.orig_capture))
