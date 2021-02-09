@@ -13,7 +13,7 @@ class Midgard:
         self.img_path = f'{midgard_path}/{sequence}/images'
         self.ann_path = f'{midgard_path}/{sequence}/annotation'
         self.orig_capture = cv2.VideoCapture(f'{self.img_path}/image_%5d.png')
-        self.flow_capture = cv2.VideoCapture('media/flownet2-sports-hall.mp4')
+        self.flow_capture = cv2.VideoCapture(f'{self.img_path}/output/color_coding/video/000000.flo.mp4')
         self.capture_size = utils.get_capture_size(self.orig_capture)
         self.flow_size = utils.get_capture_size(self.flow_capture)
         self.N = utils.get_frame_count(self.flow_capture)
