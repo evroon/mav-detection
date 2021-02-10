@@ -22,8 +22,8 @@ class Midgard:
         if debug_mode:
             self.frame_columns, self.frame_rows = 4, 2
 
-        self.output = utils.get_output('detection',
-            capture_size=(self.capture_size[0] * self.frame_columns, self.capture_size[1] * self.frame_rows))
+        capture_size = (self.capture_size[0] * self.frame_columns, self.capture_size[1] * self.frame_rows)
+        self.output = utils.get_output('detection', capture_size=capture_size, is_grey=not debug_mode)
         self.i = 0
         self.start_frame = 100
         self.is_exiting = False

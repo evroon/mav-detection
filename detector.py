@@ -272,7 +272,7 @@ class Detector:
         self.prediction = (int(center[0] + avg[0]), int(center[1] + avg[1]))
         self.midgard.orig_frame = cv2.line(self.midgard.orig_frame, center, self.prediction, (0, 0, 255), 5)
 
-    def clustering(self, img):
+    def clustering(self, img, enable_raw: bool = False):
         K = 8
         Z = img.reshape((-1, 3)).astype(np.float32)
 
@@ -288,6 +288,9 @@ class Detector:
         center = np.uint8(center * 255 / max_mag)
         res = center[label.flatten()]
         res = res.reshape((img.shape))
+
+        if enable_raw:
+            return res
 
         rgb = cv2.cvtColor(res, cv2.COLOR_GRAY2RGB)
         mask = rgb[..., 0] >= 225
