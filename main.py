@@ -11,9 +11,15 @@ import argparse
 parser = argparse.ArgumentParser(description='Detects MAVs in the MIDGARD dataset using optical flow.')
 parser.add_argument('--sequence', type=str, help='sequence to process', default='countryside-natural/north-narrow')
 parser.add_argument("--debug", action="store_true")
+parser.add_argument("--prepare-dataset", action="store_true")
 args = parser.parse_args()
 
 midgard = Midgard(args.sequence, args.debug)
+
+if args.prepare_dataset:
+    midgard.process()
+
+
 detector = Detector(midgard)
 
 try:
