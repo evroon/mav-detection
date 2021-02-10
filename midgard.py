@@ -193,7 +193,7 @@ class Midgard:
                 self.detector.get_affine_matrix()
                 self.detector.flow_vec_subtract()
                 # cluster_vis = self.detector.clustering(self.detector.flow_uv_warped_mag, True)
-                cv2.imwrite(dst, self.detector.flow_uv_warped_mag)
+                cv2.imwrite(dst, self.detector.flow_uv_warped_mag * 255 / np.max(self.detector.flow_uv_warped_mag))
 
     def process_annot(self, src: str, dst: str) -> None:
         """Processes an annotation file of the dataset and places it in the target directory
