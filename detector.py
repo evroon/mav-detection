@@ -4,9 +4,8 @@ import os
 import numpy as np
 import flow_vis
 from midgard import Midgard
-from im_helpers import pyramid
-from im_helpers import sliding_window
-
+from im_helpers import pyramid, sliding_window, get_flow_vis
+from typing import List, Union, Tuple
 
 class Detector:
     def __init__(self, midgard: Midgard):
@@ -49,7 +48,7 @@ class Detector:
         return np.sqrt(frame[..., 0] ** 2.0 + frame[..., 1] ** 2.0), \
             np.arctan2(frame[..., 1], frame[..., 0])
 
-    def get_fft(self, frame):
+    def get_fft(self, frame) -> np.ndarray:
         fft = np.fft.fft2(frame[..., 0])
         fshift = np.fft.fftshift(fft)
         magnitude_spectrum = 20*np.log(np.abs(fshift))
@@ -57,9 +56,9 @@ class Detector:
         magnitude_rgb[..., 0] = magnitude_spectrum
         return magnitude_rgb
 
-    def get_affine_matrix(self):
-        coords_flow = self.coords.astype(
-            np.float64) + self.midgard.flow_uv[self.sample_y, self.sample_x]
+    def get_affine_matrix(self) -> None:
+        coords_flow = self.coords.astype(np.float64) + \
+            self.midgard.flow_uv[self.sample_y, self.sample_x]
 
         if self.use_homography:
             homography, _ = cv2.findHomography(self.coords, coords_flow)
@@ -68,7 +67,7 @@ class Detector:
             aff, _ = cv2.estimateAffine2D(self.coords, coords_flow)
             self.aff = np.array(aff)
 
-    def flow_vec_subtract(self):
+    def flow_vec_subtract(self) -> Tuple[np.ndarray, np.ndarray]:
         flow_uv = self.midgard.flow_uv
         flow_uv_warped = np.zeros_like(flow_uv)
 
@@ -85,7 +84,7 @@ class Detector:
                 self.aff[1, 1] * self.y_coords + self.aff[1, 2] - self.y_coords
 
         self.flow_uv_warped = flow_uv_warped - flow_uv
-        flow_uv_warped_vis = self.midgard.get_flow_vis(self.flow_uv_warped)
+        flow_uv_warped_vis = get_flow_vis(self.flow_uv_warped)
         self.flow_uv_warped_mag = np.sqrt(
             self.flow_uv_warped[..., 0] ** 2.0 + self.flow_uv_warped[..., 1] ** 2.0)
         self.flow_max = np.unravel_index(
@@ -95,13 +94,14 @@ class Detector:
 
         self.opt_window = self.analyze_pyramid(self.flow_uv_warped_mag)
         self.opt_window[1] = self.optimize_window(self.flow_uv_warped_mag, self.opt_window[1])[1]
-        gt_area = max(1.0, self.midgard.ground_truth.get_area())
-        self.iou = utils.Rectangle.calculate_iou(self.opt_window[1], self.midgard.ground_truth) / gt_area
+        for gt in self.midgard.ground_truth:
+            gt_area = max(1.0, gt.get_area())
+            self.iou = utils.Rectangle.calculate_iou(self.opt_window[1], gt) / gt_area
 
         self.flow_uv_warped_vis = flow_uv_warped_vis
         return flow_uv_warped_vis, flow_uv_warped_mag_vis
 
-    def block_method(self):
+    def block_method(self) -> Tuple[np.ndarray, np.ndarray]:
         flow_uv = self.midgard.flow_uv.copy()
         flow_uv_stable = cv2.warpAffine(flow_uv, self.aff, (752, 480))
         mask = flow_uv_stable[..., :] == np.array([0, 0])
@@ -109,7 +109,7 @@ class Detector:
         flow_diff = flow_uv - flow_uv_stable
         self.flow_diff_mag = np.sqrt(flow_diff[..., 0] ** 2.0 + flow_diff[..., 1] ** 2.0)
         flow_max = np.unravel_index(self.flow_diff_mag.argmax(), self.flow_diff_mag.shape)
-        flow_diff_vis = self.midgard.get_flow_vis(flow_diff)
+        flow_diff_vis = get_flow_vis(flow_diff)
         flow_diff_vis = cv2.circle(
             flow_diff_vis, flow_max[::-1], 10, (0, 0, 0), 5)
 
@@ -126,15 +126,16 @@ class Detector:
         blocks_vis = self.to_rgb(self.flow_diff_mag)
         return flow_diff_vis, blocks_vis
 
-    def draw(self):
+    def draw(self) -> None:
         # Plot ground truth.
-        self.midgard.orig_frame = cv2.rectangle(
-            self.midgard.orig_frame,
-            self.midgard.ground_truth.get_topleft(),
-            self.midgard.ground_truth.get_bottomright(),
-            (0, 0, 255),
-            3
-        )
+        for gt in self.midgard.ground_truth:
+            self.midgard.orig_frame = cv2.rectangle(
+                self.midgard.orig_frame,
+                gt.get_topleft(),
+                gt.get_bottomright(),
+                (0, 0, 255),
+                3
+            )
 
         self.flow_uv_warped_vis = cv2.circle(
             self.flow_uv_warped_vis, self.flow_max[::-1], 10, (0, 0, 0), 5)
@@ -142,24 +143,24 @@ class Detector:
             self.midgard.orig_frame, self.flow_max[::-1], 10, (255, 255, 255), 5)
 
         w: utils.Rectangle = self.opt_window[1]
-        g = self.midgard.ground_truth
         self.midgard.orig_frame = cv2.rectangle(
             self.midgard.orig_frame, w.get_topleft(), w.get_bottomright(), (0, 255, 0), 2)
 
-        cv2.putText(self.midgard.orig_frame,
-            f'IoU={self.iou:.02f}',
-            (g.get_left(), g.get_top() - 5),
-            cv2.FONT_HERSHEY_SIMPLEX,
-            1,
-            (255, 0, 0),
-            2
-        )
+        for gt in self.midgard.ground_truth:
+            cv2.putText(self.midgard.orig_frame,
+                f'IoU={self.iou:.02f}',
+                (gt.get_left(), gt.get_top() - 5),
+                cv2.FONT_HERSHEY_SIMPLEX,
+                1,
+                (255, 0, 0),
+                2
+            )
 
 
     def analyze_pyramid(self, img: np.ndarray) -> list:
         # Based on: https://www.pyimagesearch.com/2015/03/23/sliding-windows-for-object-detection-with-python-and-opencv/
         width, height = (48, 48)
-        result = [0, 0, 0, 0]
+        result = [0, utils.Rectangle((0, 0), (0, 0)), 0, 0]
 
         for resized in pyramid(img, scale=1.5):
             for (x, y, window) in sliding_window(resized, stepSize=16, windowSize=(width, height)):
@@ -180,8 +181,8 @@ class Detector:
 
         return result
 
-    def optimize_window(self, mag_img: np.ndarray, window: utils.Rectangle) -> list:
-        result = [0, window]
+    def optimize_window(self, mag_img: np.ndarray, window: utils.Rectangle) -> Tuple[int, utils.Rectangle]:
+        result: Tuple[int, utils.Rectangle] = (0, window)
         c = 0
 
         def get_score(new_window):
@@ -189,7 +190,7 @@ class Detector:
 
         while True:
             window = result[1]
-            intermediate_result = [0, None]
+            intermediate_result: Tuple[int, utils.Rectangle] = (0, window)
 
             for h in [0, 1]:
                 topleft = window.get_topleft()
@@ -204,10 +205,10 @@ class Detector:
                         new_window = utils.Rectangle.from_points(topleft, bottomright)
                         score = get_score(new_window)
                         if score > intermediate_result[0]:
-                            intermediate_result = [
+                            intermediate_result = (
                                 score,
                                 new_window
-                            ]
+                            )
 
             if intermediate_result[0] <= result[0]:
                 break

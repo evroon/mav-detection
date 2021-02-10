@@ -15,14 +15,14 @@ parser.add_argument("--prepare-dataset", action="store_true")
 args = parser.parse_args()
 
 midgard = Midgard(args.sequence, args.debug)
-
-if args.prepare_dataset:
-    midgard.process()
-
-
 detector = Detector(midgard)
+midgard.detector = detector
 
 try:
+    if args.prepare_dataset:
+        midgard.process()
+        exit()
+
     while midgard.is_active():
         orig_frame = midgard.get_frame()
 

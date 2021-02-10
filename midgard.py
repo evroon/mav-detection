@@ -4,6 +4,11 @@ import os
 import numpy as np
 import flow_vis
 from enum import Enum
+import glob
+import shutil
+from im_helpers import get_flow_radial, get_flow_vis
+from typing import Optional
+
 
 class Midgard:
     '''Converts MIDGARD dataset for use with YOLOv4.'''
@@ -11,7 +16,8 @@ class Midgard:
         APPEARANCE_RGB = 0,
         FLOW_UV = 1,
         FLOW_UV_NORMALISED = 2,
-        FLOW_RADIAL = 3
+        FLOW_RADIAL = 3,
+        FLOW_PROCESSED = 4
 
     def __init__(self, sequence: str, debug_mode: bool) -> None:
         self.sequence = sequence
@@ -34,7 +40,7 @@ class Midgard:
 
         capture_size = (self.capture_size[0] * self.frame_columns, self.capture_size[1] * self.frame_rows)
         self.output = utils.get_output('detection', capture_size=capture_size, is_grey=not debug_mode)
-        self.i = 0
+        self.input_index = 0
         self.start_frame = 100
         self.is_exiting = False
 
@@ -45,32 +51,47 @@ class Midgard:
             print('Input counts: (images, flow fields):', utils.get_frame_count(self.orig_capture), self.N)
             raise ValueError('Input sizes do not match.')
 
+    def annotation_to_yolo(self, rects: list) -> str:
+        """Converts the rectangles to the text format read by YOLOv4
+
+        Args:
+            rects (list): the input rectangles
+
+        Returns:
+            str: a list of bounding boxes in format '0 {center_x} {center_y} {size_x} {size_y}' with coordinates in range [0, 1]
+        """
+        result: str = ''
+        for rect in rects:
+            center = np.array(rect.get_center()) / self.resolution.astype(np.float)
+            size = np.array(rect.size) / (2.0 * self.resolution.astype(np.float))
+            result += f'0 {center[0]} {center[1]} {size[0]} {size[1]}\n'
+
+        return result
+
     def get_midgard_annotation(self, ann_path: str = None) -> list:
         """Returns a list of ground truth bounding boxes given an annotation file.
 
         Args:
-            ann_path (str): the annotation .txt file to process
+            ann_path (str): the annotation .txt file to process, current file if None
 
         Returns:
-            list: a list of bounding boxes in format '0 {center_x} {center_y} {size_x} {size_y}' with coordinates in range [0, 1]
+            list: list of rectangles describing the ground truth bounding boxes
         """
-        lines = []
+        result = []
+
         if ann_path is None:
-            ann_path = f'{self.ann_path}/annot_{self.i:05d}.csv'
+            ann_path = f'{self.ann_path}/annot_{self.input_index:05d}.csv'
 
         with open(ann_path, 'r') as f:
             for line in f.readlines():
                 values = [float(x) for x in line.split(',')]
-                center = np.array([values[1] + values[3] / 2, values[2] + values[4] / 2]) / self.resolution.astype(np.float)
-                size = np.array([values[3], values[4]]) / (2.0 * self.resolution.astype(np.float))
-                lines.append(f'0 {center[0]} {center[1]} {size[0]} {size[1]}')
 
                 values = [round(float(x)) for x in values]
                 topleft = (values[1], values[2])
-                ground_truth = utils.Rectangle(topleft, (values[3], values[4]))
+                result.append(utils.Rectangle(topleft, (values[3], values[4])))
 
-        self.ground_truth = ground_truth
-        return lines
+        self.ground_truth = result
+        return result
 
     def get_flow_uv(self) -> np.ndarray:
         """Get the content of the .flo file for the current frame
@@ -78,24 +99,13 @@ class Midgard:
         Returns:
             np.ndarray: (w, h, 2) array with flow vectors
         """
-        flo_path = f'{self.img_path}/output/inference/run.epoch-0-flow-field/{self.i:06d}.flo'
+        flo_path = f'{self.img_path}/output/inference/run.epoch-0-flow-field/{self.input_index:06d}.flo'
         flow_uv = utils.read_flow(flo_path)
 
         if self.capture_size != self.flow_size:
             flow_uv = cv2.resize(flow_uv, self.capture_size)
 
         return flow_uv
-
-    def get_flow_vis(self, frame: np.ndarray) -> np.ndarray:
-        """Visualize a flow field array
-
-        Args:
-            frame (np.ndarray): the raw flow field (w, h, 2)
-
-        Returns:
-            np.ndarray: BGR flow field visualized in HSV space
-        """
-        return flow_vis.flow_to_color(frame, convert_to_bgr=True)
 
     def get_capture_shape(self) -> tuple:
         """Get the shape of the original image inputs.
@@ -105,33 +115,28 @@ class Midgard:
         """
         return np.array(cv2.imread(f'{self.img_path}/image_00000.png')).shape
 
-    def get_flow_radial(self, frame: np.ndarray) -> np.ndarray:
-        flow_hsv = cv2.cvtColor(frame, cv2.COLOR_BGR2HSV)
-        flow_hsv[..., 0] = flow_hsv[..., 0]
-        flow_hsv[..., 1] = 255
-        flow_hsv[..., 2] = 255
-        return cv2.cvtColor(flow_hsv, cv2.COLOR_HSV2BGR)
-
     def get_frame(self) -> np.ndarray:
+        """Loads the frames of the next iteration
+
+        Returns:
+            np.ndarray: the raw BGR input frame
+        """
         s1, orig_frame = self.orig_capture.read()
 
-        while self.i < self.start_frame:
+        while self.debug_mode and self.input_index < self.start_frame:
             s1, orig_frame = self.orig_capture.read()
-            self.i += 1
-
-        if not s1:
-            return None
+            self.input_index += 1
 
         self.orig_frame = orig_frame
         self.flow_uv = self.get_flow_uv()
-        self.flow_vis = self.get_flow_vis(self.flow_uv)
-        self.get_flow_radial(self.flow_vis)
+        self.flow_vis = get_flow_vis(self.flow_uv)
+        get_flow_radial(self.flow_vis)
         self.get_midgard_annotation()
 
         return orig_frame
 
     def is_active(self) -> bool:
-        return self.i < self.N - 1 and not self.is_exiting
+        return self.input_index < self.N - 1 and not self.is_exiting
 
     def write(self, frame: np.ndarray) -> None:
         self.output.write(frame)
@@ -143,10 +148,10 @@ class Midgard:
             if k == 27:
                 self.is_exiting = True
 
-        self.i += 1
+        self.input_index += 1
 
-        if self.i % int(self.N / 10) == 0:
-            print('{:.2f}'.format(self.i / self.N * 100) + '%', self.i, '/', self.N)
+        if self.input_index % int(self.N / 10) == 0:
+            print('{:.2f}'.format(self.input_index / self.N * 100) + '%', self.input_index, '/', self.N)
 
     def remove_contents_of_folder(self, folder: str) -> None:
         """Remove all content of a directory
@@ -171,7 +176,7 @@ class Midgard:
             src (str): source image path
             dst (str): destination image path
         """
-        if self.mode == MidgardConverter.Mode.APPEARANCE_RGB:
+        if self.mode == Midgard.Mode.APPEARANCE_RGB:
             shutil.copy2(src, dst)
         else:
             img = cv2.imread(src)
@@ -179,10 +184,16 @@ class Midgard:
             if img.shape != self.capture_shape:
                 img = cv2.resize(img, self.capture_shape)
 
-            if self.mode == MidgardConverter.Mode.FLOW_UV:
+            if self.mode == Midgard.Mode.FLOW_UV:
                 flow_uv = self.get_flow_uv()
-                flow_vis = self.get_flow_vis(flow_uv)
+                flow_vis = get_flow_vis(flow_uv)
                 cv2.imwrite(dst, flow_vis)
+            elif self.mode == Midgard.Mode.FLOW_PROCESSED:
+                self.get_frame()
+                self.detector.get_affine_matrix()
+                self.detector.flow_vec_subtract()
+                # cluster_vis = self.detector.clustering(self.detector.flow_uv_warped_mag, True)
+                cv2.imwrite(dst, self.detector.flow_uv_warped_mag)
 
     def process_annot(self, src: str, dst: str) -> None:
         """Processes an annotation file of the dataset and places it in the target directory
@@ -192,7 +203,8 @@ class Midgard:
             dst (str): destination annotation file path
         """
         with open(dst, 'w') as f:
-            f.writelines(self.get_midgard_annotation(src))
+            ann = self.get_midgard_annotation(src)
+            f.writelines(self.annotation_to_yolo(ann))
 
     def prepare_sequence(self, sequence: str) -> None:
         """Prepare a sequence of the MIDGARD dataset
@@ -215,7 +227,7 @@ class Midgard:
         images.sort()
         annotations.sort()
 
-        self.i = 0
+        self.input_index = 0
         self.N = len(images)
 
         if len(images) != len(annotations) or len(images) - 1 != len(flow_fields):
@@ -224,10 +236,11 @@ class Midgard:
 
         for i, (img_src, ann_src) in enumerate(zip(images, annotations)):
             # Skip the last frame for optical flow inputs, as it does not exist.
-            if not (self.mode != Midgard.Mode.APPEARANCE_RGB and self.i >= self.N - 2):
-                self.i = i
-                self.process_image(img_src, f'{self.img_dest_path}/{i:06d}.png')
-                self.process_annot(ann_src, f'{self.ann_dest_path}/{i:06d}.txt')
+            if not (self.mode != Midgard.Mode.APPEARANCE_RGB and self.input_index >= self.N - 2):
+                self.process_image(img_src, f'{self.img_dest_path}/{self.output_index:06d}.png')
+                self.process_annot(ann_src, f'{self.ann_dest_path}/{self.output_index:06d}.txt')
+                self.output_index += 1
+                self.input_index += 1
 
     def process(self) -> None:
         """Processes the MIDGARD dataset"""
@@ -236,10 +249,11 @@ class Midgard:
             Midgard.Mode.FLOW_UV: 2,
             Midgard.Mode.FLOW_UV_NORMALISED: 2,
             Midgard.Mode.FLOW_RADIAL: 1,
+            Midgard.Mode.FLOW_PROCESSED: 1,
         }
 
         self.midgard_path = os.environ['MIDGARD_PATH']
-        self.dest_path = os.environ['YOLOv4_PATH'] + 'dataset'
+        self.dest_path = os.environ['YOLOv4_PATH'] + '/dataset'
         self.img_dest_path = f'{self.dest_path}/images'
         self.ann_dest_path = f'{self.dest_path}/labels/yolo'
         sequences = [
@@ -257,8 +271,9 @@ class Midgard:
             'urban/appartment-buildings',
         ]
 
-        self.mode = Midgard.Mode.APPEARANCE_RGB
+        self.mode = Midgard.Mode.FLOW_PROCESSED
         self.channels = channel_options[self.mode]
+        self.output_index = 0
 
         self.remove_contents_of_folder(self.img_dest_path)
         self.remove_contents_of_folder(self.ann_dest_path)

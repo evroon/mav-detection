@@ -91,7 +91,7 @@ class LucasKanade:
             if status[i] != 1:
                 continue
 
-            a, b, c, d = *new.ravel(), *old.ravel()
+            a, b, c, d = new[0], new[1], old[0], old[1]
             a, b, c, d = [int(x) for x in [a, b, c, d]]
             color = self.color[i].tolist()
 
