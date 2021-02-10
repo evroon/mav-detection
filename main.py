@@ -10,7 +10,7 @@ import argparse
 
 parser = argparse.ArgumentParser(description='Detects MAVs in the MIDGARD dataset using optical flow.')
 parser.add_argument('--sequence', type=str, help='sequence to process', default='countryside-natural/north-narrow')
-parser.add_argument('--debug', type=bool, help='debug', default=False)
+parser.add_argument("--debug", action="store_true")
 args = parser.parse_args()
 
 midgard = Midgard(args.sequence, args.debug)
