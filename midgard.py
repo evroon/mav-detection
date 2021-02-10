@@ -105,14 +105,14 @@ class Midgard:
         """
         return np.array(cv2.imread(f'{self.img_path}/image_00000.png')).shape
 
-    def get_flow_radial(self, frame):
+    def get_flow_radial(self, frame: np.ndarray) -> np.ndarray:
         flow_hsv = cv2.cvtColor(frame, cv2.COLOR_BGR2HSV)
         flow_hsv[..., 0] = flow_hsv[..., 0]
         flow_hsv[..., 1] = 255
         flow_hsv[..., 2] = 255
         return cv2.cvtColor(flow_hsv, cv2.COLOR_HSV2BGR)
 
-    def get_frame(self):
+    def get_frame(self) -> np.ndarray:
         s1, orig_frame = self.orig_capture.read()
 
         while self.i < self.start_frame:
@@ -130,10 +130,10 @@ class Midgard:
 
         return orig_frame
 
-    def is_active(self):
+    def is_active(self) -> bool:
         return self.i < self.N - 1 and not self.is_exiting
 
-    def write(self, frame):
+    def write(self, frame: np.ndarray) -> None:
         self.output.write(frame)
 
         if self.debug_mode:
@@ -239,7 +239,7 @@ class Midgard:
         }
 
         self.midgard_path = os.environ['MIDGARD_PATH']
-        self.dest_path = 'dataset'
+        self.dest_path = os.environ['YOLOv4_PATH'] + 'dataset'
         self.img_dest_path = f'{self.dest_path}/images'
         self.ann_dest_path = f'{self.dest_path}/labels/yolo'
         sequences = [
