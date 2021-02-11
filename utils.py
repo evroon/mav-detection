@@ -22,6 +22,13 @@ class Rectangle:
             (bottomright[0] - topleft[0], bottomright[1] - topleft[1])
         )
 
+    @classmethod
+    def from_yolo(cls, arr):
+        return Rectangle(
+            (arr[0], arr[1]),
+            (arr[2], arr[3])
+        )
+
     def to_int(self):
         self.topleft = (int(self.topleft[0]), int(self.topleft[1]))
         self.size = (int(self.size[0]), int(self.size[1]))
