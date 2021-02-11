@@ -56,9 +56,9 @@ class Detector:
         magnitude_rgb[..., 0] = magnitude_spectrum
         return magnitude_rgb
 
-    def get_affine_matrix(self) -> None:
+    def get_affine_matrix(self, flow_uv: np.ndarray) -> None:
         coords_flow = self.coords.astype(np.float64) + \
-            self.midgard.flow_uv[self.sample_y, self.sample_x]
+            flow_uv[self.sample_y, self.sample_x]
 
         if self.use_homography:
             homography, _ = cv2.findHomography(self.coords, coords_flow)
@@ -67,8 +67,7 @@ class Detector:
             aff, _ = cv2.estimateAffine2D(self.coords, coords_flow)
             self.aff = np.array(aff)
 
-    def flow_vec_subtract(self) -> Tuple[np.ndarray, np.ndarray]:
-        flow_uv = self.midgard.flow_uv
+    def flow_vec_subtract(self, flow_uv: np.ndarray) -> Tuple[np.ndarray, np.ndarray]:
         flow_uv_warped = np.zeros_like(flow_uv)
 
         # Manual matrix multiplication.
@@ -101,8 +100,8 @@ class Detector:
         self.flow_uv_warped_vis = flow_uv_warped_vis
         return flow_uv_warped_vis, flow_uv_warped_mag_vis
 
-    def block_method(self) -> Tuple[np.ndarray, np.ndarray]:
-        flow_uv = self.midgard.flow_uv.copy()
+    def block_method(self, flow_uv: np.ndarray) -> Tuple[np.ndarray, np.ndarray]:
+        flow_uv = flow_uv.copy()
         flow_uv_stable = cv2.warpAffine(flow_uv, self.aff, (752, 480))
         mask = flow_uv_stable[..., :] == np.array([0, 0])
         flow_uv[mask] = flow_uv_stable[mask]
@@ -126,11 +125,11 @@ class Detector:
         blocks_vis = self.to_rgb(self.flow_diff_mag)
         return flow_diff_vis, blocks_vis
 
-    def draw(self) -> None:
+    def draw(self, orig_frame: np.ndarray) -> None:
         # Plot ground truth.
         for gt in self.midgard.ground_truth:
-            self.midgard.orig_frame = cv2.rectangle(
-                self.midgard.orig_frame,
+            orig_frame = cv2.rectangle(
+                orig_frame,
                 gt.get_topleft(),
                 gt.get_bottomright(),
                 (0, 0, 255),
@@ -139,15 +138,15 @@ class Detector:
 
         self.flow_uv_warped_vis = cv2.circle(
             self.flow_uv_warped_vis, self.flow_max[::-1], 10, (0, 0, 0), 5)
-        self.midgard.orig_frame = cv2.circle(
-            self.midgard.orig_frame, self.flow_max[::-1], 10, (255, 255, 255), 5)
+        orig_frame = cv2.circle(
+            orig_frame, self.flow_max[::-1], 10, (255, 255, 255), 5)
 
         w: utils.Rectangle = self.opt_window[1]
-        self.midgard.orig_frame = cv2.rectangle(
-            self.midgard.orig_frame, w.get_topleft(), w.get_bottomright(), (0, 255, 0), 2)
+        orig_frame = cv2.rectangle(
+            orig_frame, w.get_topleft(), w.get_bottomright(), (0, 255, 0), 2)
 
         for gt in self.midgard.ground_truth:
-            cv2.putText(self.midgard.orig_frame,
+            cv2.putText(orig_frame,
                 f'IoU={self.iou:.02f}',
                 (gt.get_left(), gt.get_top() - 5),
                 cv2.FONT_HERSHEY_SIMPLEX,
@@ -247,8 +246,8 @@ class Detector:
 
         return cv2.cvtColor(np.around(img * 255 / max_intensity).astype(np.uint8), cv2.COLOR_GRAY2RGB)
 
-    def get_history(self) -> np.ndarray:
-        self.flow_uv_history[self.history_index, ...] = self.midgard.flow_uv
+    def get_history(self, flow_uv: np.ndarray) -> np.ndarray:
+        self.flow_uv_history[self.history_index, ...] = flow_uv
         self.flow_map_history[self.history_index, ...] = self.flow_uv_warped_mag
         k = (self.history_index + 2) % (self.history_length - 1)
         summed_mag = self.flow_map_history[(self.history_index + 1) % (self.history_length - 1), ...]
@@ -267,8 +266,8 @@ class Detector:
         self.history_index = (self.history_index + 1) % self.history_length
         return self.to_rgb(summed_mag)
 
-    def predict(self, segment: np.ndarray):
-        avg = np.average(self.midgard.flow_uv[segment], 0)
+    def predict(self, segment: np.ndarray, flow_uv: np.ndarray):
+        avg = np.average(flow_uv[segment], 0)
         center = self.midgard.ground_truth.get_center_int()
         self.prediction = (int(center[0] + avg[0]), int(center[1] + avg[1]))
         self.midgard.orig_frame = cv2.line(self.midgard.orig_frame, center, self.prediction, (0, 0, 255), 5)
