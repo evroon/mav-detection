@@ -9,21 +9,21 @@ class Rectangle:
         self.size = size
 
     @classmethod
-    def from_center(cls, center, size):
+    def from_center(cls, center, size) -> Rectangle:
         return Rectangle(
             (center[0] - size[0] / 2, center[1] - size[1] / 2),
             size
         )
 
     @classmethod
-    def from_points(cls, topleft, bottomright):
+    def from_points(cls, topleft, bottomright) -> Rectangle:
         return Rectangle(
             topleft,
             (bottomright[0] - topleft[0], bottomright[1] - topleft[1])
         )
 
     @classmethod
-    def from_yolo(cls, arr):
+    def from_yolo(cls, arr) -> Rectangle:
         return Rectangle(
             (arr[0], arr[1]),
             (arr[2], arr[3])

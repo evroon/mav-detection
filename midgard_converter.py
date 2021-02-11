@@ -7,7 +7,7 @@ from enum import Enum
 import glob
 import shutil
 from im_helpers import get_flow_radial, get_flow_vis
-from typing import Optional
+from typing import Optional, List
 from midgard import Midgard
 from detector import Detector
 
@@ -29,7 +29,7 @@ class MidgardConverter:
         self.frame_index, self.start_frame = 0, 100
         self.is_exiting = False
 
-    def annotation_to_yolo(self, rects: list) -> str:
+    def annotation_to_yolo(self, rects: List[utils.Rectangle]) -> str:
         """Converts the rectangles to the text format read by YOLOv4
 
         Args:
@@ -40,8 +40,8 @@ class MidgardConverter:
         """
         result: str = ''
         for rect in rects:
-            center = np.array(rect.get_center()) / self.resolution.astype(np.float)
-            size = np.array(rect.size) / (2.0 * self.resolution.astype(np.float))
+            center = np.array(rect.get_center()) / self.midgard.resolution.astype(np.float)
+            size = np.array(rect.size) / (2.0 * self.midgard.resolution.astype(np.float))
             result += f'0 {center[0]} {center[1]} {size[0]} {size[1]}\n'
 
         return result
@@ -70,7 +70,7 @@ class MidgardConverter:
         self.frame_index += 1
 
         if self.frame_index % int(self.midgard.N / 10) == 0:
-            print('{:.2f}'.format(self.frame_index / self.N * 100) + '%', self.frame_index, '/', self.midgard.N)
+            print('{:.2f}'.format(self.frame_index / self.midgard.N * 100) + '%', self.frame_index, '/', self.midgard.N)
 
     def remove_contents_of_folder(self, folder: str) -> None:
         """Remove all content of a directory
@@ -100,17 +100,18 @@ class MidgardConverter:
         else:
             img = cv2.imread(src)
 
-            if img.shape != self.capture_shape:
-                img = cv2.resize(img, self.capture_shape)
+            if img.shape != self.midgard.capture_shape:
+                img = cv2.resize(img, self.midgard.capture_shape)
 
             if self.mode == Midgard.Mode.FLOW_UV:
-                flow_uv = self.get_flow_uv()
+                flow_uv = self.midgard.get_flow_uv(self.frame_index)
                 flow_vis = get_flow_vis(flow_uv)
                 cv2.imwrite(dst, flow_vis)
             elif self.mode == Midgard.Mode.FLOW_PROCESSED:
                 self.midgard.get_frame()
-                self.detector.get_affine_matrix()
-                self.detector.flow_vec_subtract()
+                flow_uv = self.midgard.get_flow_uv(self.frame_index)
+                self.detector.get_affine_matrix(flow_uv)
+                self.detector.flow_vec_subtract(flow_uv)
                 cv2.imwrite(dst, self.detector.flow_uv_warped_mag * 255 / np.max(self.detector.flow_uv_warped_mag))
 
     def process_annot(self, src: str, dst: str) -> None:
@@ -121,7 +122,7 @@ class MidgardConverter:
             dst (str): destination annotation file path
         """
         with open(dst, 'w') as f:
-            ann = self.midgard.get_midgard_annotation(src)
+            ann = self.midgard.get_midgard_annotation(self.frame_index, src)
             f.writelines(self.annotation_to_yolo(ann))
 
     def prepare_sequence(self, sequence: str) -> None:

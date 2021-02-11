@@ -92,10 +92,14 @@ class Detector:
         flow_uv_warped_mag_vis = self.to_rgb(self.flow_uv_warped_mag)
 
         self.opt_window = self.analyze_pyramid(self.flow_uv_warped_mag)
-        self.opt_window[1] = self.optimize_window(self.flow_uv_warped_mag, self.opt_window[1])[1]
+        window_optimized = self.optimize_window(self.flow_uv_warped_mag, self.opt_window[1])[1]
+        opt_window_list = list(self.opt_window)
+        opt_window_list[1] = window_optimized
+        self.opt_window = Tuple[float, utils.Rectangle, np.ndarray, float](opt_window_list)
+
         for gt in self.midgard.ground_truth:
             gt_area = max(1.0, gt.get_area())
-            self.iou = utils.Rectangle.calculate_iou(self.opt_window[1], gt) / gt_area
+            self.iou = utils.Rectangle.calculate_iou(window_optimized, gt) / gt_area
 
         self.flow_uv_warped_vis = flow_uv_warped_vis
         return flow_uv_warped_vis, flow_uv_warped_mag_vis
@@ -156,10 +160,10 @@ class Detector:
             )
 
 
-    def analyze_pyramid(self, img: np.ndarray) -> list:
+    def analyze_pyramid(self, img: np.ndarray) -> Tuple[float, utils.Rectangle, np.ndarray, float]:
         # Based on: https://www.pyimagesearch.com/2015/03/23/sliding-windows-for-object-detection-with-python-and-opencv/
         width, height = (48, 48)
-        result = [0, utils.Rectangle((0, 0), (0, 0)), 0, 0]
+        result = (0, utils.Rectangle((0, 0), (0, 0)), 0, 0)
 
         for resized in pyramid(img, scale=1.5):
             for (x, y, window) in sliding_window(resized, stepSize=16, windowSize=(width, height)):
@@ -171,12 +175,12 @@ class Detector:
 
                 # Check if window has higher score than current maximum.
                 if result[0] < score:
-                    result = [
+                    result = (
                         score,
                         utils.Rectangle((x, y), window.shape),
                         window,
                         max_flow
-                    ]
+                    )
 
         return result
 
@@ -266,11 +270,11 @@ class Detector:
         self.history_index = (self.history_index + 1) % self.history_length
         return self.to_rgb(summed_mag)
 
-    def predict(self, segment: np.ndarray, flow_uv: np.ndarray):
+    def predict(self, segment: np.ndarray, flow_uv: np.ndarray, orig_frame: np.ndarray):
         avg = np.average(flow_uv[segment], 0)
-        center = self.midgard.ground_truth.get_center_int()
+        center = self.midgard.ground_truth[0].get_center_int()
         self.prediction = (int(center[0] + avg[0]), int(center[1] + avg[1]))
-        self.midgard.orig_frame = cv2.line(self.midgard.orig_frame, center, self.prediction, (0, 0, 255), 5)
+        orig_frame = cv2.line(orig_frame, center, self.prediction, (0, 0, 255), 5)
 
     def clustering(self, img, enable_raw: bool = False):
         K = 8

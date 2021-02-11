@@ -4,6 +4,7 @@ import matplotlib.pyplot as plt
 import utils
 from lucas_kanade import LucasKanade
 from farneback import Farneback
+from midgard import Midgard
 from midgard_converter import MidgardConverter
 import argparse
 

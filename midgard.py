@@ -7,7 +7,7 @@ from enum import Enum
 import glob
 import shutil
 from im_helpers import get_flow_radial, get_flow_vis
-from typing import Optional
+from typing import Optional, Tuple, cast, List
 
 
 class Midgard:
@@ -40,7 +40,7 @@ class Midgard:
             print('Input counts: (images, flow fields):', utils.get_frame_count(self.orig_capture), self.N)
             raise ValueError('Input sizes do not match.')
 
-    def get_midgard_annotation(self, i: int, ann_path: str = None) -> list:
+    def get_midgard_annotation(self, i: int, ann_path: str = None) -> List[utils.Rectangle]:
         """Returns a list of ground truth bounding boxes given an annotation file.
 
         Args:
@@ -79,13 +79,14 @@ class Midgard:
 
         return flow_uv
 
-    def get_capture_shape(self) -> tuple:
+    def get_capture_shape(self) -> Tuple[int, int, int]:
         """Get the shape of the original image inputs.
 
         Returns:
             tuple: image shape
         """
-        return np.array(cv2.imread(f'{self.img_path}/image_00000.png')).shape
+        img = np.array(cv2.imread(f'{self.img_path}/image_00000.png'))
+        return cast(Tuple[int, int, int], img.shape)
 
     def get_frame(self) -> np.ndarray:
         """Loads the frames of the next iteration
