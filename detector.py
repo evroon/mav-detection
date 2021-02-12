@@ -5,7 +5,7 @@ import numpy as np
 import flow_vis
 from midgard import Midgard
 from im_helpers import pyramid, sliding_window, get_flow_vis
-from typing import List, Union, Tuple
+from typing import List, Union, Tuple, cast
 
 class Detector:
     def __init__(self, midgard: Midgard):
@@ -95,7 +95,7 @@ class Detector:
         window_optimized = self.optimize_window(self.flow_uv_warped_mag, self.opt_window[1])[1]
         opt_window_list = list(self.opt_window)
         opt_window_list[1] = window_optimized
-        self.opt_window = Tuple[float, utils.Rectangle, np.ndarray, float](opt_window_list)
+        self.opt_window = cast(Tuple[float, utils.Rectangle, np.ndarray, float], opt_window_list)
 
         for gt in self.midgard.ground_truth:
             gt_area = max(1.0, gt.get_area())
@@ -276,7 +276,7 @@ class Detector:
         self.prediction = (int(center[0] + avg[0]), int(center[1] + avg[1]))
         orig_frame = cv2.line(orig_frame, center, self.prediction, (0, 0, 255), 5)
 
-    def clustering(self, img, enable_raw: bool = False) -> List[np.ndarray, np.ndarray]:
+    def clustering(self, img, enable_raw: bool = False) -> Tuple[np.ndarray, np.ndarray]:
         K = 8
         Z = img.reshape((-1, 3)).astype(np.float32)
 

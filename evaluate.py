@@ -135,8 +135,3 @@ class Validator:
         if not os.path.exists(output):
             command = f'ffmpeg -r 30 -i {input} -c:v libx264 -vf fps=30 -pix_fmt yuv420p {output} -y'.split(' ')
             subprocess.call(command)
-
-
-
-validator = Validator()
-validator.run_validation('countryside-natural/north-narrow')
