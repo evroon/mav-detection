@@ -13,9 +13,10 @@ from detector import Detector
 
 class MidgardConverter:
     '''Converts MIDGARD dataset for use with YOLOv4.'''
-    def __init__(self, sequence: str, debug_mode: bool) -> None:
+    def __init__(self, sequence: str, debug_mode: bool, headless: bool) -> None:
         self.sequence = sequence
         self.debug_mode = debug_mode
+        self.headless = headless
         self.midgard = Midgard(sequence)
         self.detector = Detector(self.midgard)
         self.frame_columns, self.frame_rows = 1, 1
@@ -60,7 +61,7 @@ class MidgardConverter:
         """
         self.output.write(frame)
 
-        if self.debug_mode:
+        if not self.headless:
             cv2.imshow('output', frame)
 
             k = cv2.waitKey(1) & 0xff

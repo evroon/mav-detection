@@ -14,15 +14,16 @@ parser.add_argument('--sequence', type=str, help='sequence to process', default=
 parser.add_argument("--debug", action="store_true")
 parser.add_argument("--prepare-dataset", action="store_true")
 parser.add_argument("--evaluate", action="store_true")
+parser.add_argument("--headless", action="store_true")
 parser.add_argument("--mode", type=str, help='sequence to process', default='APPEARANCE_RGB')
 args = parser.parse_args()
 
 if args.evaluate:
     validator = Validator()
-    validator.run_validation('countryside-natural/north-narrow')
+    validator.run_validation(args.sequence)
 else:
+    converter = MidgardConverter(args.sequence, args.debug, args.headless)
     try:
-        converter = MidgardConverter(args.sequence, args.debug)
         if args.prepare_dataset:
             options = [color.name for color in Midgard.Mode]
             if args.mode not in options:
@@ -30,7 +31,6 @@ else:
                 raise ValueError(f'Mode {args.mode} is not a valid mode, has to be one of {options_str}')
             converter.process(Midgard.Mode[args.mode])
         else:
-            converter = MidgardConverter(args.sequence, args.debug)
             converter.run()
 
     finally:

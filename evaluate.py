@@ -88,7 +88,7 @@ class Validator:
         return result
 
 
-    def annotate(self, img: np.ndarray, boxes: List[utils.Rectangle]):
+    def annotate(self, img: np.ndarray, boxes: List[utils.Rectangle], ground_truth: List[utils.Rectangle]) -> None:
         for box in boxes:
             rect = box[2]
             img = cv2.rectangle(
@@ -107,6 +107,15 @@ class Validator:
                 (0, 128, 255),
                 2
             )
+            # Plot ground truth.
+            for gt in ground_truth:
+                img = cv2.rectangle(
+                    img,
+                    gt.get_topleft_int(),
+                    gt.get_bottomright_int(),
+                    (0, 0, 255),
+                    3
+                )
 
 
     def run_validation(self, sequence: str) -> None:
@@ -124,8 +133,9 @@ class Validator:
 
             for i in range(midgard.N):
                 frame = midgard.get_frame()
+                ground_truth = midgard.get_midgard_annotation(i)
                 if i in frames:
-                    self.annotate(frame, frames[i])
+                    self.annotate(frame, frames[i], ground_truth)
                     output.write(frame)
         finally:
             output.release()
