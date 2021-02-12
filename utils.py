@@ -1,6 +1,8 @@
+from __future__ import annotations
 import cv2
 import os
 import numpy as np
+from typing import Tuple, List
 
 
 class Rectangle:
@@ -23,56 +25,58 @@ class Rectangle:
         )
 
     @classmethod
-    def from_yolo(cls, arr) -> Rectangle:
+    def from_yolo(cls, arr: List[float]) -> Rectangle:
         return Rectangle(
             (arr[0], arr[1]),
             (arr[2], arr[3])
         )
 
-    def to_int(self):
-        self.topleft = (int(self.topleft[0]), int(self.topleft[1]))
-        self.size = (int(self.size[0]), int(self.size[1]))
-        return self
-
-    def get_topleft(self):
+    def get_topleft(self) -> Tuple[float, float]:
         return (self.topleft[0], self.topleft[1])
 
-    def get_bottomright(self):
+    def get_bottomright(self) -> Tuple[float, float]:
         return (self.topleft[0] + self.size[0], self.topleft[1] + self.size[1])
 
-    def get_center(self):
+    def get_topleft_int(self) -> Tuple[int, int]:
+        return (int(self.topleft[0]), int(self.topleft[1]))
+
+    def get_topleft_int_offset(self) -> Tuple[int, int]:
+        return (int(self.topleft[0]), int(self.topleft[1]) - 10)
+
+    def get_bottomright_int(self) -> Tuple[int, int]:
+        return (int(self.topleft[0] + self.size[0]), int(self.topleft[1] + self.size[1]))
+
+    def get_center(self) -> Tuple[float, float]:
         return (self.topleft[0] + self.size[0] / 2, self.topleft[1] + self.size[1] / 2)
 
-    def get_center_int(self):
+    def get_center_int(self) -> Tuple[int, int]:
         return (int(self.topleft[0] + self.size[0] / 2), int(self.topleft[1] + self.size[1] / 2))
 
-    def get_left(self):
+    def get_left(self) -> float:
         return self.topleft[0]
 
-    def get_right(self):
+    def get_right(self) -> float:
         return self.topleft[0] + self.size[0]
 
-    def get_top(self):
+    def get_top(self) -> float:
         return self.topleft[1]
 
-    def get_bottom(self):
+    def get_bottom(self) -> float:
         return self.topleft[1] + self.size[1]
 
-    def get_area(self):
+    def get_area(self) -> float:
         return self.size[0] * self.size[1]
 
     @classmethod
-    def calculate_iou(cls, r1, r2):
+    def calculate_iou(cls, r1, r2) -> float:
         left = max(r1.get_left(), r2.get_left())
         right = min(r1.get_right(), r2.get_right())
         bottom = min(r1.get_bottom(), r2.get_bottom())
         top = max(r1.get_top(), r2.get_top())
-
         return (right - left) * (bottom - top)
 
 
-
-def get_capture_size(capture):
+def get_capture_size(capture: cv.VideoCapture) -> Tuple[int, int]:
     return (int(capture.get(3)), int(capture.get(4)))
 
 def get_output(filename, capture=None, capture_size=None, is_grey=False):
@@ -84,58 +88,58 @@ def get_output(filename, capture=None, capture_size=None, is_grey=False):
 
     return cv2.VideoWriter(path, fourcc, 15.0, capture_size, not is_grey)
 
-def get_sequence_length(path):
+def get_sequence_length(path: str) -> int:
     return count_dir(path)
 
-def get_frame_count(cap):
+def get_frame_count(cap: cv.VideoCapture) -> int:
     return int(cap.get(cv2.CAP_PROP_FRAME_COUNT))
 
-def get_fps(cap):
+def get_fps(cap: cv.VideoCapture) -> int:
     return int(cap.get(cv2.CAP_PROP_FPS))
 
 # Vis-Drone
-def get_vis_drone_path(sequence):
+def get_vis_drone_path(sequence: str) -> str:
     vis_drone_path = os.environ['VIS_DRONE_PATH']
     return vis_drone_path + '/sequences/{}'.format(sequence)
 
-def get_vis_drone_capture(sequence):
+def get_vis_drone_capture(sequence: str) -> cv2.VideoCapture:
     path = get_vis_drone_path(sequence)
     return cv2.VideoCapture(path + '/%7d.jpg'), count_dir(path)
 
 # KITTI
-def get_kitti_path(sequence):
+def get_kitti_path(sequence: str) -> str:
     kitti_path = os.environ['KITTI_PATH']
     img_path = '{}/data_odometry_gray/dataset/sequences/{}/image_0'.format(kitti_path, sequence)
     # pose_path = '{}/data_odometry_poses/dataset/poses/00.txt'.format(kitti_path)
     return img_path
 
-def get_kitti_capture(sequence):
+def get_kitti_capture(sequence: str) -> cv2.VideoCapture:
     path = get_kitti_path(sequence)
     return cv2.VideoCapture(path + '/%6d.png'), count_dir(path)
 
 # Cenek Albl et al.
-def get_cenek_path(sequence, camera):
+def get_cenek_path(sequence: str, camera: int) -> List[str, str]:
     cenek_path = os.environ['CENEK_PATH']
     img_path = f'{cenek_path}/{sequence}/{camera}.mp4'
     ann_path = f'{cenek_path}/{sequence}/detections/{camera}.txt'
     return img_path, ann_path
 
-def get_cenek_capture(sequence, camera):
+def get_cenek_capture(sequence: str, camera: int) -> List[cv2.VideoCapture, int]:
     cap = cv2.VideoCapture(get_cenek_path(sequence, camera)[0])
     return cap, get_frame_count(cap)
 
-def get_cenek_annotation(sequence, camera):
+def get_cenek_annotation(sequence: str, camera: int) -> str:
     return get_cenek_path(sequence, camera)[1]
 
-def get_train_capture():
+def get_train_capture() -> cv2.VideoCapture:
     path = 'media/train.mp4'
     return cv2.VideoCapture(path), 1e4
 
-def count_dir(path):
+def count_dir(path: str) -> int:
     return len(os.listdir(path))
 
 # Math utils
-def line_intersection(line1, line2):
+def line_intersection(line1, line2) -> List[float, float]:
     xdiff = (line1[0][0] - line1[1][0], line2[0][0] - line2[1][0])
     ydiff = (line1[0][1] - line1[1][1], line2[0][1] - line2[1][1])
 
@@ -151,10 +155,10 @@ def line_intersection(line1, line2):
     y = det(d, ydiff) / div
     return x, y
 
-def line_angle(diff1, diff2):
+def line_angle(diff1, diff2) -> float:
     return np.arccos(np.dot(diff1, diff2) / (np.linalg.norm(diff1) * np.linalg.norm(diff2)))
 
-def read_flow(filename):
+def read_flow(filename: str) -> np.ndarray:
     TAG_FLOAT = 202021.25
 
     with open(filename, 'rb') as f:

@@ -270,13 +270,13 @@ class Detector:
         self.history_index = (self.history_index + 1) % self.history_length
         return self.to_rgb(summed_mag)
 
-    def predict(self, segment: np.ndarray, flow_uv: np.ndarray, orig_frame: np.ndarray):
+    def predict(self, segment: np.ndarray, flow_uv: np.ndarray, orig_frame: np.ndarray) -> None:
         avg = np.average(flow_uv[segment], 0)
         center = self.midgard.ground_truth[0].get_center_int()
         self.prediction = (int(center[0] + avg[0]), int(center[1] + avg[1]))
         orig_frame = cv2.line(orig_frame, center, self.prediction, (0, 0, 255), 5)
 
-    def clustering(self, img, enable_raw: bool = False):
+    def clustering(self, img, enable_raw: bool = False) -> List[np.ndarray, np.ndarray]:
         K = 8
         Z = img.reshape((-1, 3)).astype(np.float32)
 
