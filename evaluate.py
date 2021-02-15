@@ -19,17 +19,17 @@ class Validator:
     def get_hash(self, filename: str) -> str:
         return subprocess.check_output(['sha1sum', filename]).decode("utf-8").split(' ')[0]
 
-    def check_cache(self, input_file: str, directory: str) -> Tuple[Optional[Dict[int, List[str]]], str]:
+    def check_cache(self, hash: str, directory: str) -> Tuple[Optional[Dict[int, List[str]]], str]:
         """Checks whether an input_file has already a cached response.
 
         Args:
-            input_file (str): the file to check for cached results
+            hash (str):      the hash to check for cached results
             directory (str): directory of the cached responses
 
         Returns:
             Tuple[Optional[Dict[int, List[str]]], str]: the cached json file as dict if it exists and the json path
         """
-        hash = self.get_hash(input_file)
+
         json_path = f'{directory}/{hash}.json'
 
         if not os.path.exists(directory):
@@ -37,16 +37,26 @@ class Validator:
 
         if os.path.exists(json_path):
             with open(json_path, 'r') as f:
+                print(f'Using cached file {hash}')
                 return json.load(f), json_path
 
         return None, json_path
 
+    def get_config(self) -> dict:
+        return requests.get(f'{host}/config').json()
+
+    def get_run_timestamp(self) -> str:
+        return self.get_config()['start_time']
+
     def get_inference(self, input_file: str, output_file: str, use_default_weights: bool = False) -> Dict[int, List[str]]:
         boxes_dir = os.path.dirname(input_file) + f'/bounding-boxes'
-        cache, json_path = self.check_cache(input_file, boxes_dir)
+        hash = self.get_hash(input_file) + '-' + self.get_run_timestamp()
+        cache, json_path = self.check_cache(hash, boxes_dir)
 
         if cache is not None:
             return cache
+
+        print(f'Requesting results for hash {hash}')
 
         headers = {'accept': 'application/json'}
         params = (
