@@ -41,7 +41,7 @@ class Rectangle:
         return (int(self.topleft[0]), int(self.topleft[1]))
 
     def get_topleft_int_offset(self) -> Tuple[int, int]:
-        return (int(self.topleft[0]), int(self.topleft[1]) - 10)
+        return (int(self.topleft[0]), int(self.topleft[1]) - 5)
 
     def get_bottomright_int(self) -> Tuple[int, int]:
         return (int(self.topleft[0] + self.size[0]), int(self.topleft[1] + self.size[1]))
@@ -68,12 +68,14 @@ class Rectangle:
         return self.size[0] * self.size[1]
 
     @classmethod
-    def calculate_iou(cls, r1, r2) -> float:
+    def calculate_iou(cls, r1: Rectangle, r2: Rectangle) -> float:
         left = max(r1.get_left(), r2.get_left())
         right = min(r1.get_right(), r2.get_right())
         bottom = min(r1.get_bottom(), r2.get_bottom())
         top = max(r1.get_top(), r2.get_top())
-        return (right - left) * (bottom - top)
+        aoo = (right - left) * (bottom - top)
+        aou = r1.get_area() + r2.get_area() - aoo
+        return aoo / aou
 
 
 def get_capture_size(capture: cv.VideoCapture) -> Tuple[int, int]:

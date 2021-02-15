@@ -9,6 +9,7 @@ import os
 import subprocess
 import hashlib
 import json
+from matplotlib import pyplot as plt
 
 
 host: str = 'http://192.168.178.235:8099'
@@ -71,7 +72,6 @@ class Validator:
 
         return cast(Dict[int, List[str]], json_result)
 
-
     def parse_frames(self, frames: Dict[int, List[str]]) -> Dict[int, List[Tuple[str, int, utils.Rectangle]]]:
         result: Dict[int, List[Tuple[str, int, utils.Rectangle]]] = dict()
         for frame, boxes in frames.items():
@@ -87,10 +87,41 @@ class Validator:
 
         return result
 
-
     def annotate(self, img: np.ndarray, boxes: List[utils.Rectangle], ground_truth: List[utils.Rectangle]) -> None:
+        # Plot ground truth.
+        for gt in ground_truth:
+            self.total_detections += 1
+            img = cv2.rectangle(
+                img,
+                gt.get_topleft_int(),
+                gt.get_bottomright_int(),
+                (0, 0, 255),
+                3
+            )
+
+        ious: List[float] = []
+        threshold: float = 0.5
+
+        # Plot estimates.
         for box in boxes:
+            max_iou = 0.0
             rect = box[2]
+
+            # Determine detection quality.
+            if rect.get_area() < 10:
+                continue
+
+            for gt in ground_truth:
+                iou = utils.Rectangle.calculate_iou(gt, rect)
+                if iou > max_iou:
+                    max_iou = iou
+
+            ious.append(max_iou)
+            self.estimated_detections += 1
+
+            if max_iou > threshold:
+                self.successful_detections += 1
+
             img = cv2.rectangle(
                 img,
                 rect.get_topleft_int(),
@@ -100,27 +131,18 @@ class Validator:
             )
             img = cv2.putText(
                 img,
-                f'{box[0]}: {box[1]:02d}%',
-                rect.get_topleft_int(),
+                f'{box[0]}: {box[1]:02d}%, {max_iou:.02f}',
+                rect.get_topleft_int_offset(),
                 cv2.FONT_HERSHEY_SIMPLEX,
-                0.8,
+                0.4,
                 (0, 128, 255),
                 2
             )
-            # Plot ground truth.
-            for gt in ground_truth:
-                img = cv2.rectangle(
-                    img,
-                    gt.get_topleft_int(),
-                    gt.get_bottomright_int(),
-                    (0, 0, 255),
-                    3
-                )
-
+        return ious
 
     def run_validation(self, sequence: str) -> None:
         midgard = Midgard(sequence)
-        output = utils.get_output('output', midgard.orig_capture)
+        output = utils.get_output('evaluation', midgard.orig_capture)
         try:
             img_input = midgard.img_path + '/image_%5d.png'
             video_path = midgard.seq_path + '/video.mp4'
@@ -129,19 +151,33 @@ class Validator:
 
             frames = self.get_inference(video_path, video_annotated_path, False)
             frames = self.parse_frames(frames)
-            print(len(frames), midgard.N)
+
+            self.successful_detections = 0
+            self.estimated_detections = 0
+            self.total_detections = 0
+            ious: List[float] = []
 
             for i in range(midgard.N):
                 frame = midgard.get_frame()
                 ground_truth = midgard.get_midgard_annotation(i)
                 if i in frames:
-                    self.annotate(frame, frames[i], ground_truth)
+                    ious_frame = self.annotate(frame, frames[i], ground_truth)
+                    [ious.append(x) for x in ious_frame]
                     output.write(frame)
+
+            # Save histogram of IoU values.
+            ious = np.array(ious)
+            plt.hist(ious, np.linspace(0.0, 1.0, 20))
+            plt.grid()
+            plt.xlabel('IoU')
+            plt.ylabel('Frequency (frames)')
+            plt.savefig('media/output/ious.png', bbox_inches='tight')
+            print(f'{self.successful_detections} / {self.estimated_detections} / {self.total_detections}, {self.successful_detections / self.total_detections * 100:.02f}%')
         finally:
             output.release()
 
-
     def img_to_video(self, input: str, output: str):
         if not os.path.exists(output):
-            command = f'ffmpeg -r 30 -i {input} -c:v libx264 -vf fps=30 -pix_fmt yuv420p {output} -y'.split(' ')
+            command = f'ffmpeg -r 30 -i {input} -c:v libx264 -vf fps=30 -pix_fmt yuv420p {output} -y'.split(
+                ' ')
             subprocess.call(command)

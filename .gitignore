@@ -2,3 +2,4 @@ __pycache__
 .mypy_cache
 
 media/output/detection.mp4
+media/output/ious.png
