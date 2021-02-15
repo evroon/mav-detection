@@ -30,7 +30,8 @@ class Detector:
         self.flow_uv_history = np.zeros((self.history_length, flow_height, flow_width, 2))
         self.flow_map_history = np.zeros((self.history_length, flow_height, flow_width))
         self.history_index = 0
-        self.use_homography = False
+        self.use_homography = True
+        self.confidence: int = 0
 
         # feature_pos = np.array([220.0, 280.0])
         # min_coords = np.zeros(2)
@@ -61,7 +62,7 @@ class Detector:
             flow_uv[self.sample_y, self.sample_x]
 
         if self.use_homography:
-            homography, _ = cv2.findHomography(self.coords, coords_flow)
+            homography, self.confidence = cv2.findHomography(self.coords, coords_flow)
             self.homography = np.array(homography)
         else:
             aff, _ = cv2.estimateAffine2D(self.coords, coords_flow)
@@ -106,7 +107,12 @@ class Detector:
 
     def block_method(self, flow_uv: np.ndarray) -> Tuple[np.ndarray, np.ndarray]:
         flow_uv = flow_uv.copy()
-        flow_uv_stable = cv2.warpAffine(flow_uv, self.aff, (752, 480))
+
+        if self.use_homography:
+            flow_uv_stable = cv2.warpPerspective(flow_uv, self.homography, (752, 480))
+        else:
+            flow_uv_stable = cv2.warpAffine(flow_uv, self.aff, (752, 480))
+
         mask = flow_uv_stable[..., :] == np.array([0, 0])
         flow_uv[mask] = flow_uv_stable[mask]
         flow_diff = flow_uv - flow_uv_stable
