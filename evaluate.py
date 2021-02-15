@@ -185,6 +185,17 @@ class Validator:
             print(f'{self.successful_detections} / {self.estimated_detections} / {self.total_detections}, {self.successful_detections / self.total_detections * 100:.02f}%')
         finally:
             output.release()
+            self.write_results()
+
+    def write_results(self) -> None:
+        results = {
+            'successful_detections': self.successful_detections,
+            'estimated_detections': self.estimated_detections,
+            'total_detections': self.total_detections
+        }
+        with open('results.json', 'w') as f:
+            json.dump(results, f, indent=4)
+
 
     def img_to_video(self, input: str, output: str):
         if not os.path.exists(output):
