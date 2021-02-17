@@ -3,19 +3,25 @@ import utils
 import cv2
 import numpy as np
 import utils
-from midgard import Midgard
 from typing import Dict, Tuple, List, Optional, cast, Any
 import os
 import subprocess
 import hashlib
 import json
+import logging
 from matplotlib import pyplot as plt
 
+from run_config import RunConfig
+from frame_result import FrameResult
+from midgard import Midgard
 
 host: str = 'http://192.168.178.235:8099'
 
 
 class Validator:
+    def __init__(self, config: RunConfig) -> None:
+        self.config = config
+
     def get_hash(self, filename: str) -> str:
         return subprocess.check_output(['sha1sum', filename]).decode("utf-8").split(' ')[0]
 
@@ -82,7 +88,7 @@ class Validator:
 
         return cast(Dict[int, List[str]], json_result)
 
-    def parse_frames(self, frames: Dict[int, List[str]]) -> Dict[int, List[Tuple[str, int, utils.Rectangle]]]:
+    def parse_frames(self, frames: Dict[int, List[str]]) -> Dict[int, FrameResult]:
         """Parse a list of strings into a dict of bounding box rectangles.
 
         Args:
@@ -91,21 +97,23 @@ class Validator:
         Returns:
             Dict[int, List[Tuple[str, int, utils.Rectangle]]]: list of names, confidences and rectangles of bounding boxes per frame
         """
-        result: Dict[int, List[Tuple[str, int, utils.Rectangle]]] = dict()
+        result: Dict[int, FrameResult] = dict()
         for frame, boxes in frames.items():
             frame = int(frame)
-            result[frame] = []
+            frameresult = FrameResult()
+            result[frame] = frameresult
+
             for _, box in enumerate(boxes):
                 box_split = box.split(' ')
                 floats = [float(x) for x in box_split[1:]]
                 name = box_split[0]
                 confidence = int(box_split[1])
                 rect = utils.Rectangle.from_yolo(floats[1:])
-                result[frame].append((name, confidence, rect))
+                frameresult.add_box(name, confidence, rect)
 
         return result
 
-    def annotate(self, img: np.ndarray, boxes: List[Tuple[str, int, utils.Rectangle]], ground_truth: List[utils.Rectangle]) -> List[float]:
+    def annotate(self, img: np.ndarray, boxes: FrameResult, ground_truth: List[utils.Rectangle]) -> List[float]:
         # Plot ground truth.
         for gt in ground_truth:
             self.total_detections += 1
@@ -158,21 +166,25 @@ class Validator:
             )
         return ious
 
-    def run_validation(self, sequence: str, estimates: dict = None) -> None:
-        midgard = Midgard(sequence)
+    def run_validation(self, estimates: Optional[Dict[int, FrameResult]] = None) -> None:
+        midgard = Midgard(self.config.logger, self.config.sequence)
         output = utils.get_output('evaluation', midgard.orig_capture)
+        self.successful_detections = 0
+        self.estimated_detections = 0
+        self.total_detections = 0
+
         try:
             img_input = midgard.img_path + '/image_%5d.png'
             video_path = midgard.seq_path + '/video.mp4'
             video_annotated_path = midgard.seq_path + '/video-annotated.mp4'
             self.img_to_video(img_input, video_path)
 
-            frames = self.get_inference(video_path, video_annotated_path, False)
-            frames = self.parse_frames(frames)
+            if estimates is None:
+                frames_raw = self.get_inference(video_path, video_annotated_path, False)
+                frames = self.parse_frames(frames_raw)
+            else:
+                frames = utils.assert_type(estimates)
 
-            self.successful_detections = 0
-            self.estimated_detections = 0
-            self.total_detections = 0
             ious: List[float] = []
 
             for i in range(midgard.N):
@@ -180,7 +192,8 @@ class Validator:
                 ground_truth = midgard.get_midgard_annotation(i)
                 if i in frames:
                     ious_frame = self.annotate(frame, frames[i], ground_truth)
-                    [ious.append(x) for x in ious_frame]
+                    for x in ious_frame:
+                        ious.append(x)
                     output.write(frame)
 
             # Save histogram of IoU values.
@@ -201,6 +214,7 @@ class Validator:
             'estimated_detections': self.estimated_detections,
             'total_detections': self.total_detections
         }
+
         with open('results.json', 'w') as f:
             json.dump(results, f, indent=4)
 

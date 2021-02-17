@@ -8,7 +8,7 @@ import glob
 import shutil
 from im_helpers import get_flow_radial, get_flow_vis
 from typing import Optional, Tuple, cast, List
-
+import logging
 
 class Midgard:
     '''Helper functions for the MIDGARD dataset.'''
@@ -19,8 +19,9 @@ class Midgard:
         FLOW_RADIAL = 3,
         FLOW_PROCESSED = 4
 
-    def __init__(self, sequence: str) -> None:
+    def __init__(self, logger: logging.Logger, sequence: str) -> None:
         midgard_path = os.environ['MIDGARD_PATH']
+        self.logger = logger
         self.sequence = sequence
         self.seq_path = f'{midgard_path}/{sequence}'
         self.img_path = f'{self.seq_path}/images'
@@ -35,10 +36,10 @@ class Midgard:
         self.start_frame = 100
 
         if self.capture_size != self.flow_size:
-            print(f'Note: original capture with size {self.capture_size} does not match flow, which has size {self.flow_size}')
+            self.logger.warning(f'original capture with size {self.capture_size} does not match flow, which has size {self.flow_size}')
 
         if self.N != utils.get_frame_count(self.orig_capture) - 1:
-            print('Input counts: (images, flow fields):', utils.get_frame_count(self.orig_capture), self.N)
+            self.logger.error(f'Input counts: (images, flow fields): {utils.get_frame_count(self.orig_capture)}, {self.N}')
             raise ValueError('Input sizes do not match.')
 
     def get_midgard_annotation(self, i: int, ann_path: str = None) -> List[utils.Rectangle]:

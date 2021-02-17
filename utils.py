@@ -69,6 +69,15 @@ class Rectangle:
 
     @classmethod
     def calculate_iou(cls, r1: Rectangle, r2: Rectangle) -> float:
+        """Calculates the Intersection over Union between two boxes.
+
+        Args:
+            r1 (Rectangle): box 1
+            r2 (Rectangle): box 2
+
+        Returns:
+            float: the area of the overlap of the two boxes divided by the area of union.
+        """
         left = max(r1.get_left(), r2.get_left())
         right = min(r1.get_right(), r2.get_right())
         bottom = min(r1.get_bottom(), r2.get_bottom())

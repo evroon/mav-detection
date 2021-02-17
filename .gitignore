@@ -4,3 +4,4 @@ __pycache__
 media/output/detection.mp4
 media/output/ious.png
 results.json
+main.log

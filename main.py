@@ -3,6 +3,8 @@ import numpy as np
 import matplotlib.pyplot as plt
 import argparse
 import utils
+import logging
+from typing import List
 
 from midgard import Midgard
 from midgard_converter import MidgardConverter
@@ -11,10 +13,10 @@ from run_config import RunConfig
 
 def execute(config: RunConfig) -> None:
     if config.evaluate and config.use_nn_detection:
-        validator = Validator()
-        validator.run_validation(config.sequence)
+        validator = Validator(config)
+        validator.run_validation()
     else:
-        converter = MidgardConverter(config.sequence, config.debug, config.headless)
+        converter = MidgardConverter(config)
         try:
             if config.prepare_dataset:
                 converter.convert(config.mode)
@@ -23,12 +25,45 @@ def execute(config: RunConfig) -> None:
                 detection_results = converter.get_results()
 
             if config.evaluate and config.use_nn_detection:
-                validator = Validator()
-                validator.run_validation(config.sequence)
-
+                validator = Validator(config)
+                validator.run_validation(detection_results)
 
         finally:
             converter.release()
+
+def run_all(logger: logging.Logger) -> None:
+    debug = False
+    prepare_dataset = False
+    evaluate = True
+    headless = True
+
+    modes = [mode.name for mode in Midgard.Mode]
+    use_nn_detections = [False]
+    validation_sequences = [
+        # 'indoor-modern/warehouse-interior',
+        'semi-urban/island-north',
+    ]
+    configs: List[RunConfig] = []
+
+    for sequence in validation_sequences:
+        for mode in modes:
+            for use_nn_detection in use_nn_detections:
+                config: RunConfig = RunConfig(logger, sequence, debug, prepare_dataset, evaluate, headless, use_nn_detection, mode)
+                configs.append(config)
+                execute(config)
+
+def get_logger() -> logging.Logger:
+    level = logging.INFO if args.debug else logging.DEBUG
+    logging.basicConfig(filename='main.log',
+                        filemode='a',
+                        format='%(asctime)s,%(msecs)d %(name)s %(levelname)s %(message)s',
+                        datefmt='%H:%M:%S',
+                        level=level)
+
+    logger = logging.getLogger('main')
+    logger.addHandler(logging.StreamHandler())
+    return logger
+
 
 if __name__ == '__main__':
     parser = argparse.ArgumentParser(description='Detects MAVs in the MIDGARD dataset using optical flow.')
@@ -39,7 +74,13 @@ if __name__ == '__main__':
     parser.add_argument('--evaluate', action='store_true', help='evaluate the detection results')
     parser.add_argument('--headless', action='store_true', help='do not use UIs')
     parser.add_argument('--use-nn-detection', action='store_true', help='use neural network based approaches for detection')
+    parser.add_argument('--run-all', action='store_true', help='run all configurations')
     args = parser.parse_args()
 
-    config: RunConfig = RunConfig(args.sequence, args.debug, args.prepare_dataset, args.evaluate, args.headless, args.use_nn_detection, args.mode)
-    execute(config)
+    logger = get_logger()
+
+    if args.run_all:
+        run_all(logger)
+    else:
+        config: RunConfig = RunConfig(logger, args.sequence, args.debug, args.prepare_dataset, args.evaluate, args.headless, args.use_nn_detection, args.mode)
+        execute(config)

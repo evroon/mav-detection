@@ -3,29 +3,36 @@ import cv2
 import os
 import numpy as np
 import flow_vis
-from enum import Enum
 import glob
 import shutil
+import logging
+from enum import Enum
+
 from im_helpers import get_flow_radial, get_flow_vis
-from typing import Optional, List
+from typing import Optional, List, Dict
 from midgard import Midgard
 from detector import Detector
+from run_config import RunConfig
+from frame_result import FrameResult
 
 class MidgardConverter:
     '''Converts MIDGARD dataset for use with YOLOv4.'''
-    def __init__(self, sequence: str, debug_mode: bool, headless: bool) -> None:
-        self.sequence = sequence
-        self.debug_mode = debug_mode
-        self.headless = headless
-        self.midgard = Midgard(sequence)
+    def __init__(self, config: RunConfig) -> None:
+        self.config = config
+        self.logger = self.config.logger
+        self.sequence = config.sequence
+        self.debug_mode = config.debug
+        self.headless = config.headless
+        self.midgard = Midgard(self.logger, self.sequence)
         self.detector = Detector(self.midgard)
         self.frame_columns, self.frame_rows = 1, 1
+        self.detection_results: Dict[int, FrameResult] = dict()
 
-        if debug_mode:
-            self.frame_columns, self.frame_rows = 4, 2
+        if self.debug_mode:
+            self.frame_columns, self.frame_rows = 3, 2
 
         output_size = (self.midgard.capture_size[0] * self.frame_columns, self.midgard.capture_size[1] * self.frame_rows)
-        self.output = utils.get_output('detection', capture_size=output_size, is_grey=not debug_mode)
+        self.output = utils.get_output('detection', capture_size=output_size, is_grey=not self.debug_mode)
 
         self.frame_index, self.start_frame = 0, 100
         self.is_exiting = False
@@ -71,7 +78,7 @@ class MidgardConverter:
         self.frame_index += 1
 
         if self.frame_index % int(self.midgard.N / 10) == 0:
-            print('{:.2f}'.format(self.frame_index / self.midgard.N * 100) + '%', self.frame_index, '/', self.midgard.N)
+            self.logger.info(f'{self.frame_index / self.midgard.N * 100:.2f} % {self.frame_index} / {self.midgard.N}')
 
     def remove_contents_of_folder(self, folder: str) -> None:
         """Remove all content of a directory
@@ -162,7 +169,7 @@ class MidgardConverter:
                 self.output_index += 1
                 self.frame_index += 1
 
-    def process(self, mode: Midgard.Mode) -> None:
+    def convert(self, mode: Midgard.Mode) -> None:
         """Processes the MIDGARD dataset"""
         channel_options = {
             Midgard.Mode.APPEARANCE_RGB: 3,
@@ -176,6 +183,7 @@ class MidgardConverter:
         self.dest_path = os.environ['YOLOv4_PATH'] + '/dataset'
         self.img_dest_path = f'{self.dest_path}/images'
         self.ann_dest_path = f'{self.dest_path}/labels/yolo'
+
         sequences = [
             'countryside-natural/north-narrow',
             'countryside-natural/south-narrow',
@@ -183,10 +191,8 @@ class MidgardConverter:
             'indoor-historical/stairwell',
             'indoor-modern/glass-cube',
             'indoor-modern/sports-hall',
-            # 'indoor-modern/warehouse-interior',
             'indoor-modern/warehouse-transition',
             'outdoor-historical/church',
-            # 'semi-urban/island-north',
             'semi-urban/island-south',
             'urban/appartment-buildings',
         ]
@@ -204,8 +210,8 @@ class MidgardConverter:
             self.prepare_sequence(sequence)
 
 
-
-    def run(self):
+    def run_detection(self) -> None:
+        """Runs the detection."""
         while self.is_active():
             orig_frame = self.midgard.get_frame()
             self.flow_uv = self.midgard.get_flow_uv(self.frame_index)
@@ -213,21 +219,23 @@ class MidgardConverter:
             self.midgard.get_midgard_annotation(self.frame_index)
 
             self.detector.get_affine_matrix(self.flow_uv)
-            flow_uv_warped_vis, _ = self.detector.flow_vec_subtract(self.flow_uv)
+            flow_uv_warped_vis, cluster_vis, _ = self.detector.flow_vec_subtract(self.flow_uv)
 
             if self.debug_mode:
-                flow_diff_vis, blocks_vis = self.detector.block_method(self.flow_uv)
-                cluster_vis, _ = self.detector.clustering(self.detector.flow_uv_warped_mag)
+                flow_diff_vis, blocks_vis = self.detector.warp_method(self.flow_uv)
                 blocks_vis, _ = self.detector.clustering(self.detector.flow_diff_mag)
                 summed_mag = self.detector.get_history(self.flow_uv)
                 self.detector.draw(orig_frame)
 
-                top_frames = np.hstack((orig_frame, flow_diff_vis, flow_uv_warped_vis, summed_mag))
-                bottom_frames = np.hstack((self.flow_vis, blocks_vis, cluster_vis, summed_mag))
+                top_frames = np.hstack((orig_frame, flow_uv_warped_vis, summed_mag))
+                bottom_frames = np.hstack((self.flow_vis, cluster_vis, summed_mag))
                 self.write(np.vstack((top_frames, bottom_frames)))
+                self.detection_results[self.frame_index] = self.detector.frame_result
             else:
-                cluster_vis = self.detector.clustering(self.detector.flow_uv_warped_mag, True)
                 self.write(cluster_vis)
+
+    def get_results(self) -> Dict[int, FrameResult]:
+        return self.detection_results
 
     def release(self) -> None:
         """Release all media resources"""

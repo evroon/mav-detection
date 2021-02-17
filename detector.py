@@ -3,9 +3,12 @@ import cv2
 import os
 import numpy as np
 import flow_vis
+from typing import List, Union, Tuple, cast, Dict
+
 from midgard import Midgard
 from im_helpers import pyramid, sliding_window, get_flow_vis
-from typing import List, Union, Tuple, cast
+from frame_result import FrameResult
+
 
 class Detector:
     def __init__(self, midgard: Midgard):
@@ -25,13 +28,13 @@ class Detector:
         self.x_coords = np.tile(np.arange(flow_width), (flow_height, 1))
         self.y_coords = np.tile(np.arange(flow_height), (flow_width, 1)).T
 
-        self.ious = np.zeros(self.midgard.N)
         self.history_length = 5
         self.flow_uv_history = np.zeros((self.history_length, flow_height, flow_width, 2))
         self.flow_map_history = np.zeros((self.history_length, flow_height, flow_width))
         self.history_index = 0
-        self.use_homography = True
+        self.use_homography = False
         self.confidence: int = 0
+        self.use_optimization = False
 
         # feature_pos = np.array([220.0, 280.0])
         # min_coords = np.zeros(2)
@@ -77,6 +80,7 @@ class Detector:
         Returns:
             Tuple[np.ndarray, np.ndarray]: the local flow field, its clustered and magnitude version
         """
+        self.frame_result: FrameResult = FrameResult()
         flow_uv_warped = np.zeros_like(flow_uv)
 
         # Manual matrix multiplication.
@@ -93,27 +97,38 @@ class Detector:
 
         self.flow_uv_warped = flow_uv_warped - flow_uv
         flow_uv_warped_vis = get_flow_vis(self.flow_uv_warped)
-        self.flow_uv_warped_mag = np.sqrt(
-            self.flow_uv_warped[..., 0] ** 2.0 + self.flow_uv_warped[..., 1] ** 2.0)
-        self.flow_max = np.unravel_index(
-            self.flow_uv_warped_mag.argmax(), self.flow_uv_warped_mag.shape)
+        self.flow_uv_warped_mag = np.sqrt(self.flow_uv_warped[..., 0] ** 2.0 + self.flow_uv_warped[..., 1] ** 2.0)
+        self.flow_max = np.unravel_index(self.flow_uv_warped_mag.argmax(), self.flow_uv_warped_mag.shape)
+        self.cluster_vis, _ = self.clustering(self.flow_uv_warped_mag)
 
         flow_uv_warped_mag_vis = self.to_rgb(self.flow_uv_warped_mag)
 
-        self.opt_window = self.analyze_pyramid(self.flow_uv_warped_mag)
-        window_optimized = self.optimize_window(self.flow_uv_warped_mag, self.opt_window[1])[1]
-        opt_window_list = list(self.opt_window)
-        opt_window_list[1] = window_optimized
-        self.opt_window = cast(Tuple[float, utils.Rectangle, np.ndarray, float], opt_window_list)
+        self.opt_window: Tuple[float, utils.Rectangle, np.ndarray, float] = self.analyze_pyramid(self.cluster_vis)
+        window_optimized = self.opt_window[1]
+        self.frame_result.add_box('MAV', 1.0, window_optimized)
+
+        if self.use_optimization:
+            window_optimized = self.optimize_window(self.cluster_vis, self.opt_window[1])[1]
+            opt_window_list = list(self.opt_window)
+            opt_window_list[1] = window_optimized
+            self.opt_window = cast(Tuple[float, utils.Rectangle, np.ndarray, float], opt_window_list)
 
         for gt in self.midgard.ground_truth:
-            gt_area = max(1.0, gt.get_area())
-            self.iou = utils.Rectangle.calculate_iou(window_optimized, gt) / gt_area
+            self.iou = utils.Rectangle.calculate_iou(window_optimized, gt)
+
 
         self.flow_uv_warped_vis = flow_uv_warped_vis
-        return flow_uv_warped_vis, flow_uv_warped_mag_vis
+        return flow_uv_warped_vis, self.cluster_vis, flow_uv_warped_mag_vis
 
-    def block_method(self, flow_uv: np.ndarray) -> Tuple[np.ndarray, np.ndarray]:
+    def warp_method(self, flow_uv: np.ndarray) -> Tuple[np.ndarray, np.ndarray]:
+        """Warps the flow field using perspective or affine matrices and subtracts it from the original field.
+
+        Args:
+            flow_uv (np.ndarray): flow field in cartesian coordinates
+
+        Returns:
+            Tuple[np.ndarray, np.ndarray]: the local flow field and its blockshaped (magnitude) version
+        """
         flow_uv = flow_uv.copy()
 
         if self.use_homography:
@@ -144,6 +159,11 @@ class Detector:
         return flow_diff_vis, blocks_vis
 
     def draw(self, orig_frame: np.ndarray) -> None:
+        """Render ground truths and estimates
+
+        Args:
+            orig_frame (np.ndarray): the original frame
+        """
         # Plot ground truth.
         for gt in self.midgard.ground_truth:
             orig_frame = cv2.rectangle(
@@ -162,6 +182,8 @@ class Detector:
         w: utils.Rectangle = self.opt_window[1]
         orig_frame = cv2.rectangle(
             orig_frame, w.get_topleft(), w.get_bottomright(), (0, 255, 0), 2)
+        self.cluster_vis = cv2.rectangle(
+            self.cluster_vis, w.get_topleft(), w.get_bottomright(), (0, 255, 0), 2)
 
         for gt in self.midgard.ground_truth:
             cv2.putText(orig_frame,
@@ -181,7 +203,7 @@ class Detector:
             img (np.ndarray): the image to analyze
 
         Returns:
-            Tuple[float, utils.Rectangle, np.ndarray, float]: [description]
+            Tuple[float, utils.Rectangle, np.ndarray, float]: score, bounding box, window subimage, maximum flow magnitude
         """
         # Based on: https://www.pyimagesearch.com/2015/03/23/sliding-windows-for-object-detection-with-python-and-opencv/
         width, height = (48, 48)
