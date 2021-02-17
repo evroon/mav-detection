@@ -9,7 +9,7 @@ from midgard_converter import MidgardConverter
 from evaluate import Validator
 from run_config import RunConfig
 
-def execute(config):
+def execute(config: RunConfig) -> None:
     if config.evaluate and config.use_nn_detection:
         validator = Validator()
         validator.run_validation(config.sequence)

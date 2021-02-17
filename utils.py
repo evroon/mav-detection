@@ -2,23 +2,23 @@ from __future__ import annotations
 import cv2
 import os
 import numpy as np
-from typing import Tuple, List
+from typing import Tuple, List, Optional, TypeVar
 
 
 class Rectangle:
-    def __init__(self, topleft, size):
-        self.topleft = topleft
-        self.size = size
+    def __init__(self, topleft: Tuple[float, float], size: Tuple[float, float]) -> None:
+        self.topleft: Tuple[float, float] = topleft
+        self.size: Tuple[float, float] = size
 
     @classmethod
-    def from_center(cls, center, size) -> Rectangle:
+    def from_center(cls, center: Tuple[float, float], size: Tuple[float, float]) -> Rectangle:
         return Rectangle(
             (center[0] - size[0] / 2, center[1] - size[1] / 2),
             size
         )
 
     @classmethod
-    def from_points(cls, topleft, bottomright) -> Rectangle:
+    def from_points(cls, topleft: Tuple[float, float], bottomright: Tuple[float, float]) -> Rectangle:
         return Rectangle(
             topleft,
             (bottomright[0] - topleft[0], bottomright[1] - topleft[1])
@@ -77,11 +77,17 @@ class Rectangle:
         aou = r1.get_area() + r2.get_area() - aoo
         return aoo / aou
 
+# Optional type cast helper
+T = TypeVar('T')
+def assert_type(arg: Optional[T]) -> T:
+    assert arg is not None
+    return arg
 
-def get_capture_size(capture: cv.VideoCapture) -> Tuple[int, int]:
+
+def get_capture_size(capture: cv2.VideoCapture) -> Tuple[int, int]:
     return (int(capture.get(3)), int(capture.get(4)))
 
-def get_output(filename, capture=None, capture_size=None, is_grey=False):
+def get_output(filename: str, capture: cv2.VideoCapture = None, capture_size: Tuple[int, int] = None, is_grey: bool = False) -> cv2.VideoWriter:
     path = 'media/output/{}.mp4'.format(filename)
     fourcc = cv2.VideoWriter_fourcc(*'mp4v')
 
@@ -93,10 +99,10 @@ def get_output(filename, capture=None, capture_size=None, is_grey=False):
 def get_sequence_length(path: str) -> int:
     return count_dir(path)
 
-def get_frame_count(cap: cv.VideoCapture) -> int:
+def get_frame_count(cap: cv2.VideoCapture) -> int:
     return int(cap.get(cv2.CAP_PROP_FRAME_COUNT))
 
-def get_fps(cap: cv.VideoCapture) -> int:
+def get_fps(cap: cv2.VideoCapture) -> int:
     return int(cap.get(cv2.CAP_PROP_FPS))
 
 # Vis-Drone
@@ -120,13 +126,13 @@ def get_kitti_capture(sequence: str) -> cv2.VideoCapture:
     return cv2.VideoCapture(path + '/%6d.png'), count_dir(path)
 
 # Cenek Albl et al.
-def get_cenek_path(sequence: str, camera: int) -> List[str, str]:
+def get_cenek_path(sequence: str, camera: int) -> Tuple[str, str]:
     cenek_path = os.environ['CENEK_PATH']
     img_path = f'{cenek_path}/{sequence}/{camera}.mp4'
     ann_path = f'{cenek_path}/{sequence}/detections/{camera}.txt'
     return img_path, ann_path
 
-def get_cenek_capture(sequence: str, camera: int) -> List[cv2.VideoCapture, int]:
+def get_cenek_capture(sequence: str, camera: int) -> Tuple[cv2.VideoCapture, int]:
     cap = cv2.VideoCapture(get_cenek_path(sequence, camera)[0])
     return cap, get_frame_count(cap)
 
@@ -141,11 +147,11 @@ def count_dir(path: str) -> int:
     return len(os.listdir(path))
 
 # Math utils
-def line_intersection(line1, line2) -> List[float, float]:
+def line_intersection(line1: Tuple[Tuple[float, float], Tuple[float, float]], line2: Tuple[Tuple[float, float], Tuple[float, float]]) -> Tuple[float, float]:
     xdiff = (line1[0][0] - line1[1][0], line2[0][0] - line2[1][0])
     ydiff = (line1[0][1] - line1[1][1], line2[0][1] - line2[1][1])
 
-    def det(a, b):
+    def det(a: Tuple[float, float], b: Tuple[float, float]) -> float:
         return a[0] * b[1] - a[1] * b[0]
 
     div = det(xdiff, ydiff)
@@ -157,8 +163,8 @@ def line_intersection(line1, line2) -> List[float, float]:
     y = det(d, ydiff) / div
     return x, y
 
-def line_angle(diff1, diff2) -> float:
-    return np.arccos(np.dot(diff1, diff2) / (np.linalg.norm(diff1) * np.linalg.norm(diff2)))
+def line_angle(diff1: float, diff2: float) -> float:
+    return float(np.arccos(np.dot(diff1, diff2) / (np.linalg.norm(diff1) * np.linalg.norm(diff2))))
 
 def read_flow(filename: str) -> np.ndarray:
     TAG_FLOAT = 202021.25

@@ -49,7 +49,7 @@ class Detector:
         return np.sqrt(frame[..., 0] ** 2.0 + frame[..., 1] ** 2.0), \
             np.arctan2(frame[..., 1], frame[..., 0])
 
-    def get_fft(self, frame) -> np.ndarray:
+    def get_fft(self, frame: np.ndarray) -> np.ndarray:
         fft = np.fft.fft2(frame[..., 0])
         fshift = np.fft.fftshift(fft)
         magnitude_spectrum = 20*np.log(np.abs(fshift))
@@ -68,7 +68,15 @@ class Detector:
             aff, _ = cv2.estimateAffine2D(self.coords, coords_flow)
             self.aff = np.array(aff)
 
-    def flow_vec_subtract(self, flow_uv: np.ndarray) -> Tuple[np.ndarray, np.ndarray]:
+    def flow_vec_subtract(self, flow_uv: np.ndarray) -> Tuple[np.ndarray, np.ndarray, np.ndarray]:
+        """Calculates global motion using perspective or affine matrices and subtracts it from the original field.
+
+        Args:
+            flow_uv (np.ndarray): flow field in cartesian coordinates
+
+        Returns:
+            Tuple[np.ndarray, np.ndarray]: the local flow field, its clustered and magnitude version
+        """
         flow_uv_warped = np.zeros_like(flow_uv)
 
         # Manual matrix multiplication.
@@ -167,6 +175,14 @@ class Detector:
 
 
     def analyze_pyramid(self, img: np.ndarray) -> Tuple[float, utils.Rectangle, np.ndarray, float]:
+        """Analyze a frame using pyramid scales.
+
+        Args:
+            img (np.ndarray): the image to analyze
+
+        Returns:
+            Tuple[float, utils.Rectangle, np.ndarray, float]: [description]
+        """
         # Based on: https://www.pyimagesearch.com/2015/03/23/sliding-windows-for-object-detection-with-python-and-opencv/
         width, height = (48, 48)
         result = (0, utils.Rectangle((0, 0), (0, 0)), 0, 0)
@@ -176,7 +192,7 @@ class Detector:
                 if window.shape[0] != width or window.shape[1] != height:
                     continue
 
-                score = np.average(window)
+                score = np.sum(window)
                 max_flow = np.unravel_index(window.argmax(), window.shape)
 
                 # Check if window has higher score than current maximum.
@@ -190,16 +206,25 @@ class Detector:
 
         return result
 
-    def optimize_window(self, mag_img: np.ndarray, window: utils.Rectangle) -> Tuple[int, utils.Rectangle]:
-        result: Tuple[int, utils.Rectangle] = (0, window)
+    def optimize_window(self, mag_img: np.ndarray, window: utils.Rectangle) -> Tuple[float, utils.Rectangle]:
+        """Optimize the window to the area it has to enclose.
+
+        Args:
+            mag_img (np.ndarray): the 1-channel image to analyze
+            window (utils.Rectangle): initial window estimate
+
+        Returns:
+            Tuple[int, utils.Rectangle]: score and optimized window rectangle
+        """
+        result: Tuple[float, utils.Rectangle] = (0.0, window)
         c = 0
 
-        def get_score(new_window):
-            return np.sum(mag_img[new_window.get_top():new_window.get_bottom(), new_window.get_left():new_window.get_right()]) / new_window.get_area() ** 0.5
+        def get_score(new_window: utils.Rectangle) -> float:
+            return float(np.sum(mag_img[int(new_window.get_top()):int(new_window.get_bottom()), int(new_window.get_left()):int(new_window.get_right())]))
 
         while True:
             window = result[1]
-            intermediate_result: Tuple[int, utils.Rectangle] = (0, window)
+            intermediate_result: Tuple[float, utils.Rectangle] = (0.0, window)
 
             for h in [0, 1]:
                 topleft = window.get_topleft()
@@ -257,6 +282,14 @@ class Detector:
         return cv2.cvtColor(np.around(img * 255 / max_intensity).astype(np.uint8), cv2.COLOR_GRAY2RGB)
 
     def get_history(self, flow_uv: np.ndarray) -> np.ndarray:
+        """Calculates the averaged tracked history of flow vectors.
+
+        Args:
+            flow_uv (np.ndarray): current flow field
+
+        Returns:
+            np.ndarray: history of flow field
+        """
         self.flow_uv_history[self.history_index, ...] = flow_uv
         self.flow_map_history[self.history_index, ...] = self.flow_uv_warped_mag
         k = (self.history_index + 2) % (self.history_length - 1)
@@ -282,7 +315,7 @@ class Detector:
         self.prediction = (int(center[0] + avg[0]), int(center[1] + avg[1]))
         orig_frame = cv2.line(orig_frame, center, self.prediction, (0, 0, 255), 5)
 
-    def clustering(self, img, enable_raw: bool = False) -> Tuple[np.ndarray, np.ndarray]:
+    def clustering(self, img: np.ndarray, enable_raw: bool = False) -> Tuple[np.ndarray, np.ndarray]:
         K = 8
         Z = img.reshape((-1, 3)).astype(np.float32)
 
@@ -300,7 +333,7 @@ class Detector:
         res = res.reshape((img.shape))
 
         if enable_raw:
-            return res
+            return res, None
 
         rgb = cv2.cvtColor(res, cv2.COLOR_GRAY2RGB)
         mask = rgb[..., 0] >= 225

@@ -10,7 +10,7 @@ count = 0
 
 
 class Farneback:
-    def __init__(self, capture, output):
+    def __init__(self, capture: cv2.VideoCapture, output: cv2.VideoWriter) -> None:
 
         self.capture = capture
         self.output = output
@@ -26,9 +26,9 @@ class Farneback:
         self.prev_results = np.zeros((*capture_size, self.history_length))
         self.rolling_history_id = 0
 
-    def draw_flow(self, img, flow, step=8):
+    def draw_flow(self, img: np.ndarray, flow: np.ndarray, step: int = 8) -> np.ndarray:
         h, w = img.shape[:2]
-        y, x = np.mgrid[step/2:h:step, step/2:w:step].reshape(2, -1).astype(np.int)
+        y, x = np.mgrid[step//2:h:step, step//2:w:step].reshape(2, -1).astype(np.int)
         fx, fy = flow[y, x].T
 
         threshold = 1.0
@@ -48,7 +48,7 @@ class Farneback:
         return img
 
 
-    def draw_hsv(self, flow):
+    def draw_hsv(self, flow: np.ndarray) -> np.ndarray:
         h, w = flow.shape[:2]
         fx, fy = flow[:, :, 0], flow[:, :, 1]
         ang = np.arctan2(fy, fx) + np.pi
@@ -61,7 +61,7 @@ class Farneback:
         return bgr
 
 
-    def warp_flow(self, img, flow):
+    def warp_flow(self, img: np.ndarray, flow: np.ndarray) -> np.ndarray:
         h, w = flow.shape[:2]
         flow = -flow
         flow[:, :, 0] += np.arange(w)
@@ -70,7 +70,7 @@ class Farneback:
         return res
 
 
-    def process(self):
+    def process(self) -> np.ndarray:
         _, img = self.capture.read()
         gray = cv2.cvtColor(img, cv2.COLOR_BGR2GRAY)
 

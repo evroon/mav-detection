@@ -3,12 +3,13 @@ import cv2
 import argparse
 import utils
 import matplotlib.pyplot as plt
+from typing import Optional
 
 plt.rcParams['axes.axisbelow'] = True
 
 
 class LucasKanade:
-    def __init__(self, capture, output):
+    def __init__(self, capture: np.ndarray, output: np.ndarray) -> None:
         # Script based on: https://docs.opencv.org/3.4/d4/dee/tutorial_optical_flow.html
 
         self.num_corners = 2000
@@ -41,9 +42,9 @@ class LucasKanade:
         self.treshold = np.cos(15 * np.pi / 180.0)
         self.flow_per_distance = np.zeros((self.total_num_corners, 4)) # Store distance, flow magnitude pairs
         self.enable_plots = False
-        self.p0 = None
+        self.p0: Optional[np.ndarray] = None
 
-    def process(self):
+    def process(self) -> np.ndarray:
         ret, frame = self.capture.read()
 
         if not ret:
@@ -70,10 +71,11 @@ class LucasKanade:
             if self.p0 is None:
                 self.p0 = new_features
             else:
-                recycled_p0 = self.p0[mask[:len(self.p0)]]
-                self.p0 = np.zeros((len(new_features) + len(recycled_features), new_features.shape[1], new_features.shape[2]))
-                self.p0[:len(new_features), ...] = new_features
-                self.p0[len(new_features):, ...] = recycled_p0
+                p0: np.ndarray = utils.assert_type(self.p0)
+                recycled_p0 = self.p0[mask[:len(p0)]]
+                p0 = np.zeros((len(new_features) + len(recycled_features), new_features.shape[1], new_features.shape[2]))
+                p0[:len(new_features), ...] = new_features
+                p0[len(new_features):, ...] = recycled_p0
 
             print('Found {} new features'.format(self.p0.shape))
 
@@ -87,7 +89,8 @@ class LucasKanade:
         intersections = np.zeros((len(good_new), 2))
 
         # Draw the new tracks
-        for i, (new, old) in enumerate(zip(good_new, self.p0)):
+        p0 = utils.assert_type(self.p0)
+        for i, (new, old) in enumerate(zip(good_new, p0)):
             if status[i] != 1:
                 continue
 

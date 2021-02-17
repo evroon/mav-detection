@@ -4,7 +4,7 @@ import cv2
 import numpy as np
 import utils
 from midgard import Midgard
-from typing import Dict, Tuple, List, Optional, cast
+from typing import Dict, Tuple, List, Optional, cast, Any
 import os
 import subprocess
 import hashlib
@@ -42,11 +42,11 @@ class Validator:
 
         return None, json_path
 
-    def get_config(self) -> dict:
-        return requests.get(f'{host}/config').json()
+    def get_config(self) -> Dict[str, Any]:
+        return cast(Dict[str, Any], requests.get(f'{host}/config').json())
 
     def get_run_timestamp(self) -> str:
-        return self.get_config()['start_time']
+        return str(self.get_config()['start_time'])
 
     def get_inference(self, input_file: str, output_file: str, use_default_weights: bool = False) -> Dict[int, List[str]]:
         boxes_dir = os.path.dirname(input_file) + f'/bounding-boxes'
@@ -83,21 +83,29 @@ class Validator:
         return cast(Dict[int, List[str]], json_result)
 
     def parse_frames(self, frames: Dict[int, List[str]]) -> Dict[int, List[Tuple[str, int, utils.Rectangle]]]:
+        """Parse a list of strings into a dict of bounding box rectangles.
+
+        Args:
+            frames (Dict[int, List[str]]): list of strings representing bounding boxes per frame
+
+        Returns:
+            Dict[int, List[Tuple[str, int, utils.Rectangle]]]: list of names, confidences and rectangles of bounding boxes per frame
+        """
         result: Dict[int, List[Tuple[str, int, utils.Rectangle]]] = dict()
         for frame, boxes in frames.items():
             frame = int(frame)
             result[frame] = []
             for _, box in enumerate(boxes):
                 box_split = box.split(' ')
-                box_split[1:] = [float(x) for x in box_split[1:]]
+                floats = [float(x) for x in box_split[1:]]
                 name = box_split[0]
                 confidence = int(box_split[1])
-                rect = utils.Rectangle.from_yolo(box_split[2:])
+                rect = utils.Rectangle.from_yolo(floats[1:])
                 result[frame].append((name, confidence, rect))
 
         return result
 
-    def annotate(self, img: np.ndarray, boxes: List[utils.Rectangle], ground_truth: List[utils.Rectangle]) -> None:
+    def annotate(self, img: np.ndarray, boxes: List[Tuple[str, int, utils.Rectangle]], ground_truth: List[utils.Rectangle]) -> List[float]:
         # Plot ground truth.
         for gt in ground_truth:
             self.total_detections += 1
@@ -150,7 +158,7 @@ class Validator:
             )
         return ious
 
-    def run_validation(self, sequence: str) -> None:
+    def run_validation(self, sequence: str, estimates: dict = None) -> None:
         midgard = Midgard(sequence)
         output = utils.get_output('evaluation', midgard.orig_capture)
         try:
@@ -197,7 +205,7 @@ class Validator:
             json.dump(results, f, indent=4)
 
 
-    def img_to_video(self, input: str, output: str):
+    def img_to_video(self, input: str, output: str) -> None:
         if not os.path.exists(output):
             command = f'ffmpeg -r 30 -i {input} -c:v libx264 -vf fps=30 -pix_fmt yuv420p {output} -y'.split(
                 ' ')
