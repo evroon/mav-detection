@@ -12,7 +12,7 @@ class RunConfig:
         sequence: str,
         debug: bool,
         prepare_dataset: bool,
-        evaluate: bool,
+        validate: bool,
         headless: bool,
         use_nn_detection: bool,
         mode: str
@@ -21,7 +21,7 @@ class RunConfig:
         self.sequence = sequence
         self.debug = debug
         self.prepare_dataset = prepare_dataset
-        self.evaluate = evaluate
+        self.validate = validate
         self.headless = headless
         self.use_nn_detection = use_nn_detection
         self.mode = self.get_mode(mode)
@@ -46,10 +46,9 @@ class RunConfig:
             self.sequence,
             self.debug,
             self.prepare_dataset,
-            self.evaluate,
+            self.validate,
             self.headless,
             self.use_nn_detection,
             self.mode,
             *self.results,
         ])
-        
