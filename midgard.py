@@ -96,7 +96,7 @@ class Midgard:
         Returns:
             np.ndarray: the raw BGR input frame
         """
-        s1, orig_frame = self.orig_capture.read()
+        _, orig_frame = self.orig_capture.read()
         return orig_frame
 
     def release(self) -> None:

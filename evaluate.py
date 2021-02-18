@@ -1,16 +1,14 @@
 import requests
-import utils
 import cv2
 import numpy as np
-import utils
-from typing import Dict, Tuple, List, Optional, cast, Any
 import os
 import subprocess
-import hashlib
 import json
-import logging
+import warnings
+from typing import Dict, Tuple, List, Optional, cast, Any
 from matplotlib import pyplot as plt
 
+import utils
 from run_config import RunConfig
 from frame_result import FrameResult
 from midgard import Midgard
@@ -116,7 +114,7 @@ class Validator:
     def annotate(self, img: np.ndarray, boxes: FrameResult, ground_truth: List[utils.Rectangle]) -> List[float]:
         # Plot ground truth.
         for gt in ground_truth:
-            self.total_detections += 1
+            self.positives += 1
             img = cv2.rectangle(
                 img,
                 gt.get_topleft_int(),
@@ -127,6 +125,7 @@ class Validator:
 
         ious: List[float] = []
         threshold: float = 0.5
+        true_positives_in_frame = 0
 
         # Plot estimates.
         for box in boxes:
@@ -143,10 +142,12 @@ class Validator:
                     max_iou = iou
 
             ious.append(max_iou)
-            self.estimated_detections += 1
 
             if max_iou > threshold:
-                self.successful_detections += 1
+                self.true_positives += 1
+                true_positives_in_frame += 1
+            else:
+                self.false_positives += 1
 
             img = cv2.rectangle(
                 img,
@@ -157,21 +158,24 @@ class Validator:
             )
             img = cv2.putText(
                 img,
-                f'{box[0]}: {box[1]:02d}%, {max_iou:.02f}',
+                f'{box[0]}: {box[1]:02f}%, {max_iou:.02f}',
                 rect.get_topleft_int_offset(),
                 cv2.FONT_HERSHEY_SIMPLEX,
                 0.4,
                 (0, 128, 255),
                 2
             )
+
+        self.false_negatives += len(ground_truth) - true_positives_in_frame
         return ious
 
     def run_validation(self, estimates: Optional[Dict[int, FrameResult]] = None) -> None:
         midgard = Midgard(self.config.logger, self.config.sequence)
         output = utils.get_output('evaluation', midgard.orig_capture)
-        self.successful_detections = 0
-        self.estimated_detections = 0
-        self.total_detections = 0
+        self.positives = 0
+        self.true_positives = 0
+        self.false_positives = 0
+        self.false_negatives = 0
 
         try:
             img_input = midgard.img_path + '/image_%5d.png'
@@ -203,24 +207,91 @@ class Validator:
             plt.xlabel('IoU')
             plt.ylabel('Frequency (frames)')
             plt.savefig('media/output/ious.png', bbox_inches='tight')
-            print(f'{self.successful_detections} / {self.estimated_detections} / {self.total_detections}, {self.successful_detections / self.total_detections * 100:.02f}%')
+
+            if self.true_positives > 0:
+                self.config.logger.info(f'TP: {self.true_positives}, FP: {self.false_positives}, FN: {self.false_negatives}')
+            else:
+                self.config.logger.error(f'No detections. TP: {self.true_positives}, FP: {self.false_positives}, FN: {self.false_negatives}')
         finally:
             output.release()
             self.write_results()
 
     def write_results(self) -> None:
-        results = {
-            'successful_detections': self.successful_detections,
-            'estimated_detections': self.estimated_detections,
-            'total_detections': self.total_detections
+        self.negatives = 0
+        self.true_negatives = 0
+
+        self.results = {
+            'true_positives': self.true_positives,
+            'false_positives': self.false_positives,
+            'false_negatives': self.false_negatives,
+            'true_positive_rate': self.true_positives / max(1.0, self.positives),
+            'true_negative_rate': self.true_negatives / max(1.0, self.negatives),
+            'false_positive_rate': self.true_positives / max(1.0, self.false_positives + self.true_negatives),
+            'false_negative_rate': self.true_negatives / max(1.0, self.false_negatives + self.true_positives),
+            'recall': self.true_positives / max(1.0, self.true_positives + self.false_negatives),
+            'precision': self.true_positives / max(1.0, self.true_positives + self.false_positives),
         }
+        self.config.logger.info(self.results)
 
         with open('results.json', 'w') as f:
-            json.dump(results, f, indent=4)
+            json.dump(self.results, f, indent=4)
 
+        with open('main.csv', 'a') as csv_file:
+            csv_file.write(','.join([str(x) for x in self.config]))
+            csv_file.write(','.join([f'{self.results[x]:.06f}' for x in self.results]))
+
+        self.plot_roc()
 
     def img_to_video(self, input: str, output: str) -> None:
         if not os.path.exists(output):
             command = f'ffmpeg -r 30 -i {input} -c:v libx264 -vf fps=30 -pix_fmt yuv420p {output} -y'.split(
                 ' ')
             subprocess.call(command)
+
+    def plot_roc(self) -> None:
+        ''' Plots the ROC curve for different thresholds. '''
+
+        # for threshold in self.thresholds:
+        # Ignore warnings about nan values.
+        warnings.filterwarnings('ignore')
+
+        # Load data
+        x = self.results['true_positive_rate']
+        y = self.results['false_positive_rate']
+        return
+
+        threshold = 0.5
+
+        # Cluster/window the data into bins to make plot more readble.
+        bins = np.zeros(22)
+        bins[:4] = np.linspace(0, 0.01, 4)
+        bins[4:] = np.linspace(0.02, np.max(x[x <= 1.0]), 18)
+        avg_std = np.zeros((len(bins), 4))
+
+        for i in range(1, len(bins)):
+            data = np.where(np.logical_and(x > bins[i - 1], x <= bins[i]))
+            avg_std[i, :] = [
+                np.average(x[data]), np.average(y[data]),
+                np.std(y[data]), np.std(x[data])
+            ]
+
+        no_gates_count = np.sum(x == 0)
+        label = 'threshold: {:2.2f}, {:3} images without detections'.format(threshold, no_gates_count)
+
+        # Remove nan values.
+        avg_std = avg_std[avg_std[:, 0] <= 1.0, :]
+
+        # Plot errorbars only for the optimal threshold.
+        if True:
+            plt.errorbar(avg_std[:, 0], avg_std[:, 1], avg_std[:, 2], avg_std[:, 3],
+                marker='o', markersize=6, capsize=3, barsabove=False, label=label, zorder=1, color='indigo')
+        else:
+            plt.plot(avg_std[:, 0], avg_std[:, 1], label=label, marker='o', zorder=0, markersize=4, ls='--')
+
+        print('Number of images with no gates detected: {} for threshold: {}'.format(no_gates_count, threshold))
+
+        plt.xlabel('False Positive Rate')
+        plt.ylabel('True Positive Rate')
+        plt.grid()
+        plt.legend()
+        plt.savefig('roc', bbox_inches='tight')

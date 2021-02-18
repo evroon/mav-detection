@@ -29,6 +29,7 @@ class RunConfig:
 
     def get_mode(self, mode_key: str) -> Midgard.Mode:
         options = [mode.name for mode in Midgard.Mode]
+        mode_key = mode_key.replace('Mode.', '')
         if mode_key not in options:
             options_str = ', '.join(options)
             raise ValueError(
@@ -36,6 +37,9 @@ class RunConfig:
             )
 
         return Midgard.Mode[mode_key]
+
+    def __str__(self) -> str:
+        return f'sequence: {self.sequence}, mode: {self.mode}'
 
     def __iter__(self) -> Iterator[Any]:
         return iter([
@@ -46,12 +50,6 @@ class RunConfig:
             self.headless,
             self.use_nn_detection,
             self.mode,
-            self.results['ious'],
+            *self.results,
         ])
-
-    def save_to_csv(self, filename: str) -> None:
-        with open(filename, 'wb') as csv_file:
-            wr = csv.writer(csv_file, delimiter=',')
-            for cdr in self:
-                print(cdr)
-                wr.writerow(list(cdr))
+        

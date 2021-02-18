@@ -12,6 +12,7 @@ from evaluate import Validator
 from run_config import RunConfig
 
 def execute(config: RunConfig) -> None:
+    config.logger.info(f'Starting: {config}')
     if config.evaluate and config.use_nn_detection:
         validator = Validator(config)
         validator.run_validation()
@@ -24,7 +25,7 @@ def execute(config: RunConfig) -> None:
                 converter.run_detection()
                 detection_results = converter.get_results()
 
-            if config.evaluate and config.use_nn_detection:
+            if config.evaluate and not config.use_nn_detection:
                 validator = Validator(config)
                 validator.run_validation(detection_results)
 
@@ -32,12 +33,13 @@ def execute(config: RunConfig) -> None:
             converter.release()
 
 def run_all(logger: logging.Logger) -> None:
-    debug = False
+    debug = True
     prepare_dataset = False
     evaluate = True
-    headless = True
+    headless = False
 
-    modes = [mode.name for mode in Midgard.Mode]
+    # modes = [mode.name for mode in Midgard.Mode]
+    modes = [str(Midgard.Mode.FLOW_PROCESSED)]
     use_nn_detections = [False]
     validation_sequences = [
         # 'indoor-modern/warehouse-interior',
@@ -56,7 +58,7 @@ def get_logger() -> logging.Logger:
     level = logging.INFO if args.debug else logging.DEBUG
     logging.basicConfig(filename='main.log',
                         filemode='a',
-                        format='%(asctime)s,%(msecs)d %(name)s %(levelname)s %(message)s',
+                        format='%(asctime)s.%(msecs)03d %(name)s %(levelname)s %(message)s',
                         datefmt='%H:%M:%S',
                         level=level)
 

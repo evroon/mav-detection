@@ -78,7 +78,7 @@ class MidgardConverter:
         self.frame_index += 1
 
         if self.frame_index % int(self.midgard.N / 10) == 0:
-            self.logger.info(f'{self.frame_index / self.midgard.N * 100:.2f} % {self.frame_index} / {self.midgard.N}')
+            self.logger.info(f'{self.frame_index / self.midgard.N * 100:.2f}% {self.frame_index} / {self.midgard.N}')
 
     def remove_contents_of_folder(self, folder: str) -> None:
         """Remove all content of a directory
@@ -116,10 +116,10 @@ class MidgardConverter:
                 flow_vis = get_flow_vis(flow_uv)
                 cv2.imwrite(dst, flow_vis)
             elif self.mode == Midgard.Mode.FLOW_PROCESSED:
-                self.midgard.get_frame()
+                orig_frame = self.midgard.get_frame()
                 flow_uv = self.midgard.get_flow_uv(self.frame_index)
-                self.detector.get_affine_matrix(flow_uv)
-                self.detector.flow_vec_subtract(flow_uv)
+                self.detector.get_affine_matrix(orig_frame, flow_uv)
+                self.detector.flow_vec_subtract(orig_frame, flow_uv)
                 cv2.imwrite(dst, self.detector.flow_uv_warped_mag * 255 / np.max(self.detector.flow_uv_warped_mag))
 
     def process_annot(self, src: str, dst: str) -> None:
@@ -218,8 +218,8 @@ class MidgardConverter:
             self.flow_vis = get_flow_vis(self.flow_uv)
             self.midgard.get_midgard_annotation(self.frame_index)
 
-            self.detector.get_affine_matrix(self.flow_uv)
-            flow_uv_warped_vis, cluster_vis, _ = self.detector.flow_vec_subtract(self.flow_uv)
+            self.detector.get_affine_matrix(orig_frame, self.flow_uv)
+            flow_uv_warped_vis, cluster_vis, _ = self.detector.flow_vec_subtract(orig_frame, self.flow_uv)
 
             if self.debug_mode:
                 flow_diff_vis, blocks_vis = self.detector.warp_method(self.flow_uv)

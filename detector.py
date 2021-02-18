@@ -6,13 +6,16 @@ import flow_vis
 from typing import List, Union, Tuple, cast, Dict
 
 from midgard import Midgard
+from lucas_kanade import LucasKanade
 from im_helpers import pyramid, sliding_window, get_flow_vis
 from frame_result import FrameResult
 
 
 class Detector:
-    def __init__(self, midgard: Midgard):
+    def __init__(self, midgard: Midgard, use_homography=False, use_sparse_of=False):
         self.midgard = midgard
+        self.use_homography = use_homography
+        self.use_sparse_of = use_sparse_of
 
         flow_width = self.midgard.capture_size[0]
         flow_height = self.midgard.capture_size[1]
@@ -32,13 +35,10 @@ class Detector:
         self.flow_uv_history = np.zeros((self.history_length, flow_height, flow_width, 2))
         self.flow_map_history = np.zeros((self.history_length, flow_height, flow_width))
         self.history_index = 0
-        self.use_homography = False
         self.confidence: int = 0
         self.use_optimization = False
-
-        # feature_pos = np.array([220.0, 280.0])
-        # min_coords = np.zeros(2)
-        # max_coords = self.midgard.capture_size[::-1] - np.ones(2)
+        self.prev_frame = np.zeros((midgard.get_capture_shape()[0], midgard.get_capture_shape()[1], 3))
+        self.lucas_kanade = LucasKanade(self.prev_frame)
 
     def get_gradient_and_magnitude(self, frame: np.ndarray) -> np.ndarray:
         """Returns the polar representation of a cartesian flow field.
@@ -60,21 +60,30 @@ class Detector:
         magnitude_rgb[..., 0] = magnitude_spectrum
         return magnitude_rgb
 
-    def get_affine_matrix(self, flow_uv: np.ndarray) -> None:
-        coords_flow = self.coords.astype(np.float64) + \
+    def get_affine_matrix(self, orig_frame: np.ndarray, flow_uv: np.ndarray) -> None:
+        coords_old = self.coords
+        coords_new = self.coords.astype(np.float64) + \
             flow_uv[self.sample_y, self.sample_x]
 
+        if self.use_sparse_of:
+            coords_old_tmp, coords_new_tmp = self.lucas_kanade.process(orig_frame)
+
+            if len(coords_old_tmp) > 0 and len(coords_new_tmp) > 0:
+                coords_old, coords_new = coords_old_tmp, coords_new_tmp
+                self.midgard.logger.info(f'features: {len(coords_new)}')
+
         if self.use_homography:
-            homography, self.confidence = cv2.findHomography(self.coords, coords_flow)
+            homography, self.confidence = cv2.findHomography(coords_old, coords_new)
             self.homography = np.array(homography)
-        else:
-            aff, _ = cv2.estimateAffine2D(self.coords, coords_flow)
+        elif len(coords_old) > 0 and len(coords_new) > 0:
+            aff, _ = cv2.estimateAffine2D(coords_old, coords_new)
             self.aff = np.array(aff)
 
-    def flow_vec_subtract(self, flow_uv: np.ndarray) -> Tuple[np.ndarray, np.ndarray, np.ndarray]:
+    def flow_vec_subtract(self, orig_frame: np.ndarray, flow_uv: np.ndarray) -> Tuple[np.ndarray, np.ndarray, np.ndarray]:
         """Calculates global motion using perspective or affine matrices and subtracts it from the original field.
 
         Args:
+            orig_frame (np.ndarray): the RGB input frame
             flow_uv (np.ndarray): flow field in cartesian coordinates
 
         Returns:
@@ -118,6 +127,7 @@ class Detector:
 
 
         self.flow_uv_warped_vis = flow_uv_warped_vis
+        self.prev_frame = orig_frame
         return flow_uv_warped_vis, self.cluster_vis, flow_uv_warped_mag_vis
 
     def warp_method(self, flow_uv: np.ndarray) -> Tuple[np.ndarray, np.ndarray]:
