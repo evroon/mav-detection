@@ -239,6 +239,7 @@ class Validator:
         with open('main.csv', 'a') as csv_file:
             csv_file.write(','.join([str(x) for x in self.config]))
             csv_file.write(','.join([f'{self.results[x]:.06f}' for x in self.results]))
+            csv_file.write('\n')
 
         self.plot_roc()
 

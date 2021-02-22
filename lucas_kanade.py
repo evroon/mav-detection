@@ -1,9 +1,7 @@
 import numpy as np
 import cv2
-import argparse
-import utils
 import matplotlib.pyplot as plt
-from typing import Optional
+from typing import Tuple
 
 plt.rcParams['axes.axisbelow'] = True
 
@@ -33,7 +31,15 @@ class LucasKanade:
         # Create some random colors
         self.color = np.random.randint(0, 255, (self.total_num_corners, 3))
 
-    def process(self, frame: np.ndarray):
+    def process(self, frame: np.ndarray) -> Tuple[np.ndarray, np.ndarray]:
+        """Calculates the LK OF for a new frame
+
+        Args:
+            frame (np.ndarray): the input BGR frame
+
+        Returns:
+            Tuple[np.ndarray, np.ndarray]: the arrays with old and new features resp.
+        """
         self.mask = np.zeros_like(self.old_frame)
         frame_gray = cv2.cvtColor(frame, cv2.COLOR_BGR2GRAY)
         self.old_gray = cv2.cvtColor(self.old_frame.astype(np.uint8), cv2.COLOR_BGR2GRAY)

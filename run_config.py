@@ -1,6 +1,5 @@
-import csv
 import logging
-from typing import Dict, Iterator, List, Any
+from typing import Iterator, Any
 
 from midgard import Midgard
 
@@ -28,6 +27,14 @@ class RunConfig:
         self.results: dict = dict()
 
     def get_mode(self, mode_key: str) -> Midgard.Mode:
+        """Converts a str key to the Mode object.
+
+        Args:
+            mode_key (str): key that specifies the Mode to return
+
+        Returns:
+            Midgard.Mode: The resulting mode
+        """
         options = [mode.name for mode in Midgard.Mode]
         mode_key = mode_key.replace('Mode.', '')
         if mode_key not in options:

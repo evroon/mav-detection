@@ -1,9 +1,7 @@
 import utils
 import cv2
-import os
 import numpy as np
-import flow_vis
-from typing import List, Union, Tuple, cast, Dict
+from typing import Tuple, cast
 
 from midgard import Midgard
 from lucas_kanade import LucasKanade
@@ -12,7 +10,7 @@ from frame_result import FrameResult
 
 
 class Detector:
-    def __init__(self, midgard: Midgard, use_homography=False, use_sparse_of=False):
+    def __init__(self, midgard: Midgard, use_homography=True, use_sparse_of=False):
         self.midgard = midgard
         self.use_homography = use_homography
         self.use_sparse_of = use_sparse_of
@@ -61,6 +59,12 @@ class Detector:
         return magnitude_rgb
 
     def get_affine_matrix(self, orig_frame: np.ndarray, flow_uv: np.ndarray) -> None:
+        """Calculates the affine or homography matrix.
+
+        Args:
+            orig_frame (np.ndarray): the input BGR frame
+            flow_uv (np.ndarray): the flow field
+        """
         coords_old = self.coords
         coords_new = self.coords.astype(np.float64) + \
             flow_uv[self.sample_y, self.sample_x]
@@ -153,8 +157,8 @@ class Detector:
         self.flow_diff_mag = np.sqrt(flow_diff[..., 0] ** 2.0 + flow_diff[..., 1] ** 2.0)
         flow_max = np.unravel_index(self.flow_diff_mag.argmax(), self.flow_diff_mag.shape)
         flow_diff_vis = get_flow_vis(flow_diff)
-        flow_diff_vis = cv2.circle(
-            flow_diff_vis, flow_max[::-1], 10, (0, 0, 0), 5)
+        # flow_diff_vis = cv2.circle(
+        #     flow_diff_vis, flow_max[::-1], 10, (0, 0, 0), 5)
 
         blocks = utils.blockshaped(self.flow_diff_mag, 480 // 8, 752 // 8)
         max_mag = np.max(self.flow_diff_mag)
@@ -185,26 +189,26 @@ class Detector:
                 3
             )
 
-        self.flow_uv_warped_vis = cv2.circle(
-            self.flow_uv_warped_vis, self.flow_max[::-1], 10, (0, 0, 0), 5)
-        orig_frame = cv2.circle(
-            orig_frame, self.flow_max[::-1], 10, (255, 255, 255), 5)
+        # self.flow_uv_warped_vis = cv2.circle(
+        #     self.flow_uv_warped_vis, self.flow_max[::-1], 10, (0, 0, 0), 5)
+        # orig_frame = cv2.circle(
+        #     orig_frame, self.flow_max[::-1], 10, (255, 255, 255), 5)
 
         w: utils.Rectangle = self.opt_window[1]
-        orig_frame = cv2.rectangle(
-            orig_frame, w.get_topleft(), w.get_bottomright(), (0, 255, 0), 2)
-        self.cluster_vis = cv2.rectangle(
-            self.cluster_vis, w.get_topleft(), w.get_bottomright(), (0, 255, 0), 2)
+        # orig_frame = cv2.rectangle(
+        #     orig_frame, w.get_topleft(), w.get_bottomright(), (0, 255, 0), 2)
+        # self.cluster_vis = cv2.rectangle(
+        #     self.cluster_vis, w.get_topleft(), w.get_bottomright(), (0, 255, 0), 2)
 
-        for gt in self.midgard.ground_truth:
-            cv2.putText(orig_frame,
-                f'IoU={self.iou:.02f}',
-                (gt.get_left(), gt.get_top() - 5),
-                cv2.FONT_HERSHEY_SIMPLEX,
-                1,
-                (255, 0, 0),
-                2
-            )
+        # for gt in self.midgard.ground_truth:
+        #     cv2.putText(orig_frame,
+        #         f'IoU={self.iou:.02f}',
+        #         (gt.get_left(), gt.get_top() - 5),
+        #         cv2.FONT_HERSHEY_SIMPLEX,
+        #         1,
+        #         (255, 0, 0),
+        #         2
+        #     )
 
 
     def analyze_pyramid(self, img: np.ndarray) -> Tuple[float, utils.Rectangle, np.ndarray, float]:
@@ -217,7 +221,7 @@ class Detector:
             Tuple[float, utils.Rectangle, np.ndarray, float]: score, bounding box, window subimage, maximum flow magnitude
         """
         # Based on: https://www.pyimagesearch.com/2015/03/23/sliding-windows-for-object-detection-with-python-and-opencv/
-        width, height = (48, 48)
+        width, height = (64, 64)
         result = (0, utils.Rectangle((0, 0), (0, 0)), 0, 0)
 
         for resized in pyramid(img, scale=1.5):
@@ -349,6 +353,15 @@ class Detector:
         orig_frame = cv2.line(orig_frame, center, self.prediction, (0, 0, 255), 5)
 
     def clustering(self, img: np.ndarray, enable_raw: bool = False) -> Tuple[np.ndarray, np.ndarray]:
+        """Applies k-means clustering to the img.
+
+        Args:
+            img (np.ndarray): input grayscale image
+            enable_raw (bool, optional): Whether to apply a threshold for visualization. Defaults to False.
+
+        Returns:
+            Tuple[np.ndarray, np.ndarray]: [description]
+        """
         K = 8
         Z = img.reshape((-1, 3)).astype(np.float32)
 
