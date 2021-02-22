@@ -90,25 +90,26 @@ class Detector:
             Tuple[np.ndarray, np.ndarray]: the local flow field, its clustered and magnitude version
         """
         self.frame_result: FrameResult = FrameResult()
-        flow_uv_warped = np.zeros_like(flow_uv)
+        global_motion = np.zeros_like(flow_uv)
 
         # Manual matrix multiplication.
         if self.use_homography:
-            flow_uv_warped[..., 0] = self.homography[0, 0] * self.x_coords + \
+            global_motion[..., 0] = self.homography[0, 0] * self.x_coords + \
                 self.homography[0, 1] * self.y_coords + self.homography[0, 2] - self.x_coords
-            flow_uv_warped[..., 1] = self.homography[1, 0] * self.x_coords + \
+            global_motion[..., 1] = self.homography[1, 0] * self.x_coords + \
                 self.homography[1, 1] * self.y_coords + self.homography[1, 2] - self.y_coords
         else:
-            flow_uv_warped[..., 0] = self.aff[0, 0] * self.x_coords + \
+            global_motion[..., 0] = self.aff[0, 0] * self.x_coords + \
                 self.aff[0, 1] * self.y_coords + self.aff[0, 2] - self.x_coords
-            flow_uv_warped[..., 1] = self.aff[1, 0] * self.x_coords + \
+            global_motion[..., 1] = self.aff[1, 0] * self.x_coords + \
                 self.aff[1, 1] * self.y_coords + self.aff[1, 2] - self.y_coords
 
-        self.flow_uv_warped = flow_uv_warped - flow_uv
+        self.flow_uv_warped = global_motion - flow_uv
         flow_uv_warped_vis = get_flow_vis(self.flow_uv_warped)
         self.flow_uv_warped_mag = np.sqrt(self.flow_uv_warped[..., 0] ** 2.0 + self.flow_uv_warped[..., 1] ** 2.0)
         self.flow_max = np.unravel_index(self.flow_uv_warped_mag.argmax(), self.flow_uv_warped_mag.shape)
-        self.cluster_vis, _ = self.clustering(self.flow_uv_warped_mag)
+        # self.cluster_vis, _ = self.clustering(self.flow_uv_warped_mag)
+        self.cluster_vis = self.to_rgb(self.flow_uv_warped_mag)
 
         flow_uv_warped_mag_vis = self.to_rgb(self.flow_uv_warped_mag)
 
@@ -128,7 +129,7 @@ class Detector:
 
         self.flow_uv_warped_vis = flow_uv_warped_vis
         self.prev_frame = orig_frame
-        return flow_uv_warped_vis, self.cluster_vis, flow_uv_warped_mag_vis
+        return flow_uv_warped_vis, self.cluster_vis, flow_uv_warped_mag_vis, get_flow_vis(global_motion)
 
     def warp_method(self, flow_uv: np.ndarray) -> Tuple[np.ndarray, np.ndarray]:
         """Warps the flow field using perspective or affine matrices and subtracts it from the original field.

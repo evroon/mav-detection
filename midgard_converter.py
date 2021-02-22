@@ -2,14 +2,11 @@ import utils
 import cv2
 import os
 import numpy as np
-import flow_vis
 import glob
 import shutil
-import logging
-from enum import Enum
 
-from im_helpers import get_flow_radial, get_flow_vis
-from typing import Optional, List, Dict
+from im_helpers import get_flow_vis
+from typing import List, Dict
 from midgard import Midgard
 from detector import Detector
 from run_config import RunConfig
@@ -219,16 +216,17 @@ class MidgardConverter:
             self.midgard.get_midgard_annotation(self.frame_index)
 
             self.detector.get_affine_matrix(orig_frame, self.flow_uv)
-            flow_uv_warped_vis, cluster_vis, _ = self.detector.flow_vec_subtract(orig_frame, self.flow_uv)
+            flow_uv_warped_vis, cluster_vis, _, global_motion_vis = self.detector.flow_vec_subtract(orig_frame, self.flow_uv)
+            global_motion_vis = global_motion_vis.astype(np.uint8)
 
             if self.debug_mode:
-                flow_diff_vis, blocks_vis = self.detector.warp_method(self.flow_uv)
-                blocks_vis, _ = self.detector.clustering(self.detector.flow_diff_mag)
-                summed_mag = self.detector.get_history(self.flow_uv)
+                # flow_diff_vis, blocks_vis = self.detector.warp_method(self.flow_uv)
+                # blocks_vis, _ = self.detector.clustering(self.detector.flow_diff_mag)
+                # summed_mag = self.detector.get_history(self.flow_uv)
                 self.detector.draw(orig_frame)
 
-                top_frames = np.hstack((orig_frame, flow_uv_warped_vis, summed_mag))
-                bottom_frames = np.hstack((self.flow_vis, cluster_vis, summed_mag))
+                top_frames = np.hstack((orig_frame, global_motion_vis, flow_uv_warped_vis))
+                bottom_frames = np.hstack((self.flow_vis, global_motion_vis, cluster_vis))
                 self.write(np.vstack((top_frames, bottom_frames)))
                 self.detection_results[self.frame_index] = self.detector.frame_result
             else:
