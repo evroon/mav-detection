@@ -10,7 +10,7 @@ from frame_result import FrameResult
 
 
 class Detector:
-    def __init__(self, midgard: Midgard, use_homography=True, use_sparse_of=False):
+    def __init__(self, midgard: Midgard, use_homography: bool = True, use_sparse_of: bool = False) -> None:
         self.midgard = midgard
         self.use_homography = use_homography
         self.use_sparse_of = use_sparse_of
@@ -83,7 +83,7 @@ class Detector:
             aff, _ = cv2.estimateAffine2D(coords_old, coords_new)
             self.aff = np.array(aff)
 
-    def flow_vec_subtract(self, orig_frame: np.ndarray, flow_uv: np.ndarray) -> Tuple[np.ndarray, np.ndarray, np.ndarray]:
+    def flow_vec_subtract(self, orig_frame: np.ndarray, flow_uv: np.ndarray) -> Tuple[np.ndarray, np.ndarray, np.ndarray, np.ndarray]:
         """Calculates global motion using perspective or affine matrices and subtracts it from the original field.
 
         Args:
@@ -129,7 +129,6 @@ class Detector:
 
         for gt in self.midgard.ground_truth:
             self.iou = utils.Rectangle.calculate_iou(window_optimized, gt)
-
 
         self.flow_uv_warped_vis = flow_uv_warped_vis
         self.prev_frame = orig_frame

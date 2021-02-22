@@ -1,7 +1,7 @@
 import numpy as np
 import cv2
 import matplotlib.pyplot as plt
-from typing import Tuple
+from typing import Tuple, List
 
 plt.rcParams['axes.axisbelow'] = True
 
@@ -16,7 +16,7 @@ class LucasKanade:
         self.total_num_corners = self.num_corners + self.minimum_num_corners
         self.corners = np.zeros((self.total_num_corners, 2), dtype=np.int)
         self.num_features = 0
-        self.features = []
+        self.features: List[Tuple[float, float]] = []
 
         # Parameters for ShiTomasi corner detection
         self.feature_params = dict(maxCorners=self.num_corners,
