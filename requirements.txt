@@ -2,3 +2,4 @@ imutils
 numpy
 matplotlib
 opencv-python
+mypy

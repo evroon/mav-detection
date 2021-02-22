@@ -5,9 +5,21 @@
 ## Install
 Install the Python dependencies:
 
-    python3 -m pip install -r requirements.txt
+```bash
+python3 -m pip install -r requirements.txt
+```
 
+To see all possible command arguments:
 
+```bash
+python3 main.py --help
+```
+
+To check the typing of the Python code:
+
+```bash
+mypy
+```
 
 ## YOLOv4
 
