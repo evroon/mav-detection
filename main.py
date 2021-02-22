@@ -8,6 +8,11 @@ from validator import Validator
 from run_config import RunConfig
 
 def execute(config: RunConfig) -> None:
+    """Execute a configuration.
+
+    Args:
+        config (RunConfig): the configuration to run
+    """
     config.logger.info(f'Starting: {config}')
     if config.validate and config.use_nn_detection:
         validator = Validator(config)
@@ -51,6 +56,11 @@ def run_all(logger: logging.Logger) -> None:
                 execute(config)
 
 def get_logger() -> logging.Logger:
+    """Creates a logger object
+
+    Returns:
+        logging.Logger: the result logger
+    """
     level = logging.INFO if args.debug else logging.DEBUG
     logging.basicConfig(filename='main.log',
                         filemode='a',
