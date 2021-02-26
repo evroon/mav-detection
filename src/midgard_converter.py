@@ -48,7 +48,7 @@ class MidgardConverter:
         result: str = ''
         for rect in rects:
             center = np.array(rect.get_center()) / self.midgard.resolution.astype(np.float)
-            size = np.array(rect.size) / (2.0 * self.midgard.resolution.astype(np.float))
+            size = np.array(rect.size) / self.midgard.resolution.astype(np.float)
             result += f'0 {center[0]} {center[1]} {size[0]} {size[1]}\n'
 
         return result
