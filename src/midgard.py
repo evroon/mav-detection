@@ -30,7 +30,7 @@ class Midgard:
         self.flow_capture = cv2.VideoCapture(f'{self.img_path}/output/flownet2.mp4')
         self.capture_size = utils.get_capture_size(self.orig_capture)
         self.capture_shape = self.get_capture_shape()
-        self.resolution = np.array(self.capture_shape)[:2][::-1]
+        self.resolution: np.ndarray = np.array(self.capture_shape)[:2][::-1]
         self.flow_size = utils.get_capture_size(self.flow_capture)
         self.N = utils.get_frame_count(self.flow_capture)
         self.start_frame = 100

@@ -11,7 +11,6 @@ count = 0
 
 class Farneback:
     def __init__(self, capture: cv2.VideoCapture, output: cv2.VideoWriter) -> None:
-
         self.capture = capture
         self.output = output
 

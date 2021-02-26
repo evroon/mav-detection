@@ -185,8 +185,8 @@ class Detector:
         for gt in self.midgard.ground_truth:
             orig_frame = cv2.rectangle(
                 orig_frame,
-                gt.get_topleft(),
-                gt.get_bottomright(),
+                gt.get_topleft_int(),
+                gt.get_bottomright_int(),
                 (0, 0, 255),
                 3
             )

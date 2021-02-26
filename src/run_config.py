@@ -48,7 +48,7 @@ class RunConfig:
         return Midgard.Mode[mode_key]
 
     def __str__(self) -> str:
-        return f'sequence: {self.sequence}, mode: {self.mode}'
+        return f'{self.sequence}/{self.mode}'
 
     def __iter__(self) -> Iterator[Any]:
         return iter([
