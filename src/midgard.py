@@ -58,11 +58,8 @@ class Midgard:
 
         with open(ann_path, 'r') as f:
             for line in f.readlines():
-                values = [float(x) for x in line.split(',')]
-
-                values = [round(float(x)) for x in values]
-                topleft = (values[1], values[2])
-                result.append(utils.Rectangle(topleft, (values[3], values[4])))
+                values = [float(x) for x in line.split(' ')]
+                result.append(utils.Rectangle.from_yolo_input(values, self.resolution))
 
         self.ground_truth = result
         return result

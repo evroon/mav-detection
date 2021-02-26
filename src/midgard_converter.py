@@ -128,18 +128,16 @@ class MidgardConverter:
             src (str): source annotation file path
             dst (str): destination annotation file path
         """
-        with open(dst, 'w') as f:
-            ann = self.midgard.get_midgard_annotation(self.frame_index, src)
-            f.writelines(self.annotation_to_yolo(ann))
+        shutil.copy2(src, dst)
 
-    def get_data(self, sequence: str) -> Tuple[List[str], List[str]]:
+    def get_data(self, sequence: str, with_yolo_ann: bool = True) -> Tuple[List[str], List[str]]:
         self.img_path = f'{self.midgard_path}/{sequence}/images'
         self.ann_path = f'{self.midgard_path}/{sequence}/annotation'
         images = glob.glob(f'{self.img_path}/*.png')
-        annotations = glob.glob(f'{self.ann_path}/*.csv')
+        ann_extension = 'txt' if with_yolo_ann else 'csv'
+        annotations = glob.glob(f'{self.ann_path}/*.{ann_extension}')
         images.sort()
         annotations.sort()
-        print(len(annotations))
         return images, annotations
 
     def annotations_to_yolo(self) -> None:
@@ -162,7 +160,7 @@ class MidgardConverter:
 
         for sequence in sequences:
             self.logger.info(f'Converting annotations to YOLOv4 format for sequence: {sequence}')
-            _, annotations = self.get_data(sequence)
+            _, annotations = self.get_data(sequence, False)
 
             # Remove existing .txt annotation files.
             for file in glob.glob(f'{self.ann_path}/*.txt'):
@@ -170,7 +168,11 @@ class MidgardConverter:
 
             for ann_src in annotations:
                 output_path = ann_src.replace('annot_', 'image_').replace('csv', 'txt')
-                self.process_annot(ann_src, output_path)
+
+                with open(output_path, 'w') as f:
+                    ann = self.midgard.get_midgard_annotation(self.frame_index, ann_src)
+                    f.writelines(self.annotation_to_yolo(ann))
+
                 self.frame_index += 1
 
     def prepare_sequence(self, sequence: str) -> None:

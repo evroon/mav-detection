@@ -105,7 +105,7 @@ class Validator:
                 floats = [float(x) for x in box_split[1:]]
                 name = box_split[0]
                 confidence = int(box_split[1])
-                rect = utils.Rectangle.from_yolo(floats[1:])
+                rect = utils.Rectangle.from_yolo_output(floats[1:])
                 frameresult.add_box(name, confidence, rect)
 
         return result
@@ -232,7 +232,10 @@ class Validator:
         }
         self.config.logger.info(self.results)
 
-        with open('results.json', 'w') as f:
+        output_file = f'results/{self.config}.json'
+        if not os.path.exists(output_file):
+            os.makedirs(os.path.dirname(output_file))
+        with open(output_file, 'w') as f:
             json.dump(self.results, f, indent=4)
 
         with open('main.csv', 'a') as csv_file:

@@ -25,7 +25,13 @@ class Rectangle:
         )
 
     @classmethod
-    def from_yolo(cls, arr: List[float]) -> Rectangle:
+    def from_yolo_input(cls, arr: List[float], img_size: np.ndarray) -> Rectangle:
+        center = np.array([arr[1], arr[2]]) * img_size.astype(np.float)
+        size = np.array([arr[3], arr[4]]) * img_size.astype(np.float)
+        return Rectangle.from_center(center, size)
+
+    @classmethod
+    def from_yolo_output(cls, arr: List[float]) -> Rectangle:
         return Rectangle(
             (arr[0], arr[1]),
             (arr[2], arr[3])
