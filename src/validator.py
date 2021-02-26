@@ -13,11 +13,10 @@ from run_config import RunConfig
 from frame_result import FrameResult
 from midgard import Midgard
 
-host: str = 'http://192.168.178.235:8099'
-
 
 class Validator:
     def __init__(self, config: RunConfig) -> None:
+        self.host: str = 'http://192.168.178.235:8099'
         self.config = config
 
     def get_hash(self, filename: str) -> str:
@@ -47,7 +46,7 @@ class Validator:
         return None, json_path
 
     def get_config(self) -> Dict[str, Any]:
-        return cast(Dict[str, Any], requests.get(f'{host}/config').json())
+        return cast(Dict[str, Any], requests.get(f'{self.host}/config').json())
 
     def get_run_timestamp(self) -> str:
         return str(self.get_config()['start_time'])
@@ -71,10 +70,10 @@ class Validator:
         }
         try:
             response = requests.post(
-                f'{host}/predict_video', headers=headers, params=params, files=files)
+                f'{self.host}/predict_video', headers=headers, params=params, files=files)
             open(output_file, 'wb').write(response.content)
 
-            response = requests.get(f'{host}/predict_video_boxes')
+            response = requests.get(f'{self.host}/predict_video_boxes')
         except requests.exceptions.ConnectionError:
             print('Could not connect to host.')
             exit()

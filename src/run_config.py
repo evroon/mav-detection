@@ -14,6 +14,7 @@ class RunConfig:
         validate: bool,
         headless: bool,
         use_nn_detection: bool,
+        data_to_yolo: bool,
         mode: str
     ):
         self.logger = logger
@@ -23,6 +24,7 @@ class RunConfig:
         self.validate = validate
         self.headless = headless
         self.use_nn_detection = use_nn_detection
+        self.data_to_yolo = data_to_yolo
         self.mode = self.get_mode(mode)
         self.results: dict = dict()
 
@@ -56,6 +58,7 @@ class RunConfig:
             self.validate,
             self.headless,
             self.use_nn_detection,
+            self.data_to_yolo,
             self.mode,
             *self.results,
         ])

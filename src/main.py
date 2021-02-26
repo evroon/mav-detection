@@ -22,6 +22,8 @@ def execute(config: RunConfig) -> None:
         try:
             if config.prepare_dataset:
                 converter.convert(config.mode)
+            elif config.data_to_yolo:
+                converter.annotations_to_yolo()
             else:
                 converter.run_detection()
                 detection_results = converter.get_results()
@@ -38,6 +40,7 @@ def run_all(logger: logging.Logger) -> None:
     prepare_dataset = False
     validate = True
     headless = True
+    data_to_yolo = False
 
     # modes = [mode.name for mode in Midgard.Mode]
     modes = [str(Midgard.Mode.FLOW_PROCESSED)]
@@ -51,7 +54,7 @@ def run_all(logger: logging.Logger) -> None:
     for sequence in validation_sequences:
         for mode in modes:
             for use_nn_detection in use_nn_detections:
-                config: RunConfig = RunConfig(logger, sequence, debug, prepare_dataset, validate, headless, use_nn_detection, mode)
+                config: RunConfig = RunConfig(logger, sequence, debug, prepare_dataset, validate, headless, use_nn_detection, data_to_yolo, mode)
                 configs.append(config)
                 execute(config)
 
@@ -83,6 +86,7 @@ if __name__ == '__main__':
     parser.add_argument('--headless',           action='store_true', help='do not use UIs')
     parser.add_argument('--use-nn-detection',   action='store_true', help='use neural network based approaches for detection')
     parser.add_argument('--run-all',            action='store_true', help='run all configurations')
+    parser.add_argument('--data-to-yolo',       action='store_true', help='convert MIDGARD annotations to the YOLO format')
     args = parser.parse_args()
 
     logger = get_logger()
@@ -90,5 +94,5 @@ if __name__ == '__main__':
     if args.run_all:
         run_all(logger)
     else:
-        config: RunConfig = RunConfig(logger, args.sequence, args.debug, args.prepare_dataset, args.validate, args.headless, args.use_nn_detection, args.mode)
+        config: RunConfig = RunConfig(logger, args.sequence, args.debug, args.prepare_dataset, args.validate, args.headless, args.use_nn_detection, args.data_to_yolo, args.mode)
         execute(config)

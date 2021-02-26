@@ -58,6 +58,9 @@ class Detector:
         magnitude_rgb[..., 0] = magnitude_spectrum
         return magnitude_rgb
 
+    def get_rotation(self, flow_uv: np.ndarray) -> np.ndarray:
+        pass
+
     def get_affine_matrix(self, orig_frame: np.ndarray, flow_uv: np.ndarray) -> None:
         """Calculates the affine or homography matrix.
 

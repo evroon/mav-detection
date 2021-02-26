@@ -6,7 +6,7 @@ import glob
 import shutil
 
 from im_helpers import get_flow_vis
-from typing import List, Dict
+from typing import List, Dict, Tuple
 from midgard import Midgard
 from detector import Detector
 from run_config import RunConfig
@@ -33,6 +33,8 @@ class MidgardConverter:
 
         self.frame_index, self.start_frame = 0, 100
         self.is_exiting = False
+
+        self.midgard_path = os.environ['MIDGARD_PATH']
 
     def annotation_to_yolo(self, rects: List[utils.Rectangle]) -> str:
         """Converts the rectangles to the text format read by YOLOv4
@@ -130,26 +132,62 @@ class MidgardConverter:
             ann = self.midgard.get_midgard_annotation(self.frame_index, src)
             f.writelines(self.annotation_to_yolo(ann))
 
+    def get_data(self, sequence: str) -> Tuple[List[str], List[str]]:
+        self.img_path = f'{self.midgard_path}/{sequence}/images'
+        self.ann_path = f'{self.midgard_path}/{sequence}/annotation'
+        images = glob.glob(f'{self.img_path}/*.png')
+        annotations = glob.glob(f'{self.ann_path}/*.csv')
+        images.sort()
+        annotations.sort()
+        print(len(annotations))
+        return images, annotations
+
+    def annotations_to_yolo(self) -> None:
+        sequences = [
+            'countryside-natural/north-narrow',
+            'countryside-natural/north-fisheye',
+            'countryside-natural/south-narrow',
+            'countryside-natural/south-fisheye',
+            'indoor-historical/church',
+            'indoor-historical/stairwell',
+            'indoor-modern/glass-cube',
+            'indoor-modern/sports-hall',
+            'indoor-modern/warehouse-interior',
+            'indoor-modern/warehouse-transition',
+            'outdoor-historical/church',
+            'semi-urban/island-north',
+            'semi-urban/island-south',
+            'urban/appartment-buildings',
+        ]
+
+        for sequence in sequences:
+            self.logger.info(f'Converting annotations to YOLOv4 format for sequence: {sequence}')
+            _, annotations = self.get_data(sequence)
+
+            # Remove existing .txt annotation files.
+            for file in glob.glob(f'{self.ann_path}/*.txt'):
+                os.remove(file)
+
+            for ann_src in annotations:
+                output_path = ann_src.replace('annot_', 'image_').replace('csv', 'txt')
+                self.process_annot(ann_src, output_path)
+                self.frame_index += 1
+
     def prepare_sequence(self, sequence: str) -> None:
         """Prepare a sequence of the MIDGARD dataset
 
         Args:
             sequence (str): which sequence to prepare, for example 'indoor-modern/sports-hall'
         """
-        print(f'Preparing sequence {sequence}')
+        self.logger.info(f'Preparing sequence {sequence}')
         self.sequence = sequence
-        self.img_path = f'{self.midgard_path}/{self.sequence}/images'
         self.flo_path = f'{self.img_path}/output/inference/run.epoch-0-flow-field'
-        self.ann_path = f'{self.midgard_path}/{self.sequence}/annotation'
 
         self.capture_shape = self.midgard.get_capture_shape()
         self.resolution = np.array(self.capture_shape)[:2][::-1]
 
-        images = glob.glob(f'{self.img_path}/*.png')
-        annotations = glob.glob(f'{self.ann_path}/*.csv')
+        images, annotations = self.get_data(sequence)
         flow_fields = glob.glob(f'{self.flo_path}/*.flo')
-        images.sort()
-        annotations.sort()
 
         self.frame_index = 0
         self.N = len(images)
@@ -158,7 +196,7 @@ class MidgardConverter:
             print('Input counts: (images, annotations, flow fields):', len(images), len(annotations), len(flow_fields))
             raise ValueError('Input sizes do not match.')
 
-        for i, (img_src, ann_src) in enumerate(zip(images, annotations)):
+        for img_src, ann_src in zip(images, annotations):
             # Skip the last frame for optical flow inputs, as it does not exist.
             if not (self.mode != Midgard.Mode.APPEARANCE_RGB and self.frame_index >= self.N - 2):
                 self.process_image(img_src, f'{self.img_dest_path}/{self.output_index:06d}.png')
@@ -176,7 +214,6 @@ class MidgardConverter:
             Midgard.Mode.FLOW_PROCESSED: 1,
         }
 
-        self.midgard_path = os.environ['MIDGARD_PATH']
         self.dest_path = os.environ['YOLOv4_PATH'] + '/dataset'
         self.img_dest_path = f'{self.dest_path}/images'
         self.ann_dest_path = f'{self.dest_path}/labels/yolo'
