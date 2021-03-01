@@ -114,7 +114,7 @@ class MidgardConverter:
                 flow_uv = self.midgard.get_flow_uv(self.frame_index)
                 flow_vis = get_flow_vis(flow_uv)
                 cv2.imwrite(dst, flow_vis)
-            elif self.mode == RunConfig.Mode.FLOW_PROCESSED:
+            elif self.mode in [RunConfig.Mode.FLOW_PROCESSED_CLUSTERING, RunConfig.Mode.FLOW_PROCESSED_YOLO]:
                 orig_frame = self.midgard.get_frame()
                 flow_uv = self.midgard.get_flow_uv(self.frame_index)
                 self.detector.get_affine_matrix(orig_frame, flow_uv)
@@ -208,12 +208,14 @@ class MidgardConverter:
 
     def convert(self, mode: RunConfig.Mode) -> None:
         """Processes the MIDGARD dataset"""
+
+        # The number of channels per mode.
         channel_options = {
             RunConfig.Mode.APPEARANCE_RGB: 3,
             RunConfig.Mode.FLOW_UV: 2,
-            RunConfig.Mode.FLOW_UV_NORMALISED: 2,
             RunConfig.Mode.FLOW_RADIAL: 1,
-            RunConfig.Mode.FLOW_PROCESSED: 1,
+            RunConfig.Mode.FLOW_PROCESSED_YOLO: 1,
+            RunConfig.Mode.FLOW_PROCESSED_CLUSTERING: 1,
         }
 
         self.dest_path = os.environ['YOLOv4_PATH'] + '/dataset'

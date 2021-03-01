@@ -9,9 +9,9 @@ class RunConfig:
     class Mode(Enum):
         APPEARANCE_RGB = 0,
         FLOW_UV = 1,
-        FLOW_UV_NORMALISED = 2,
-        FLOW_RADIAL = 3,
-        FLOW_PROCESSED = 4
+        FLOW_RADIAL = 2,
+        FLOW_PROCESSED_YOLO = 3,
+        FLOW_PROCESSED_CLUSTERING = 4,
 
         def __str__(self) -> str:
             return super().__str__().replace('Mode.', '')
@@ -24,7 +24,6 @@ class RunConfig:
         prepare_dataset: bool,
         validate: bool,
         headless: bool,
-        use_nn_detection: bool,
         data_to_yolo: bool,
         mode: str
     ):
@@ -34,10 +33,16 @@ class RunConfig:
         self.prepare_dataset = prepare_dataset
         self.validate = validate
         self.headless = headless
-        self.use_nn_detection = use_nn_detection
         self.data_to_yolo = data_to_yolo
         self.mode = self.get_mode(mode)
         self.results: dict = dict()
+
+    def uses_nn_for_detection(self) -> bool:
+        return self.mode in [
+            RunConfig.Mode.FLOW_UV,
+            RunConfig.Mode.FLOW_RADIAL,
+            RunConfig.Mode.FLOW_PROCESSED_YOLO
+        ]
 
     def get_mode(self, mode_key: str) -> Mode:
         """Converts a str key to the Mode object.
@@ -67,7 +72,6 @@ class RunConfig:
             self.prepare_dataset,
             self.validate,
             self.headless,
-            self.use_nn_detection,
             self.data_to_yolo,
             self.mode,
             *self.results,

@@ -14,7 +14,7 @@ def execute(config: RunConfig) -> None:
         config (RunConfig): the configuration to run
     """
     config.logger.info(f'Starting: {config}')
-    if config.validate and config.use_nn_detection:
+    if config.validate and config.uses_nn_for_detection():
         validator = Validator(config)
         validator.run_validation()
     else:
@@ -28,7 +28,7 @@ def execute(config: RunConfig) -> None:
                 converter.run_detection()
                 detection_results = converter.get_results()
 
-            if config.validate and not config.use_nn_detection:
+            if config.validate and not config.uses_nn_for_detection():
                 validator = Validator(config)
                 validator.run_validation(detection_results)
 
@@ -43,8 +43,7 @@ def run_all(logger: logging.Logger) -> None:
     data_to_yolo = False
 
     # modes = [mode.name for mode in Midgard.Mode]
-    modes = [str(RunConfig.Mode.FLOW_PROCESSED)]
-    use_nn_detections = [False]
+    modes = [str(RunConfig.Mode.FLOW_PROCESSED_CLUSTERING)]
     validation_sequences = [
         # 'indoor-modern/warehouse-interior',
         'semi-urban/island-north',
@@ -53,10 +52,9 @@ def run_all(logger: logging.Logger) -> None:
 
     for sequence in validation_sequences:
         for mode in modes:
-            for use_nn_detection in use_nn_detections:
-                config: RunConfig = RunConfig(logger, sequence, debug, prepare_dataset, validate, headless, use_nn_detection, data_to_yolo, mode)
-                configs.append(config)
-                execute(config)
+            config: RunConfig = RunConfig(logger, sequence, debug, prepare_dataset, validate, headless, data_to_yolo, mode)
+            configs.append(config)
+            execute(config)
 
 def get_logger() -> logging.Logger:
     """Creates a logger object
@@ -84,7 +82,6 @@ if __name__ == '__main__':
     parser.add_argument('--prepare-dataset',    action='store_true', help='prepares the YOLOv4 training dataset')
     parser.add_argument('--validate',           action='store_true', help='validate the detection results')
     parser.add_argument('--headless',           action='store_true', help='do not use UIs')
-    parser.add_argument('--use-nn-detection',   action='store_true', help='use neural network based approaches for detection')
     parser.add_argument('--run-all',            action='store_true', help='run all configurations')
     parser.add_argument('--data-to-yolo',       action='store_true', help='convert MIDGARD annotations to the YOLO format')
     args = parser.parse_args()
@@ -94,5 +91,5 @@ if __name__ == '__main__':
     if args.run_all:
         run_all(logger)
     else:
-        config: RunConfig = RunConfig(logger, args.sequence, args.debug, args.prepare_dataset, args.validate, args.headless, args.use_nn_detection, args.data_to_yolo, args.mode)
+        config: RunConfig = RunConfig(logger, args.sequence, args.debug, args.prepare_dataset, args.validate, args.headless, args.data_to_yolo, args.mode)
         execute(config)
