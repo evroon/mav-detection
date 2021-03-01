@@ -196,7 +196,7 @@ class Validator:
 
             for i in range(midgard.N):
                 frame = midgard.get_frame()
-                ground_truth = midgard.get_midgard_annotation(i)
+                ground_truth = midgard.get_annotation(i)
                 if i in frames:
                     ious_frame = self.annotate(frame, frames[i], ground_truth)
                     for x in ious_frame:

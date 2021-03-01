@@ -3,27 +3,27 @@ import cv2
 import numpy as np
 from typing import Tuple, cast
 
-from midgard import Midgard
+from dataset import Dataset
 from lucas_kanade import LucasKanade
 from im_helpers import pyramid, sliding_window, get_flow_vis
 from frame_result import FrameResult
 
 
 class Detector:
-    def __init__(self, midgard: Midgard, use_homography: bool = True, use_sparse_of: bool = False) -> None:
-        self.midgard = midgard
+    def __init__(self, dataset: Dataset, use_homography: bool = True, use_sparse_of: bool = False) -> None:
+        self.dataset = dataset
         self.use_homography = use_homography
         self.use_sparse_of = use_sparse_of
 
-        flow_width = self.midgard.capture_size[0]
-        flow_height = self.midgard.capture_size[1]
+        flow_width = self.dataset.capture_size[0]
+        flow_height = self.dataset.capture_size[1]
 
         self.sample_size = 1000
         self.border_offset = 20
         self.sample_y = np.random.randint(
-            self.border_offset, self.midgard.capture_size[1] - self.border_offset, self.sample_size)
+            self.border_offset, self.dataset.capture_size[1] - self.border_offset, self.sample_size)
         self.sample_x = np.random.randint(
-            self.border_offset, self.midgard.capture_size[0] - self.border_offset, self.sample_size)
+            self.border_offset, self.dataset.capture_size[0] - self.border_offset, self.sample_size)
         self.coords = np.column_stack((self.sample_x, self.sample_y))
 
         self.x_coords = np.tile(np.arange(flow_width), (flow_height, 1))
@@ -35,7 +35,7 @@ class Detector:
         self.history_index = 0
         self.confidence: int = 0
         self.use_optimization = False
-        self.prev_frame = np.zeros((midgard.get_capture_shape()[0], midgard.get_capture_shape()[1], 3))
+        self.prev_frame = np.zeros((dataset.get_capture_shape()[0], dataset.get_capture_shape()[1], 3))
         self.lucas_kanade = LucasKanade(self.prev_frame)
 
     def get_gradient_and_magnitude(self, frame: np.ndarray) -> np.ndarray:
@@ -77,7 +77,7 @@ class Detector:
 
             if len(coords_old_tmp) > 0 and len(coords_new_tmp) > 0:
                 coords_old, coords_new = coords_old_tmp, coords_new_tmp
-                self.midgard.logger.info(f'features: {len(coords_new)}')
+                self.dataset.logger.info(f'features: {len(coords_new)}')
 
         if self.use_homography:
             homography, self.confidence = cv2.findHomography(coords_old, coords_new)
@@ -130,7 +130,7 @@ class Detector:
             opt_window_list[1] = window_optimized
             self.opt_window = cast(Tuple[float, utils.Rectangle, np.ndarray, float], opt_window_list)
 
-        for gt in self.midgard.ground_truth:
+        for gt in self.dataset.ground_truth:
             self.iou = utils.Rectangle.calculate_iou(window_optimized, gt)
 
         self.flow_uv_warped_vis = flow_uv_warped_vis
@@ -182,7 +182,7 @@ class Detector:
             orig_frame (np.ndarray): the original frame
         """
         # Plot ground truth.
-        for gt in self.midgard.ground_truth:
+        for gt in self.dataset.ground_truth:
             orig_frame = cv2.rectangle(
                 orig_frame,
                 gt.get_topleft_int(),
@@ -202,7 +202,7 @@ class Detector:
         # self.cluster_vis = cv2.rectangle(
         #     self.cluster_vis, w.get_topleft(), w.get_bottomright(), (0, 255, 0), 2)
 
-        # for gt in self.midgard.ground_truth:
+        # for gt in self.dataset.ground_truth:
         #     cv2.putText(orig_frame,
         #         f'IoU={self.iou:.02f}',
         #         (gt.get_left(), gt.get_top() - 5),
@@ -292,7 +292,7 @@ class Detector:
         return result
 
     # def get_histogram(self):
-    #     magnitude, gradient = midgard.get_gradient_and_magnitude(flow_uv)
+    #     magnitude, gradient = dataset.get_gradient_and_magnitude(flow_uv)
 
     #     mag_hist, mag_edges = np.histogram(magnitude, 10)
     #     gra_hist, gra_edges = np.histogram(gradient,  10)
@@ -350,7 +350,7 @@ class Detector:
 
     def predict(self, segment: np.ndarray, flow_uv: np.ndarray, orig_frame: np.ndarray) -> None:
         avg = np.average(flow_uv[segment], 0)
-        center = self.midgard.ground_truth[0].get_center_int()
+        center = self.dataset.ground_truth[0].get_center_int()
         self.prediction = (int(center[0] + avg[0]), int(center[1] + avg[1]))
         orig_frame = cv2.line(orig_frame, center, self.prediction, (0, 0, 255), 5)
 

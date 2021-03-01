@@ -2,8 +2,7 @@ import argparse
 import logging
 from typing import List
 
-from midgard import Midgard
-from midgard_converter import MidgardConverter
+from processor import Processor
 from validator import Validator
 from run_config import RunConfig
 
@@ -18,7 +17,7 @@ def execute(config: RunConfig) -> None:
         validator = Validator(config)
         validator.run_validation()
     else:
-        converter = MidgardConverter(config)
+        converter = Processor(config)
         try:
             if config.prepare_dataset:
                 converter.convert(config.mode)
@@ -36,13 +35,13 @@ def execute(config: RunConfig) -> None:
             converter.release()
 
 def run_all(logger: logging.Logger) -> None:
+    dataset = 'MIDGARD'
     debug = True
     prepare_dataset = False
     validate = True
     headless = True
     data_to_yolo = False
 
-    # modes = [mode.name for mode in Midgard.Mode]
     modes = [str(RunConfig.Mode.FLOW_PROCESSED_CLUSTERING)]
     settings = RunConfig.get_settings()
 
@@ -51,7 +50,7 @@ def run_all(logger: logging.Logger) -> None:
 
     for sequence in validation_sequences:
         for mode in modes:
-            config: RunConfig = RunConfig(logger, sequence, debug, prepare_dataset, validate, headless, data_to_yolo, mode)
+            config: RunConfig = RunConfig(logger, dataset, sequence, debug, prepare_dataset, validate, headless, data_to_yolo, mode)
             configs.append(config)
             execute(config)
 
@@ -74,15 +73,16 @@ def get_logger() -> logging.Logger:
 
 
 if __name__ == '__main__':
-    parser = argparse.ArgumentParser(description='Detects MAVs in the MIDGARD dataset using optical flow.')
+    parser = argparse.ArgumentParser(description='Detects MAVs in the dataset using optical flow.')
+    parser.add_argument('--dataset',            type=str, help='dataset to process', default='midgard')
     parser.add_argument('--sequence',           type=str, help='sequence to process', default='countryside-natural/north-narrow')
-    parser.add_argument('--mode',               type=str, help='mode to use, see Midgard.Mode', default='APPEARANCE_RGB')
+    parser.add_argument('--mode',               type=str, help='mode to use, see RunConfig.Mode', default='APPEARANCE_RGB')
     parser.add_argument('--debug',              action='store_true', help='whether to debug or not')
     parser.add_argument('--prepare-dataset',    action='store_true', help='prepares the YOLOv4 training dataset')
     parser.add_argument('--validate',           action='store_true', help='validate the detection results')
     parser.add_argument('--headless',           action='store_true', help='do not use UIs')
     parser.add_argument('--run-all',            action='store_true', help='run all configurations')
-    parser.add_argument('--data-to-yolo',       action='store_true', help='convert MIDGARD annotations to the YOLO format')
+    parser.add_argument('--data-to-yolo',       action='store_true', help='convert annotations to the YOLO format')
     args = parser.parse_args()
 
     logger = get_logger()
@@ -90,5 +90,5 @@ if __name__ == '__main__':
     if args.run_all:
         run_all(logger)
     else:
-        config: RunConfig = RunConfig(logger, args.sequence, args.debug, args.prepare_dataset, args.validate, args.headless, args.data_to_yolo, args.mode)
+        config: RunConfig = RunConfig(logger, args.dataset, args.sequence, args.debug, args.prepare_dataset, args.validate, args.headless, args.data_to_yolo, args.mode)
         execute(config)

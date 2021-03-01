@@ -3,8 +3,6 @@ import json
 from typing import Iterator, Any, Dict, cast
 from enum import Enum
 
-from midgard import Midgard
-
 
 class RunConfig:
     class Mode(Enum):
@@ -17,6 +15,14 @@ class RunConfig:
         def __str__(self) -> str:
             return super().__str__().replace('Mode.', '')
 
+    class DatasetType(Enum):
+        MIDGARD = 0,
+        SIMULATION = 1,
+        EXPERIMENT = 2
+
+        def __str__(self) -> str:
+            return super().__str__().replace('DatasetType.', '')
+
     @classmethod
     def get_settings(cls) -> Dict[str, Any]:
         with open('settings.json', 'r') as f:
@@ -25,6 +31,7 @@ class RunConfig:
     def __init__(
         self,
         logger: logging.Logger,
+        dataset: str,
         sequence: str,
         debug: bool,
         prepare_dataset: bool,
@@ -34,6 +41,7 @@ class RunConfig:
         mode: str
     ):
         self.logger = logger
+        self.dataset = dataset
         self.sequence = sequence
         self.debug = debug
         self.prepare_dataset = prepare_dataset
@@ -58,7 +66,7 @@ class RunConfig:
             mode_key (str): key that specifies the Mode to return
 
         Returns:
-            Midgard.Mode: The resulting mode
+            RunConfig.Mode: The resulting mode
         """
         options = [mode.name for mode in RunConfig.Mode]
         if mode_key not in options:
@@ -69,11 +77,31 @@ class RunConfig:
 
         return RunConfig.Mode[mode_key]
 
+    def get_dataset_type(self, dataset_key: str) -> DatasetType:
+        """Converts a str key to the DatasetType object.
+
+        Args:
+            dataset_key (str): key that specifies the DatasetType to return
+
+        Returns:
+            RunConfig.DatasetType: The resulting dataset type
+        """
+        options = [mode.name for mode in RunConfig.DatasetType]
+        dataset_key = dataset_key.upper()
+        if dataset_key not in options:
+            options_str = ', '.join(options)
+            raise ValueError(
+                f'Dataset {dataset_key} is not a valid dataset type, has to be one of {options_str}'
+            )
+
+        return RunConfig.DatasetType[dataset_key]
+
     def __str__(self) -> str:
-        return f'{self.sequence}/{self.mode}'
+        return f'{self.dataset}/{self.sequence}/{self.mode}'
 
     def __iter__(self) -> Iterator[Any]:
         return iter([
+            self.dataset,
             self.sequence,
             self.debug,
             self.prepare_dataset,

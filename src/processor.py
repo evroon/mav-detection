@@ -8,27 +8,28 @@ import shutil
 from im_helpers import get_flow_vis
 from typing import List, Dict, Tuple
 from midgard import Midgard
+from dataset import Dataset
 from detector import Detector
 from run_config import RunConfig
 from frame_result import FrameResult
 
-class MidgardConverter:
-    '''Converts MIDGARD dataset for use with YOLOv4.'''
+class Processor:
+    '''Converts dataset for use with YOLOv4 or acts as detector.'''
     def __init__(self, config: RunConfig) -> None:
         self.config = config
         self.logger = self.config.logger
         self.sequence = config.sequence
         self.debug_mode = config.debug
         self.headless = config.headless
-        self.midgard = Midgard(self.logger, self.sequence)
-        self.detector = Detector(self.midgard)
+        self.dataset = Midgard(self.logger, self.sequence)
+        self.detector = Detector(self.dataset)
         self.frame_columns, self.frame_rows = 1, 1
         self.detection_results: Dict[int, FrameResult] = dict()
 
         if self.debug_mode:
             self.frame_columns, self.frame_rows = 3, 2
 
-        output_size = (self.midgard.capture_size[0] * self.frame_columns, self.midgard.capture_size[1] * self.frame_rows)
+        output_size = (self.dataset.capture_size[0] * self.frame_columns, self.dataset.capture_size[1] * self.frame_rows)
         self.output = utils.get_output('detection', capture_size=output_size, is_grey=not self.debug_mode)
 
         self.frame_index, self.start_frame = 0, 100
@@ -47,15 +48,15 @@ class MidgardConverter:
         """
         result: str = ''
         for rect in rects:
-            center = np.array(rect.get_center()) / self.midgard.resolution.astype(np.float)
-            size = np.array(rect.size) / self.midgard.resolution.astype(np.float)
+            center = np.array(rect.get_center()) / self.dataset.resolution.astype(np.float)
+            size = np.array(rect.size) / self.dataset.resolution.astype(np.float)
             result += f'0 {center[0]} {center[1]} {size[0]} {size[1]}\n'
 
         return result
 
     def is_active(self) -> bool:
         """Returns whether the process is still active"""
-        return self.frame_index < self.midgard.N - 1 and not self.is_exiting
+        return self.frame_index < self.dataset.N - 1 and not self.is_exiting
 
     def write(self, frame: np.ndarray) -> None:
         """Writes the frame to the disk
@@ -76,8 +77,8 @@ class MidgardConverter:
 
         self.frame_index += 1
 
-        if self.frame_index % int(self.midgard.N / 10) == 0:
-            self.logger.info(f'{self.frame_index / self.midgard.N * 100:.2f}% {self.frame_index} / {self.midgard.N}')
+        if self.frame_index % int(self.dataset.N / 10) == 0:
+            self.logger.info(f'{self.frame_index / self.dataset.N * 100:.2f}% {self.frame_index} / {self.dataset.N}')
 
     def remove_contents_of_folder(self, folder: str) -> None:
         """Remove all content of a directory
@@ -107,16 +108,16 @@ class MidgardConverter:
         else:
             img = cv2.imread(src)
 
-            if img.shape != self.midgard.capture_shape:
-                img = cv2.resize(img, self.midgard.capture_shape)
+            if img.shape != self.dataset.capture_shape:
+                img = cv2.resize(img, self.dataset.capture_shape)
 
             if self.mode == RunConfig.Mode.FLOW_UV:
-                flow_uv = self.midgard.get_flow_uv(self.frame_index)
+                flow_uv = self.dataset.get_flow_uv(self.frame_index)
                 flow_vis = get_flow_vis(flow_uv)
                 cv2.imwrite(dst, flow_vis)
             elif self.mode in [RunConfig.Mode.FLOW_PROCESSED_CLUSTERING, RunConfig.Mode.FLOW_PROCESSED_YOLO]:
-                orig_frame = self.midgard.get_frame()
-                flow_uv = self.midgard.get_flow_uv(self.frame_index)
+                orig_frame = self.dataset.get_frame()
+                flow_uv = self.dataset.get_flow_uv(self.frame_index)
                 self.detector.get_affine_matrix(orig_frame, flow_uv)
                 self.detector.flow_vec_subtract(orig_frame, flow_uv)
                 cv2.imwrite(dst, self.detector.flow_uv_warped_mag * 255 / np.max(self.detector.flow_uv_warped_mag))
@@ -156,7 +157,7 @@ class MidgardConverter:
                 output_path = ann_src.replace('annot_', 'image_').replace('csv', 'txt')
 
                 with open(output_path, 'w') as f:
-                    ann = self.midgard.get_midgard_annotation(self.frame_index, ann_src)
+                    ann = self.dataset.get_annotation(self.frame_index, ann_src)
                     f.writelines(self.annotation_to_yolo(ann))
 
                 self.frame_index += 1
@@ -171,7 +172,7 @@ class MidgardConverter:
         self.sequence = sequence
         self.flo_path = f'{self.img_path}/output/inference/run.epoch-0-flow-field'
 
-        self.capture_shape = self.midgard.get_capture_shape()
+        self.capture_shape = self.dataset.get_capture_shape()
         self.resolution = np.array(self.capture_shape)[:2][::-1]
 
         images, annotations = self.get_data(sequence)
@@ -226,10 +227,10 @@ class MidgardConverter:
     def run_detection(self) -> None:
         """Runs the detection."""
         while self.is_active():
-            orig_frame = self.midgard.get_frame()
-            self.flow_uv = self.midgard.get_flow_uv(self.frame_index)
+            orig_frame = self.dataset.get_frame()
+            self.flow_uv = self.dataset.get_flow_uv(self.frame_index)
             self.flow_vis = get_flow_vis(self.flow_uv)
-            self.midgard.get_midgard_annotation(self.frame_index)
+            self.dataset.get_annotation(self.frame_index)
 
             self.detector.get_affine_matrix(orig_frame, self.flow_uv)
             flow_uv_warped_vis, cluster_vis, _, global_motion_vis = self.detector.flow_vec_subtract(orig_frame, self.flow_uv)
@@ -253,5 +254,5 @@ class MidgardConverter:
 
     def release(self) -> None:
         """Release all media resources"""
-        self.midgard.release()
+        self.dataset.release()
         self.output.release()
