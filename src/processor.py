@@ -115,7 +115,7 @@ class Processor:
                 flow_uv = self.dataset.get_flow_uv(self.frame_index)
                 flow_vis = get_flow_vis(flow_uv)
                 cv2.imwrite(dst, flow_vis)
-            elif self.mode in [RunConfig.Mode.FLOW_PROCESSED_CLUSTERING, RunConfig.Mode.FLOW_PROCESSED_YOLO]:
+            elif self.mode in [RunConfig.Mode.FLOW_FOE_CLUSTERING, RunConfig.Mode.FLOW_FOE_YOLO]:
                 orig_frame = self.dataset.get_frame()
                 flow_uv = self.dataset.get_flow_uv(self.frame_index)
                 self.detector.get_affine_matrix(orig_frame, flow_uv)
@@ -201,8 +201,8 @@ class Processor:
             RunConfig.Mode.APPEARANCE_RGB: 3,
             RunConfig.Mode.FLOW_UV: 2,
             RunConfig.Mode.FLOW_RADIAL: 1,
-            RunConfig.Mode.FLOW_PROCESSED_YOLO: 1,
-            RunConfig.Mode.FLOW_PROCESSED_CLUSTERING: 1,
+            RunConfig.Mode.FLOW_FOE_YOLO: 1,
+            RunConfig.Mode.FLOW_FOE_CLUSTERING: 1,
         }
 
         self.dest_path = os.environ['YOLOv4_PATH'] + '/dataset'
@@ -224,7 +224,7 @@ class Processor:
             self.prepare_sequence(sequence)
 
 
-    def run_detection(self) -> None:
+    def run_detection(self) -> Dict[int, FrameResult]:
         """Runs the detection."""
         while self.is_active():
             orig_frame = self.dataset.get_frame()
@@ -249,7 +249,6 @@ class Processor:
             else:
                 self.write(cluster_vis)
 
-    def get_results(self) -> Dict[int, FrameResult]:
         return self.detection_results
 
     def release(self) -> None:

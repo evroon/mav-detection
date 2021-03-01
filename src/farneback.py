@@ -8,7 +8,6 @@ import sys
 
 count = 0
 
-
 class Farneback:
     def __init__(self, capture: cv2.VideoCapture, output: cv2.VideoWriter) -> None:
         self.capture = capture
@@ -44,8 +43,8 @@ class Farneback:
         cv2.polylines(img, lines, 0, (0, 255, 0))
         for (x1, y1), (x2, y2) in lines:
             cv2.circle(img, (x1, y1), 1, (0, 255, 0), -1)
-        return img
 
+        return img
 
     def draw_hsv(self, flow: np.ndarray) -> np.ndarray:
         h, w = flow.shape[:2]

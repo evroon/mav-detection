@@ -9,8 +9,8 @@ class RunConfig:
         APPEARANCE_RGB = 0,
         FLOW_UV = 1,
         FLOW_RADIAL = 2,
-        FLOW_PROCESSED_YOLO = 3,
-        FLOW_PROCESSED_CLUSTERING = 4,
+        FLOW_FOE_YOLO = 3,
+        FLOW_FOE_CLUSTERING = 4,
 
         def __str__(self) -> str:
             return super().__str__().replace('Mode.', '')
@@ -56,7 +56,7 @@ class RunConfig:
         return self.mode in [
             RunConfig.Mode.FLOW_UV,
             RunConfig.Mode.FLOW_RADIAL,
-            RunConfig.Mode.FLOW_PROCESSED_YOLO
+            RunConfig.Mode.FLOW_FOE_YOLO
         ]
 
     def get_mode(self, mode_key: str) -> Mode:

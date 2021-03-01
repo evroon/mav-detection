@@ -24,8 +24,7 @@ def execute(config: RunConfig) -> None:
             elif config.data_to_yolo:
                 converter.annotations_to_yolo()
             else:
-                converter.run_detection()
-                detection_results = converter.get_results()
+                detection_results = converter.run_detection()
 
             if config.validate and not config.uses_nn_for_detection():
                 validator = Validator(config)
@@ -34,17 +33,16 @@ def execute(config: RunConfig) -> None:
         finally:
             converter.release()
 
-def run_all(logger: logging.Logger) -> None:
+def run_all(logger: logging.Logger, args: argparse.Namespace) -> None:
+    settings = RunConfig.get_settings()
     dataset = 'MIDGARD'
     debug = True
     prepare_dataset = False
     validate = True
-    headless = True
+    headless = args.headless
     data_to_yolo = False
 
-    modes = [str(RunConfig.Mode.FLOW_PROCESSED_CLUSTERING)]
-    settings = RunConfig.get_settings()
-
+    modes = [str(RunConfig.Mode.FLOW_FOE_CLUSTERING)]
     validation_sequences = settings['validation_sequences']
     configs: List[RunConfig] = []
 
@@ -88,7 +86,7 @@ if __name__ == '__main__':
     logger = get_logger()
 
     if args.run_all:
-        run_all(logger)
+        run_all(logger, args)
     else:
         config: RunConfig = RunConfig(logger, args.dataset, args.sequence, args.debug, args.prepare_dataset, args.validate, args.headless, args.data_to_yolo, args.mode)
         execute(config)
