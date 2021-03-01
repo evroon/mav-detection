@@ -1,0 +1,23 @@
+{
+    "yolo_train_weights": {
+        "APPEARANCE_RGB": "20210209_14:44:22"
+    },
+
+    "train_sequences": [
+        "countryside-natural/north-narrow",
+        "countryside-natural/south-narrow",
+        "indoor-historical/church",
+        "indoor-historical/stairwell",
+        "indoor-modern/glass-cube",
+        "indoor-modern/sports-hall",
+        "indoor-modern/warehouse-transition",
+        "outdoor-historical/church",
+        "semi-urban/island-south",
+        "urban/appartment-buildings"
+    ],
+
+    "validation_sequences": [
+        "indoor-modern/warehouse-interior",
+        "semi-urban/island-north"
+    ]
+}

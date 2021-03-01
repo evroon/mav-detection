@@ -44,10 +44,9 @@ def run_all(logger: logging.Logger) -> None:
 
     # modes = [mode.name for mode in Midgard.Mode]
     modes = [str(RunConfig.Mode.FLOW_PROCESSED_CLUSTERING)]
-    validation_sequences = [
-        # 'indoor-modern/warehouse-interior',
-        'semi-urban/island-north',
-    ]
+    settings = RunConfig.get_settings()
+
+    validation_sequences = settings['validation_sequences']
     configs: List[RunConfig] = []
 
     for sequence in validation_sequences:

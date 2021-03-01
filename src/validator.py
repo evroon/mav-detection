@@ -19,6 +19,10 @@ class Validator:
         self.host: str = 'http://192.168.178.235:8099'
         self.config = config
 
+    def start_yolo_inference(self) -> None:
+        run: str = self.config.settings['yolo_train_weights'][str(self.config.mode)]
+        subprocess.call(['./launch_docker.sh', '--inference-only',  '"{run}"'])
+
     def get_hash(self, filename: str) -> str:
         return subprocess.check_output(['sha1sum', filename]).decode("utf-8").split(' ')[0]
 

@@ -1,5 +1,6 @@
 import logging
-from typing import Iterator, Any
+import json
+from typing import Iterator, Any, Dict, cast
 from enum import Enum
 
 from midgard import Midgard
@@ -15,6 +16,11 @@ class RunConfig:
 
         def __str__(self) -> str:
             return super().__str__().replace('Mode.', '')
+
+    @classmethod
+    def get_settings(cls) -> Dict[str, Any]:
+        with open('settings.json', 'r') as f:
+            return cast(Dict[str, Any], json.load(f))
 
     def __init__(
         self,
@@ -36,6 +42,7 @@ class RunConfig:
         self.data_to_yolo = data_to_yolo
         self.mode = self.get_mode(mode)
         self.results: dict = dict()
+        self.settings = RunConfig.get_settings()
 
     def uses_nn_for_detection(self) -> bool:
         return self.mode in [

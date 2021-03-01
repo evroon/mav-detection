@@ -141,22 +141,8 @@ class MidgardConverter:
         return images, annotations
 
     def annotations_to_yolo(self) -> None:
-        sequences = [
-            'countryside-natural/north-narrow',
-            'countryside-natural/north-fisheye',
-            'countryside-natural/south-narrow',
-            'countryside-natural/south-fisheye',
-            'indoor-historical/church',
-            'indoor-historical/stairwell',
-            'indoor-modern/glass-cube',
-            'indoor-modern/sports-hall',
-            'indoor-modern/warehouse-interior',
-            'indoor-modern/warehouse-transition',
-            'outdoor-historical/church',
-            'semi-urban/island-north',
-            'semi-urban/island-south',
-            'urban/appartment-buildings',
-        ]
+        sequences = self.config.settings['train_sequences']
+        sequences.append(self.config.settings['validation_sequences'])
 
         for sequence in sequences:
             self.logger.info(f'Converting annotations to YOLOv4 format for sequence: {sequence}')
@@ -222,18 +208,7 @@ class MidgardConverter:
         self.img_dest_path = f'{self.dest_path}/images'
         self.ann_dest_path = f'{self.dest_path}/labels/yolo'
 
-        sequences = [
-            'countryside-natural/north-narrow',
-            'countryside-natural/south-narrow',
-            'indoor-historical/church',
-            'indoor-historical/stairwell',
-            'indoor-modern/glass-cube',
-            'indoor-modern/sports-hall',
-            'indoor-modern/warehouse-transition',
-            'outdoor-historical/church',
-            'semi-urban/island-south',
-            'urban/appartment-buildings',
-        ]
+        sequences = self.config.settings['train_sequences']
 
         self.mode = mode
         self.channels = channel_options[self.mode]
