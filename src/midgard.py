@@ -3,7 +3,6 @@ import cv2
 import os
 import numpy as np
 import flow_vis
-from enum import Enum
 import glob
 import shutil
 from im_helpers import get_flow_radial, get_flow_vis
@@ -12,12 +11,6 @@ import logging
 
 class Midgard:
     '''Helper functions for the MIDGARD dataset.'''
-    class Mode(Enum):
-        APPEARANCE_RGB = 0,
-        FLOW_UV = 1,
-        FLOW_UV_NORMALISED = 2,
-        FLOW_RADIAL = 3,
-        FLOW_PROCESSED = 4
 
     def __init__(self, logger: logging.Logger, sequence: str) -> None:
         midgard_path = os.environ['MIDGARD_PATH']

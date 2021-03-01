@@ -43,7 +43,7 @@ def run_all(logger: logging.Logger) -> None:
     data_to_yolo = False
 
     # modes = [mode.name for mode in Midgard.Mode]
-    modes = [str(Midgard.Mode.FLOW_PROCESSED)]
+    modes = [str(RunConfig.Mode.FLOW_PROCESSED)]
     use_nn_detections = [False]
     validation_sequences = [
         # 'indoor-modern/warehouse-interior',

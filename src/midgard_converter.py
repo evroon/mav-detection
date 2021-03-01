@@ -102,7 +102,7 @@ class MidgardConverter:
             src (str): source image path
             dst (str): destination image path
         """
-        if self.mode == Midgard.Mode.APPEARANCE_RGB:
+        if self.mode == RunConfig.Mode.APPEARANCE_RGB:
             shutil.copy2(src, dst)
         else:
             img = cv2.imread(src)
@@ -110,11 +110,11 @@ class MidgardConverter:
             if img.shape != self.midgard.capture_shape:
                 img = cv2.resize(img, self.midgard.capture_shape)
 
-            if self.mode == Midgard.Mode.FLOW_UV:
+            if self.mode == RunConfig.Mode.FLOW_UV:
                 flow_uv = self.midgard.get_flow_uv(self.frame_index)
                 flow_vis = get_flow_vis(flow_uv)
                 cv2.imwrite(dst, flow_vis)
-            elif self.mode == Midgard.Mode.FLOW_PROCESSED:
+            elif self.mode == RunConfig.Mode.FLOW_PROCESSED:
                 orig_frame = self.midgard.get_frame()
                 flow_uv = self.midgard.get_flow_uv(self.frame_index)
                 self.detector.get_affine_matrix(orig_frame, flow_uv)
@@ -200,20 +200,20 @@ class MidgardConverter:
 
         for img_src, ann_src in zip(images, annotations):
             # Skip the last frame for optical flow inputs, as it does not exist.
-            if not (self.mode != Midgard.Mode.APPEARANCE_RGB and self.frame_index >= self.N - 2):
+            if not (self.mode != RunConfig.Mode.APPEARANCE_RGB and self.frame_index >= self.N - 2):
                 self.process_image(img_src, f'{self.img_dest_path}/{self.output_index:06d}.png')
                 self.process_annot(ann_src, f'{self.ann_dest_path}/{self.output_index:06d}.txt')
                 self.output_index += 1
                 self.frame_index += 1
 
-    def convert(self, mode: Midgard.Mode) -> None:
+    def convert(self, mode: RunConfig.Mode) -> None:
         """Processes the MIDGARD dataset"""
         channel_options = {
-            Midgard.Mode.APPEARANCE_RGB: 3,
-            Midgard.Mode.FLOW_UV: 2,
-            Midgard.Mode.FLOW_UV_NORMALISED: 2,
-            Midgard.Mode.FLOW_RADIAL: 1,
-            Midgard.Mode.FLOW_PROCESSED: 1,
+            RunConfig.Mode.APPEARANCE_RGB: 3,
+            RunConfig.Mode.FLOW_UV: 2,
+            RunConfig.Mode.FLOW_UV_NORMALISED: 2,
+            RunConfig.Mode.FLOW_RADIAL: 1,
+            RunConfig.Mode.FLOW_PROCESSED: 1,
         }
 
         self.dest_path = os.environ['YOLOv4_PATH'] + '/dataset'

@@ -1,10 +1,21 @@
 import logging
 from typing import Iterator, Any
+from enum import Enum
 
 from midgard import Midgard
 
 
 class RunConfig:
+    class Mode(Enum):
+        APPEARANCE_RGB = 0,
+        FLOW_UV = 1,
+        FLOW_UV_NORMALISED = 2,
+        FLOW_RADIAL = 3,
+        FLOW_PROCESSED = 4
+
+        def __str__(self) -> str:
+            return super().__str__().replace('Mode.', '')
+
     def __init__(
         self,
         logger: logging.Logger,
@@ -28,7 +39,7 @@ class RunConfig:
         self.mode = self.get_mode(mode)
         self.results: dict = dict()
 
-    def get_mode(self, mode_key: str) -> Midgard.Mode:
+    def get_mode(self, mode_key: str) -> Mode:
         """Converts a str key to the Mode object.
 
         Args:
@@ -37,15 +48,14 @@ class RunConfig:
         Returns:
             Midgard.Mode: The resulting mode
         """
-        options = [mode.name for mode in Midgard.Mode]
-        mode_key = mode_key.replace('Mode.', '')
+        options = [mode.name for mode in RunConfig.Mode]
         if mode_key not in options:
             options_str = ', '.join(options)
             raise ValueError(
                 f'Mode {mode_key} is not a valid mode type, has to be one of {options_str}'
             )
 
-        return Midgard.Mode[mode_key]
+        return RunConfig.Mode[mode_key]
 
     def __str__(self) -> str:
         return f'{self.sequence}/{self.mode}'
