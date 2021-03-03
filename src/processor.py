@@ -241,7 +241,9 @@ class Processor:
                 print(f'Undistorting: {img_out}')
 
                 command = [undistort_exec, '--run', self.cal_path, img, img_out]
-                print(subprocess.check_output(command))
+
+                with open(os.devnull, 'w') as devnull:
+                    subprocess.call(command, stdout=devnull)
 
 
     def run_detection(self) -> Dict[int, FrameResult]:
