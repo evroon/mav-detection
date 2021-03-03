@@ -65,9 +65,8 @@ class Detector:
         magnitude_rgb[..., 0] = magnitude_spectrum
         return magnitude_rgb
 
-    def get_rotation(self, flow_uv: np.ndarray, use_fundamental = True) -> np.ndarray:
-        self.fundamental
-        pass
+    # def get_rotation(self, flow_uv: np.ndarray, use_fundamental = True) -> np.ndarray:
+    #     pass
 
     def get_affine_matrix(self, orig_frame: np.ndarray, flow_uv: np.ndarray) -> None:
         """Calculates the affine or homography matrix.
@@ -115,7 +114,7 @@ class Detector:
         global_motion = np.zeros_like(flow_uv)
 
         # Manual matrix multiplication.
-        if self.use_homography:
+        if self.matrix_mode == Detector.MatrixMode.HOMOGRAPHY:
             global_motion[..., 0] = self.homography[0, 0] * self.x_coords + \
                 self.homography[0, 1] * self.y_coords + self.homography[0, 2] - self.x_coords
             global_motion[..., 1] = self.homography[1, 0] * self.x_coords + \
@@ -163,7 +162,7 @@ class Detector:
         """
         flow_uv = flow_uv.copy()
 
-        if self.use_homography:
+        if self.matrix_mode == Detector.MatrixMode.HOMOGRAPHY:
             flow_uv_stable = cv2.warpPerspective(flow_uv, self.homography, (752, 480))
         else:
             flow_uv_stable = cv2.warpAffine(flow_uv, self.aff, (752, 480))

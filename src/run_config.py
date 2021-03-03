@@ -57,7 +57,7 @@ class RunConfig:
     def get_all_sequences(self) -> List[str]:
         sequences = self.settings['train_sequences']
         sequences.append(self.settings['validation_sequences'])
-        return sequences
+        return cast(List[str], sequences)
 
     def uses_nn_for_detection(self) -> bool:
         return self.mode in [

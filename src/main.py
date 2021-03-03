@@ -43,6 +43,7 @@ def run_all(logger: logging.Logger, args: argparse.Namespace) -> None:
     validate = True
     headless = args.headless
     data_to_yolo = False
+    undistort = False
 
     modes = [str(RunConfig.Mode.FLOW_FOE_CLUSTERING)]
     validation_sequences = settings['validation_sequences']
@@ -50,7 +51,7 @@ def run_all(logger: logging.Logger, args: argparse.Namespace) -> None:
 
     for sequence in validation_sequences:
         for mode in modes:
-            config: RunConfig = RunConfig(logger, dataset, sequence, debug, prepare_dataset, validate, headless, data_to_yolo, mode)
+            config: RunConfig = RunConfig(logger, dataset, sequence, debug, prepare_dataset, validate, headless, data_to_yolo, undistort, mode)
             configs.append(config)
             execute(config)
 
