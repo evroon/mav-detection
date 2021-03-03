@@ -2,6 +2,7 @@ import utils
 import cv2
 import numpy as np
 from typing import Tuple, cast
+from enum import Enum
 
 from dataset import Dataset
 from lucas_kanade import LucasKanade
@@ -10,9 +11,15 @@ from frame_result import FrameResult
 
 
 class Detector:
-    def __init__(self, dataset: Dataset, use_homography: bool = True, use_sparse_of: bool = False) -> None:
+    class MatrixMode(Enum):
+        AFFINE = 0,
+        HOMOGRAPHY = 1,
+        FUNDAMENTAL = 2,
+        ESSENTIAL = 3
+
+    def __init__(self, dataset: Dataset, matrix_mode: MatrixMode = MatrixMode.FUNDAMENTAL, use_sparse_of: bool = False) -> None:
         self.dataset = dataset
-        self.use_homography = use_homography
+        self.matrix_mode = matrix_mode
         self.use_sparse_of = use_sparse_of
 
         flow_width = self.dataset.capture_size[0]
@@ -58,7 +65,8 @@ class Detector:
         magnitude_rgb[..., 0] = magnitude_spectrum
         return magnitude_rgb
 
-    def get_rotation(self, flow_uv: np.ndarray) -> np.ndarray:
+    def get_rotation(self, flow_uv: np.ndarray, use_fundamental = True) -> np.ndarray:
+        self.fundamental
         pass
 
     def get_affine_matrix(self, orig_frame: np.ndarray, flow_uv: np.ndarray) -> None:
@@ -79,12 +87,19 @@ class Detector:
                 coords_old, coords_new = coords_old_tmp, coords_new_tmp
                 self.dataset.logger.info(f'features: {len(coords_new)}')
 
-        if self.use_homography:
+        if self.matrix_mode == Detector.MatrixMode.HOMOGRAPHY:
             homography, self.confidence = cv2.findHomography(coords_old, coords_new)
             self.homography = np.array(homography)
         elif len(coords_old) > 0 and len(coords_new) > 0:
-            aff, _ = cv2.estimateAffine2D(coords_old, coords_new)
-            self.aff = np.array(aff)
+            if self.matrix_mode == Detector.MatrixMode.AFFINE:
+                aff, _ = cv2.estimateAffine2D(coords_old, coords_new)
+                self.aff = np.array(aff)
+            if self.matrix_mode == Detector.MatrixMode.FUNDAMENTAL:
+                fundamental, _ = cv2.findFundamentalMat(coords_old, coords_new, cv2.FM_RANSAC, 3, 0.99)
+                self.fundamental = np.array(fundamental)
+            if self.matrix_mode == Detector.MatrixMode.ESSENTIAL:
+                fundamental, _ = cv2.findFundamentalMat(coords_old, coords_new, cv2.FM_RANSAC, 3, 0.99)
+                self.fundamental = np.array(fundamental)
 
     def flow_vec_subtract(self, orig_frame: np.ndarray, flow_uv: np.ndarray) -> Tuple[np.ndarray, np.ndarray, np.ndarray, np.ndarray]:
         """Calculates global motion using perspective or affine matrices and subtracts it from the original field.

@@ -1,6 +1,6 @@
 import logging
 import json
-from typing import Iterator, Any, Dict, cast
+from typing import Iterator, Any, Dict, List, cast
 from enum import Enum
 
 
@@ -38,6 +38,7 @@ class RunConfig:
         validate: bool,
         headless: bool,
         data_to_yolo: bool,
+        undistort: bool,
         mode: str
     ):
         self.logger = logger
@@ -48,9 +49,15 @@ class RunConfig:
         self.validate = validate
         self.headless = headless
         self.data_to_yolo = data_to_yolo
+        self.undistort = undistort
         self.mode = self.get_mode(mode)
         self.results: dict = dict()
         self.settings = RunConfig.get_settings()
+
+    def get_all_sequences(self) -> List[str]:
+        sequences = self.settings['train_sequences']
+        sequences.append(self.settings['validation_sequences'])
+        return sequences
 
     def uses_nn_for_detection(self) -> bool:
         return self.mode in [
@@ -108,6 +115,7 @@ class RunConfig:
             self.validate,
             self.headless,
             self.data_to_yolo,
+            self.undistort,
             self.mode,
             *self.results,
         ])

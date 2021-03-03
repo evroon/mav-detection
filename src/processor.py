@@ -4,6 +4,7 @@ import os
 import numpy as np
 import glob
 import shutil
+import subprocess
 
 from im_helpers import get_flow_vis
 from typing import List, Dict, Tuple
@@ -134,6 +135,7 @@ class Processor:
     def get_data(self, sequence: str, with_yolo_ann: bool = True) -> Tuple[List[str], List[str]]:
         self.img_path = f'{self.midgard_path}/{sequence}/images'
         self.ann_path = f'{self.midgard_path}/{sequence}/annotation'
+        self.cal_path =  glob.glob(f'{self.midgard_path}/{sequence}/info/calibration/*.txt')[0]
         images = glob.glob(f'{self.img_path}/*.png')
         ann_extension = 'txt' if with_yolo_ann else 'csv'
         annotations = glob.glob(f'{self.ann_path}/*.{ann_extension}')
@@ -142,8 +144,7 @@ class Processor:
         return images, annotations
 
     def annotations_to_yolo(self) -> None:
-        sequences = self.config.settings['train_sequences']
-        sequences.append(self.config.settings['validation_sequences'])
+        sequences = self.config.get_all_sequences()
 
         for sequence in sequences:
             self.logger.info(f'Converting annotations to YOLOv4 format for sequence: {sequence}')
@@ -222,6 +223,25 @@ class Processor:
 
         for sequence in sequences:
             self.prepare_sequence(sequence)
+
+
+    def undistort(self) -> None:
+        sequences = self.config.get_all_sequences()
+
+        for sequence in sequences:
+            images, _ = self.get_data(sequence)
+            undistort_exec = os.environ['UNDISTORT_PATH']
+            output_dir = img_out = os.path.dirname(self.img_path) + '/undistorted'
+
+            if not os.path.exists(output_dir):
+                os.mkdir(output_dir)
+
+            for img in images:
+                img_out = f'{output_dir}/{os.path.basename(img)}'
+                print(f'Undistorting: {img_out}')
+
+                command = [undistort_exec, '--run', self.cal_path, img, img_out]
+                print(subprocess.check_output(command))
 
 
     def run_detection(self) -> Dict[int, FrameResult]:

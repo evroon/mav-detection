@@ -17,21 +17,23 @@ def execute(config: RunConfig) -> None:
         validator = Validator(config)
         validator.run_validation()
     else:
-        converter = Processor(config)
+        processor = Processor(config)
         try:
             if config.prepare_dataset:
-                converter.convert(config.mode)
+                processor.convert(config.mode)
             elif config.data_to_yolo:
-                converter.annotations_to_yolo()
+                processor.annotations_to_yolo()
+            elif config.undistort:
+                processor.undistort()
             else:
-                detection_results = converter.run_detection()
+                detection_results = processor.run_detection()
 
             if config.validate and not config.uses_nn_for_detection():
                 validator = Validator(config)
                 validator.run_validation(detection_results)
 
         finally:
-            converter.release()
+            processor.release()
 
 def run_all(logger: logging.Logger, args: argparse.Namespace) -> None:
     settings = RunConfig.get_settings()
@@ -81,6 +83,7 @@ if __name__ == '__main__':
     parser.add_argument('--headless',           action='store_true', help='do not use UIs')
     parser.add_argument('--run-all',            action='store_true', help='run all configurations')
     parser.add_argument('--data-to-yolo',       action='store_true', help='convert annotations to the YOLO format')
+    parser.add_argument('--undistort',          action='store_true', help='undistort original images')
     args = parser.parse_args()
 
     logger = get_logger()
@@ -88,5 +91,5 @@ if __name__ == '__main__':
     if args.run_all:
         run_all(logger, args)
     else:
-        config: RunConfig = RunConfig(logger, args.dataset, args.sequence, args.debug, args.prepare_dataset, args.validate, args.headless, args.data_to_yolo, args.mode)
+        config: RunConfig = RunConfig(logger, args.dataset, args.sequence, args.debug, args.prepare_dataset, args.validate, args.headless, args.data_to_yolo, args.undistort, args.mode)
         execute(config)
