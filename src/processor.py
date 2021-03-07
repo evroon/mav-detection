@@ -22,7 +22,7 @@ class Processor:
         self.sequence = config.sequence
         self.debug_mode = config.debug
         self.headless = config.headless
-        self.dataset = Midgard(self.logger, self.sequence)
+        self.dataset = config.get_dataset()
         self.detector = Detector(self.dataset)
         self.frame_columns, self.frame_rows = 1, 1
         self.detection_results: Dict[int, FrameResult] = dict()
@@ -49,9 +49,7 @@ class Processor:
         """
         result: str = ''
         for rect in rects:
-            center = np.array(rect.get_center()) / self.dataset.resolution.astype(np.float)
-            size = np.array(rect.size) / self.dataset.resolution.astype(np.float)
-            result += f'0 {center[0]} {center[1]} {size[0]} {size[1]}\n'
+            result += rect.to_yolo(self.dataset.resolution)
 
         return result
 

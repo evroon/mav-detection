@@ -3,6 +3,10 @@ import json
 from typing import Iterator, Any, Dict, List, cast
 from enum import Enum
 
+from dataset import Dataset
+from midgard import Midgard
+from sim_data import SimData
+
 
 class RunConfig:
     class Mode(Enum):
@@ -56,7 +60,8 @@ class RunConfig:
 
     def get_all_sequences(self) -> List[str]:
         sequences = self.settings['train_sequences']
-        sequences.append(self.settings['validation_sequences'])
+        for seq in self.settings['validation_sequences']:
+            sequences.append(seq)
         return cast(List[str], sequences)
 
     def uses_nn_for_detection(self) -> bool:
@@ -102,6 +107,15 @@ class RunConfig:
             )
 
         return RunConfig.DatasetType[dataset_key]
+
+    def get_dataset(self) -> Dataset:
+        data_type = self.get_dataset_type(self.dataset)
+        if data_type == RunConfig.DatasetType.MIDGARD:
+            return Midgard(self.logger, self.sequence)
+        elif data_type == RunConfig.DatasetType.SIMULATION:
+            return SimData(self.logger, self.sequence)
+
+        return Dataset('', self.logger, self.sequence)
 
     def __str__(self) -> str:
         return f'{self.dataset}/{self.sequence}/{self.mode}'

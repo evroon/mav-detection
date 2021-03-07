@@ -73,6 +73,12 @@ class Rectangle:
     def get_area(self) -> float:
         return self.size[0] * self.size[1]
 
+    def to_yolo(self, img_size: np.ndarray, obj_id: int = 0) -> str:
+        img_size = img_size.astype(np.float)
+        center = np.array(self.get_center()) / img_size
+        size = np.array(self.size) / img_size
+        return f'{obj_id} {center[0]} {center[1]} {size[0]} {size[1]}\n'
+
     @classmethod
     def calculate_iou(cls, r1: Rectangle, r2: Rectangle) -> float:
         """Calculates the Intersection over Union between two boxes.

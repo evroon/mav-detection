@@ -27,12 +27,18 @@ class Dataset:
         self.N = utils.get_frame_count(self.flow_capture)
         self.start_frame = 100
 
+        if len(os.listdir(self.ann_path)) < 1:
+            self.create_annotations()
+
         if self.capture_size != self.flow_size:
             self.logger.warning(f'original capture with size {self.capture_size} does not match flow, which has size {self.flow_size}')
 
         if self.N != utils.get_frame_count(self.orig_capture) - 1:
             self.logger.error(f'Input counts: (images, flow fields): {utils.get_frame_count(self.orig_capture)}, {self.N}')
             raise ValueError('Input sizes do not match.')
+
+    def create_annotations(self) -> None:
+        pass
 
     def get_annotation(self, i: int, ann_path: str = None) -> List[utils.Rectangle]:
         """Returns a list of ground truth bounding boxes given an annotation file.

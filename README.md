@@ -21,6 +21,16 @@ To check the typing of the Python code:
 mypy
 ```
 
+The following environment variables need to be set in `.bashrc`:
+```bash
+export DATASET_DIR="~/tno/datasets/drone-tracking-datasets/dataset2/cam1"
+export FLOWNET2_CHECKPOINTS_DIR="~/tno/datasets/flownet2-checkpoints"
+export MIDGARD_PATH="~/tno/datasets/MIDGARD"
+export SIMDATA_PATH="~/tno/datasets/sim-data"
+export YOLOv4_PATH="~/tno/yolov4"
+export UNDISTORT_PATH="~/tno/datasets/undistortFunctions/launch_docker.sh"
+```
+
 ## YOLOv4
 
 ![test](https://github.com/evroon/yolov4/workflows/docker-build/badge.svg)
