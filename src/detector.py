@@ -97,7 +97,7 @@ class Detector:
                 fundamental, _ = cv2.findFundamentalMat(coords_old, coords_new, cv2.FM_RANSAC, 3, 0.99)
                 self.fundamental = np.array(fundamental)
             if self.matrix_mode == Detector.MatrixMode.ESSENTIAL:
-                fundamental, _ = cv2.findFundamentalMat(coords_old, coords_new, cv2.FM_RANSAC, 3, 0.99)
+                fundamental, _ = cv2.findEssentialMat(coords_old, coords_new, cv2.FM_RANSAC, 3, 0.99)
                 self.fundamental = np.array(fundamental)
 
     def flow_vec_subtract(self, orig_frame: np.ndarray, flow_uv: np.ndarray) -> Tuple[np.ndarray, np.ndarray, np.ndarray, np.ndarray]:

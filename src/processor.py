@@ -135,8 +135,13 @@ class Processor:
     def get_data(self, sequence: str, with_yolo_ann: bool = True) -> Tuple[List[str], List[str]]:
         self.img_path = f'{self.midgard_path}/{sequence}/images'
         self.ann_path = f'{self.midgard_path}/{sequence}/annotation'
-        self.cal_path =  glob.glob(f'{self.midgard_path}/{sequence}/info/calibration/*.txt')[0]
-        images = glob.glob(f'{self.img_path}/*.png')
+        cal_glob =  glob.glob(f'{self.midgard_path}/{sequence}/info/calibration/*.txt')
+        self.cal_path = ''
+
+        if len(cal_glob) > 0:
+            self.cal_path = cal_glob[0]
+
+        images = glob.glob(f'{self.img_path}/image_*.png')
         ann_extension = 'txt' if with_yolo_ann else 'csv'
         annotations = glob.glob(f'{self.ann_path}/*.{ann_extension}')
         images.sort()
@@ -236,8 +241,15 @@ class Processor:
             if not os.path.exists(output_dir):
                 os.mkdir(output_dir)
 
+            if self.cal_path == '':
+                continue
+
             for img in images:
                 img_out = f'{output_dir}/{os.path.basename(img)}'
+
+                if os.path.exists(img_out):
+                    continue
+
                 print(f'Undistorting: {img_out}')
 
                 command = [undistort_exec, '--run', self.cal_path, img, img_out]
