@@ -17,7 +17,7 @@ class Detector:
         FUNDAMENTAL = 2,
         ESSENTIAL = 3
 
-    def __init__(self, dataset: Dataset, matrix_mode: MatrixMode = MatrixMode.FUNDAMENTAL, use_sparse_of: bool = False) -> None:
+    def __init__(self, dataset: Dataset, matrix_mode: MatrixMode = MatrixMode.AFFINE, use_sparse_of: bool = False) -> None:
         self.dataset = dataset
         self.matrix_mode = matrix_mode
         self.use_sparse_of = use_sparse_of

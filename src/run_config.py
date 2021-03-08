@@ -111,11 +111,14 @@ class RunConfig:
     def get_dataset(self) -> Dataset:
         data_type = self.get_dataset_type(self.dataset)
         if data_type == RunConfig.DatasetType.MIDGARD:
-            return Midgard(self.logger, self.sequence)
+            dataset: Dataset = Midgard(self.logger, self.sequence)
         elif data_type == RunConfig.DatasetType.SIMULATION:
-            return SimData(self.logger, self.sequence)
+            dataset = SimData(self.logger, self.sequence)
+        else:
+            dataset = Dataset('', self.logger, self.sequence)
 
-        return Dataset('', self.logger, self.sequence)
+        self.sequence = dataset.sequence
+        return dataset
 
     def __str__(self) -> str:
         return f'{self.dataset}/{self.sequence}/{self.mode}'

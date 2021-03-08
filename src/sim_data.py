@@ -18,7 +18,7 @@ class SimData(Dataset):
     def write_yolo_annotation(self, image_path: str) -> None:
         filename = os.path.basename(image_path)
         matches = re.findall('^image_(.+)[.]png$', filename)
-        index = matches[0][0]
+        index = matches[0]
 
         img = cv2.imread(image_path)
         height, width = img.shape[:2]
@@ -48,3 +48,6 @@ class SimData(Dataset):
     def create_annotations(self) -> None:
         for image_path in glob.glob(f'{self.img_path}/image_*.png'):
             self.write_yolo_annotation(image_path)
+
+    def get_default_sequence(self) -> str:
+        return 'test/test'

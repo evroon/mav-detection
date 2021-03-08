@@ -76,7 +76,7 @@ def get_logger() -> logging.Logger:
 if __name__ == '__main__':
     parser = argparse.ArgumentParser(description='Detects MAVs in the dataset using optical flow.')
     parser.add_argument('--dataset',            type=str, help='dataset to process', default='midgard')
-    parser.add_argument('--sequence',           type=str, help='sequence to process', default='countryside-natural/north-narrow')
+    parser.add_argument('--sequence',           type=str, help='sequence to process', default='')
     parser.add_argument('--mode',               type=str, help='mode to use, see RunConfig.Mode', default='APPEARANCE_RGB')
     parser.add_argument('--debug',              action='store_true', help='whether to debug or not')
     parser.add_argument('--prepare-dataset',    action='store_true', help='prepares the YOLOv4 training dataset')

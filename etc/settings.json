@@ -1,0 +1,41 @@
+{
+    "SeeDocsAt": "https://github.com/Microsoft/AirSim/blob/master/docs/settings_json.md",
+    "SettingsVersion": 1.2,
+    "SimMode": "Multirotor",
+	"ClockSpeed": 1.0,
+    "Vehicles" : {
+        "Drone1" : {
+            "VehicleType" : "SimpleFlight",
+            "AutoCreate" : true,
+            "X": -156, "Y": 266, "Z": -6,
+            "Cameras" : {
+                "high_res": {
+                    "CaptureSettings" : [
+                        {
+                            "ImageType" : 0,
+                            "Width" : 800,
+                            "Height" : 600
+                        }
+                    ],
+                    "X": 0.50, "Y": 0.00, "Z": 0.10,
+                    "Pitch": 0.0, "Roll": 0.0, "Yaw": 0.0
+                },
+                "segment": {
+                    "CaptureSettings" : [
+                        {
+                            "ImageType" : 5,
+                            "Width" : 800,
+                            "Height" : 600
+                        }
+                    ],
+                    "X": 0.50, "Y": 0.00, "Z": 0.10,
+                    "Pitch": 0.0, "Roll": 0.0, "Yaw": 0.0
+                }
+            }
+        },
+        "Drone2": {
+          "VehicleType": "SimpleFlight",
+          "X": -156, "Y": 266, "Z": -6.1
+        }
+    }
+}

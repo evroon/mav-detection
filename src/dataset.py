@@ -5,9 +5,11 @@ import numpy as np
 import flow_vis
 import glob
 import shutil
-from im_helpers import get_flow_radial, get_flow_vis
-from typing import Optional, Tuple, cast, List
 import logging
+import subprocess
+from typing import Optional, Tuple, cast, List
+
+from im_helpers import get_flow_radial, get_flow_vis
 
 class Dataset:
     '''Desscribes a dataset with images, annotations and flow fields.'''
@@ -15,7 +17,11 @@ class Dataset:
     def __init__(self, base_path: str, logger: logging.Logger, sequence: str) -> None:
         self.logger = logger
         self.sequence = sequence
-        self.seq_path = f'{base_path}/{sequence}'
+
+        if self.sequence == '':
+            self.sequence = self.get_default_sequence()
+
+        self.seq_path = f'{base_path}/{self.sequence}'
         self.img_path = f'{self.seq_path}/images'
         self.ann_path = f'{self.seq_path}/annotation'
         self.orig_capture = cv2.VideoCapture(f'{self.img_path}/image_%5d.png')
@@ -27,6 +33,9 @@ class Dataset:
         self.N = utils.get_frame_count(self.flow_capture)
         self.start_frame = 100
 
+        if not os.path.exists(self.ann_path):
+            os.makedirs(self.ann_path)
+
         if len(os.listdir(self.ann_path)) < 1:
             self.create_annotations()
 
@@ -35,7 +44,14 @@ class Dataset:
 
         if self.N != utils.get_frame_count(self.orig_capture) - 1:
             self.logger.error(f'Input counts: (images, flow fields): {utils.get_frame_count(self.orig_capture)}, {self.N}')
-            raise ValueError('Input sizes do not match.')
+            self.run_flownet2()
+
+    def run_flownet2(self) -> None:
+        self.logger.info('Running FlowNet2...')
+        subprocess.call(['../flownet2-pytorch/launch_docker.sh', '--run', '--dataset',  f'{self.img_path}'])
+
+    def get_default_sequence(self) -> str:
+        return ''
 
     def create_annotations(self) -> None:
         pass
@@ -52,7 +68,7 @@ class Dataset:
         result = []
 
         if ann_path is None:
-            ann_path = f'{self.ann_path}/annot_{i:05d}.csv'
+            ann_path = f'{self.ann_path}/image_{i:05d}.txt'
 
         with open(ann_path, 'r') as f:
             for line in f.readlines():
