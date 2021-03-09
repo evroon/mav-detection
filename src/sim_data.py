@@ -53,4 +53,4 @@ class SimData(Dataset):
             self.write_yolo_annotation(image_path)
 
     def get_default_sequence(self) -> str:
-        return 'test/test'
+        return 'citypark/soccerfield'

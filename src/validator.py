@@ -80,7 +80,7 @@ class Validator:
             response = requests.get(f'{self.host}/predict_video_boxes')
         except requests.exceptions.ConnectionError:
             print('Could not connect to host.')
-            exit()
+            exit(-1)
 
         json_result = response.json()
 

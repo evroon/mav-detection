@@ -38,9 +38,24 @@
 
     "trajectories": {
         "citypark/soccerfield": {
-            "x": 0.0,
-            "y": 0.0,
+            "x": -671.70,
+            "y": 289.60,
             "z": -6.0
+        },
+        "citypark/fountain": {
+            "x": -515.20,
+            "y": 23.40,
+            "z": 0.0
+        },
+        "citypark/park": {
+            "x": -767.60,
+            "y": -231.60,
+            "z": 0.0
+        },
+        "citypark/park-center": {
+            "x": -240.10,
+            "y": -166.20,
+            "z": 0.0
         }
     }
 }

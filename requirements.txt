@@ -3,3 +3,5 @@ numpy
 matplotlib
 opencv-python
 mypy
+airsim
+flow_vis
