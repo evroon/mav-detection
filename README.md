@@ -29,6 +29,7 @@ export MIDGARD_PATH="~/tno/datasets/MIDGARD"
 export SIMDATA_PATH="~/tno/datasets/sim-data"
 export YOLOv4_PATH="~/tno/yolov4"
 export UNDISTORT_PATH="~/tno/datasets/undistortFunctions/launch_docker.sh"
+export FLOWNET2="~/flownet2-pytorch"
 ```
 
 ## YOLOv4

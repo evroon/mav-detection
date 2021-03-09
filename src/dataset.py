@@ -48,7 +48,8 @@ class Dataset:
 
     def run_flownet2(self) -> None:
         self.logger.info('Running FlowNet2...')
-        subprocess.call(['../flownet2-pytorch/launch_docker.sh', '--run', '--dataset',  f'{self.img_path}'])
+        flownet2 = os.environ['FLOWNET2']
+        subprocess.call([f'{flownet2}/launch_docker.sh', '--run', '--dataset',  f'{self.img_path}'])
 
     def get_default_sequence(self) -> str:
         return ''
