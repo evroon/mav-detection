@@ -10,7 +10,6 @@ import time
 import shutil
 
 from datetime import datetime
-from multiprocessing import Process
 from typing import Dict, List, Any, Optional, cast
 
 from sim_config import SimConfig
@@ -22,24 +21,31 @@ class AirSimControl:
         self.observing_drone = 'Drone1'
         self.target_drone = 'Drone2'
 
-        orientations = RunConfig.get_settings()['orientations']
+        orientations_str = RunConfig.get_settings()['orientations']
         sequences = RunConfig.get_settings()['trajectories']
+        heights = RunConfig.get_settings()['heights']
+        radii = RunConfig.get_settings()['radii']
 
-        self.radii = RunConfig.get_settings()['radii']
-        self.orientations = [SimConfig.get_orientation(x) for x in orientations]
+        orientations = [SimConfig.get_orientation(x) for x in orientations_str]
         self.configs = []
 
-        for name, center in sequences.items():
-            for orientation in self.orientations:
-                for radius in self.radii:
-                    self.configs.append(
-                        SimConfig(name, airsim.Vector3r(center['x'], center['y'], center['z']), orientation, radius)
-                    )
+        for sequence_name, center in sequences.items():
+            for height_name, height in heights.items():
+                for orientation in orientations:
+                    for radius in radii:
+                        self.configs.append(
+                            SimConfig(
+                                sequence_name,
+                                height_name,
+                                airsim.Vector3r(center['x'], center['y'], center['z'] - height),
+                                orientation,
+                                radius
+                            )
+                        )
 
         print(f'Number of trajectories: {len(sequences)}')
         print(f'Number of configurations: {len(self.configs)}')
 
-        self.altitude = 10
         self.speed = 2.0
         self.orbits = 1
         self.snapshots = 0
@@ -86,16 +92,23 @@ class AirSimControl:
 
         return self.client.getMultirotorState(vehicle_name=vehicle_name).kinematics_estimated.position
 
-    def takeoff(self) -> None:
-        landed = self.client.getMultirotorState().landed_state
-        if landed == airsim.LandedState.Landed:
+    def takeoff(self, vehicle_name: Optional[str] = None) -> Optional[msgpackrpc.Future]:
+        if vehicle_name is None:
             print('Takeoff...')
-            takeoff1 = self.client.takeoffAsync(vehicle_name=self.observing_drone)
-            takeoff2 = self.client.takeoffAsync(vehicle_name=self.target_drone)
-            takeoff1.join()
-            takeoff2.join()
+            takeoff1 = self.takeoff(self.observing_drone)
+            takeoff2 = self.takeoff(self.target_drone)
 
-        self.align_north()
+            if takeoff1 is not None:
+                takeoff1.join()
+
+            if takeoff2 is not None:
+                takeoff2.join()
+        else:
+            landed = self.client.getMultirotorState(vehicle_name=vehicle_name).landed_state
+            if landed == airsim.LandedState.Landed:
+                return self.client.takeoffAsync(vehicle_name=vehicle_name)
+
+        return None
 
     def align_north(self) -> None:
         align1 = self.client.rotateToYawAsync(0, 2, vehicle_name=self.observing_drone)
@@ -114,22 +127,29 @@ class AirSimControl:
 
             if new_sequence:
                 self.finish_sequence()
+                self.land()
 
-    def prepare_run(self, config: SimConfig) -> None:
+    def teleport(self, config: SimConfig) -> None:
         heading = config.orientation.get_heading() / 180.0 * np.pi
+        offset = airsim.Vector3r(0.0, 0.0, 0.0)
 
         # Move observing drone to center of orbit.
         quat = airsim.to_quaternion(0.0, 0.0, heading)
-        pose = airsim.Pose(config.center, quat)
+        pose = airsim.Pose(config.center + offset, quat)
         self.client.simSetVehiclePose(pose, True, vehicle_name=self.observing_drone)
 
         # Move target drone to start point in orbit.
-        position = config.center - airsim.Vector3r(self.radii[0], 0.0, 0.0)
+        position = config.center + offset + airsim.Vector3r(-np.cos(heading) * config.radius, -np.sin(heading) * config.radius, 0.0)
         quat = airsim.to_quaternion(0.0, 0.0, 0.0)
         pose = airsim.Pose(position, quat)
         self.client.simSetVehiclePose(pose, True, vehicle_name=self.target_drone)
 
-        print(f'{config.basename}: New heading: {config.orientation}, altitude: {config.center.z_val}')
+    def prepare_run(self, config: SimConfig) -> None:
+        self.teleport(config)
+        self.takeoff()
+        self.teleport(config)
+
+        print(f'{config.base_name}: New heading: {config.orientation}, altitude: {config.center.z_val}')
 
     def fly_orbit(self, config: SimConfig) -> None:
         count = 0
@@ -301,16 +321,6 @@ class AirSimControl:
 
     def land(self) -> None:
         print('landing...')
-        self.client.moveToPositionAsync(
-            self.configs[-1].center.x_val + 3,
-            self.configs[-1].center.y_val,
-            self.configs[-1].center.z_val,
-            self.speed,
-            vehicle_name=self.target_drone
-        ).join()
-
-        self.align_north()
-
         f1 = self.client.landAsync(vehicle_name=self.observing_drone)
         f2 = self.client.landAsync(vehicle_name=self.target_drone)
         f1.join()
@@ -336,25 +346,19 @@ class AirSimControl:
             with open(f'{self.base_dir}/states/timestamps.json', 'w') as f:
                 f.write(json.dumps(self.timestamps_str, indent=4, sort_keys=True))
 
-    def create_if_exists(self, dir: str) -> None:
+    def create_if_not_exists(self, dir: str) -> None:
         if not os.path.exists(dir):
             os.makedirs(dir)
 
     def prepare_sequence(self) -> None:
-        self.timestamps_str = {}
-
-        self.create_if_exists(f'{self.base_dir}/images')
-        self.create_if_exists(f'{self.base_dir}/segmentations')
-        self.create_if_exists(f'{self.base_dir}/states')
+        self.create_if_not_exists(f'{self.base_dir}/images')
+        self.create_if_not_exists(f'{self.base_dir}/segmentations')
+        self.create_if_not_exists(f'{self.base_dir}/states')
 
     def run(self) -> None:
-        # try:
         self.init()
-        self.takeoff()
         self.fly()
         self.land()
-        # finally:
-        #     self.finish()
 
 
 control = AirSimControl()

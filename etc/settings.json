@@ -7,7 +7,7 @@
         "Drone1" : {
             "VehicleType" : "SimpleFlight",
             "AutoCreate" : true,
-            "X": -156, "Y": 266, "Z": -6,
+            "X": 0, "Y": 0, "Z": 0,
             "Cameras" : {
                 "high_res": {
                     "CaptureSettings" : [
@@ -35,7 +35,7 @@
         },
         "Drone2": {
           "VehicleType": "SimpleFlight",
-          "X": -156, "Y": 266, "Z": -6.1
+          "X": 0, "Y": 0, "Z": -0.1
         }
     }
 }

@@ -19,8 +19,9 @@ class Orientation(Enum):
         }[str(self)]
 
 class SimConfig:
-    def __init__(self, basename: str, center: airsim.Vector3r, orientation: Orientation, radius: float) -> None:
-        self.basename: str = basename
+    def __init__(self, base_name: str, height_name: str, center: airsim.Vector3r, orientation: Orientation, radius: float) -> None:
+        self.base_name: str = base_name
+        self.height_name: str = height_name
         self.center: airsim.Vector3r = center
         self.orientation = orientation
         self.radius: float = radius
@@ -47,4 +48,4 @@ class SimConfig:
         return Orientation[orientation_key]
 
     def __str__(self) -> str:
-        return f'{self.basename}-{self.orientation}-{self.center.z_val*10:.00f}'
+        return f'{self.base_name}-{self.orientation}-{self.height_name}'
