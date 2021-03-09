@@ -15,6 +15,7 @@ from typing import Dict, List, Any, Optional, cast
 from sim_config import SimConfig
 from run_config import RunConfig
 
+
 class AirSimControl:
     def __init__(self) -> None:
         self.observing_drone = 'Drone1'
@@ -88,51 +89,46 @@ class AirSimControl:
 
         self.align_north()
 
-        z = self.get_position(vehicle_name=self.observing_drone).z_val
-
-        self.client.moveToPositionAsync(
-            self.configs[-1].center.x_val - self.radii[0],
-            self.configs[-1].center.y_val,
-            z,
-            2,
-            vehicle_name=self.target_drone
-        ).join()
-
     def align_north(self) -> None:
         align1 = self.client.rotateToYawAsync(0, 1, vehicle_name=self.observing_drone)
         align2 = self.client.rotateToYawAsync(0, 1, vehicle_name=self.target_drone)
         align1.join()
         align2.join()
 
-    def start_trajectory(self) -> None:
-        self.client.moveByVelocityAsync(5, 0, 0, 20, vehicle_name=self.observing_drone)
-        self.client.moveByVelocityAsync(5, 0, 0, 20, vehicle_name=self.target_drone)
-
-    def fly_path(self) -> None:
-        z = 0
-        path = [
-            airsim.Vector3r(50,     0,     z),
-            airsim.Vector3r(80,    -80,    z),
-            airsim.Vector3r(0,      0,     z)
-        ]
-
-        self.move_on_path = self.client.moveOnPathAsync(
-                        path,
-                        6, 120,
-                        airsim.DrivetrainType.ForwardOnly,
-                        airsim.YawMode(False, 0), 20, 1)
-
     def fly(self) -> None:
         for config in self.configs:
             self.fly_orbit(config)
+
+    def prepare_run(self, config: SimConfig) -> None:
+        align1 = self.client.rotateToYawAsync(config.orientation.get_heading(), 1, vehicle_name=self.observing_drone)
+
+        # Move to center of orbit
+        translation1 = self.client.moveToPositionAsync(
+            config.center.x_val,
+            config.center.y_val,
+            config.center.z_val,
+            self.speed,
+            vehicle_name=self.observing_drone
+        )
+
+        # Move to start point in orbit
+        translation2 = self.client.moveToPositionAsync(
+            config.center.x_val - self.radii[0],
+            config.center.y_val,
+            config.center.z_val,
+            self.speed,
+            vehicle_name=self.target_drone
+        )
+
+        for future in [align1, translation1, translation2]:
+            future.join()
 
     def fly_orbit(self, config: SimConfig) -> None:
         count = 0
         self.start_angle: Optional[float] = None
         self.next_snapshot = None
 
-        start = self.get_position()
-        self.z = start.z_val
+        self.prepare_run(config)
 
         # ramp up time
         ramptime = config.radius / 10
@@ -174,7 +170,8 @@ class AirSimControl:
                 print(f'Completed {count} orbit(s)')
 
             self.camera_heading = camera_heading
-            self.client.moveByVelocityZAsync(vx, vy, self.z, 1, airsim.DrivetrainType.MaxDegreeOfFreedom, airsim.YawMode(False, camera_heading), vehicle_name=self.target_drone)
+            self.client.moveByVelocityZAsync(vx, vy, config.center.z_val, 1, airsim.DrivetrainType.MaxDegreeOfFreedom, airsim.YawMode(
+                False, camera_heading), vehicle_name=self.target_drone)
 
             # Capture frames.
             self.get_states()
@@ -190,13 +187,14 @@ class AirSimControl:
                     airsim.write_pfm(os.path.normpath('depth.pfm'), airsim.get_pfm_array(response))
                 else:
                     image_type: str = 'images' if response.image_type == airsim.ImageType.Scene else 'segmentations'
-                    airsim.write_file(os.path.normpath(f'{image_type}/image_{self.iteration:05d}.png'), response.image_data_uint8)
+                    airsim.write_file(os.path.normpath(
+                        f'{image_type}/image_{self.iteration:05d}.png'), response.image_data_uint8)
 
             self.timestamps[self.iteration] = self.get_time()
 
             # if self.iteration > 1:
-                # difference = self.timestamps[self.iteration] - self.timestamps[self.iteration - 1]
-                # print(f'Elapsed time during iteration {self.iteration} in real-time: {difference.microseconds / 1000}ms')
+            # difference = self.timestamps[self.iteration] - self.timestamps[self.iteration - 1]
+            # print(f'Elapsed time during iteration {self.iteration} in real-time: {difference.microseconds / 1000}ms')
 
             self.iteration += 1
 
@@ -303,7 +301,13 @@ class AirSimControl:
 
     def land(self) -> None:
         print('landing...')
-        self.client.moveToPositionAsync(self.configs[-1].center.x_val + 3, self.configs[-1].center.y_val, self.z, self.speed, vehicle_name=self.target_drone).join()
+        self.client.moveToPositionAsync(
+            self.configs[-1].center.x_val + 3,
+            self.configs[-1].center.y_val,
+            self.configs[-1].center.z_val,
+            self.speed,
+            vehicle_name=self.target_drone
+        ).join()
 
         self.align_north()
 

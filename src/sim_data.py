@@ -45,6 +45,9 @@ class SimData(Dataset):
         with open(f'{self.ann_path}/image_{index}.txt', 'w') as f:
             f.write(rect.to_yolo(img_size))
 
+    def get_gt_foe(self) -> np.ndarray:
+        return
+
     def create_annotations(self) -> None:
         for image_path in glob.glob(f'{self.img_path}/image_*.png'):
             self.write_yolo_annotation(image_path)
