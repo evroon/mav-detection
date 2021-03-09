@@ -12,13 +12,28 @@ from datetime import datetime
 from multiprocessing import Process
 from typing import Dict, List, Any, Optional, cast
 
+from sim_config import SimConfig
+from run_config import RunConfig
+
 class AirSimControl:
     def __init__(self) -> None:
         self.observing_drone = 'Drone1'
         self.target_drone = 'Drone2'
 
-        # self.radii = [1.0, 2.5, 5.0, 7.5, 10, 15, 20, 25, 30]
-        self.radii = [5.0, 7.5, 10, 15, 20]
+        orientations = RunConfig.get_settings()['orientations']
+        sequences = RunConfig.get_settings()['trajectories']
+
+        self.radii = RunConfig.get_settings()['radii']
+        self.orientations = [SimConfig.get_orientation(x) for x in orientations]
+        self.configs = []
+
+        for name, center in sequences:
+            for orientation in self.orientations:
+                for radius in self.radii:
+                    self.configs.append(
+                        SimConfig(name, airsim.Vector3r(center['x'], center['y'], center['z']), orientation, radius)
+                    )
+
         self.altitude = 10
         self.speed = 2.0
         self.orbits = 1
@@ -56,7 +71,7 @@ class AirSimControl:
     def start_sim(self) -> None:
         subprocess.call([self.executable])
 
-    def get_position(self, vehicle_name: str = None) -> airsim.Vector3r:
+    def get_position(self, vehicle_name: str = None) -> airsim.MultirotorState:
         if vehicle_name is None:
             vehicle_name = self.target_drone
 
@@ -75,8 +90,13 @@ class AirSimControl:
 
         z = self.get_position(vehicle_name=self.observing_drone).z_val
 
-        self.center = self.get_position(vehicle_name=self.observing_drone)
-        self.client.moveToPositionAsync(self.center.x_val - self.radii[0], self.center.y_val, z, 2, vehicle_name=self.target_drone).join()
+        self.client.moveToPositionAsync(
+            self.configs[-1].center.x_val - self.radii[0],
+            self.configs[-1].center.y_val,
+            z,
+            2,
+            vehicle_name=self.target_drone
+        ).join()
 
     def align_north(self) -> None:
         align1 = self.client.rotateToYawAsync(0, 1, vehicle_name=self.observing_drone)
@@ -85,8 +105,8 @@ class AirSimControl:
         align2.join()
 
     def start_trajectory(self) -> None:
-        f1 = self.client.moveByVelocityAsync(5, 0, 0, 20, vehicle_name=self.observing_drone)
-        f2 = self.client.moveByVelocityAsync(5, 0, 0, 20, vehicle_name=self.target_drone)
+        self.client.moveByVelocityAsync(5, 0, 0, 20, vehicle_name=self.observing_drone)
+        self.client.moveByVelocityAsync(5, 0, 0, 20, vehicle_name=self.target_drone)
 
     def fly_path(self) -> None:
         z = 0
@@ -103,10 +123,10 @@ class AirSimControl:
                         airsim.YawMode(False, 0), 20, 1)
 
     def fly(self) -> None:
-        for radius in self.radii:
-            self.fly_orbit(radius)
+        for config in self.configs:
+            self.fly_orbit(config)
 
-    def fly_orbit(self, radius: float) -> None:
+    def fly_orbit(self, config: SimConfig) -> None:
         count = 0
         self.start_angle: Optional[float] = None
         self.next_snapshot = None
@@ -115,10 +135,10 @@ class AirSimControl:
         self.z = start.z_val
 
         # ramp up time
-        ramptime = radius / 10
+        ramptime = config.radius / 10
         self.start_time = time.time()
 
-        print(f'Starting orbit with radius of {radius:0.2f}m')
+        print(f'Starting orbit with radius of {config.radius:0.2f}m')
 
         while count < self.orbits:
             if self.snapshots > 0 and not (self.snapshot_index < self.snapshots):
@@ -134,31 +154,29 @@ class AirSimControl:
                 # print("reached full speed...")
                 ramptime = 0
 
-            lookahead_angle = speed / radius
+            lookahead_angle = speed / config.radius
 
             pos = self.get_position()
-            dx = pos.x_val - self.center.x_val
-            dy = pos.y_val - self.center.y_val
-            actual_radius = math.sqrt((dx*dx) + (dy*dy))
+            dx = pos.x_val - config.center.x_val
+            dy = pos.y_val - config.center.y_val
             angle_to_center = math.atan2(dy, dx)
-
             camera_heading = (angle_to_center - math.pi) * 180 / math.pi
 
             # compute lookahead
-            lookahead_x = self.center.x_val + radius * math.cos(angle_to_center + lookahead_angle)
-            lookahead_y = self.center.y_val + radius * math.sin(angle_to_center + lookahead_angle)
+            lookahead_x = config.center.x_val + config.radius * math.cos(angle_to_center + lookahead_angle)
+            lookahead_y = config.center.y_val + config.radius * math.sin(angle_to_center + lookahead_angle)
 
             vx = lookahead_x - pos.x_val
             vy = lookahead_y - pos.y_val
 
-            if self.track_orbits(radius, angle_to_center * 180 / math.pi):
+            if self.track_orbits(config.radius, angle_to_center * 180 / math.pi):
                 count += 1
-                print("Completed {} orbit(s)".format(count))
+                print(f'Completed {count} orbit(s)')
 
             self.camera_heading = camera_heading
             self.client.moveByVelocityZAsync(vx, vy, self.z, 1, airsim.DrivetrainType.MaxDegreeOfFreedom, airsim.YawMode(False, camera_heading), vehicle_name=self.target_drone)
 
-            # Capture frames
+            # Capture frames.
             self.get_states()
 
             responses = self.client.simGetImages([
@@ -176,8 +194,8 @@ class AirSimControl:
 
             self.timestamps[self.iteration] = self.get_time()
 
-            if self.iteration > 1:
-                difference = self.timestamps[self.iteration] - self.timestamps[self.iteration - 1]
+            # if self.iteration > 1:
+                # difference = self.timestamps[self.iteration] - self.timestamps[self.iteration - 1]
                 # print(f'Elapsed time during iteration {self.iteration} in real-time: {difference.microseconds / 1000}ms')
 
             self.iteration += 1
@@ -216,7 +234,6 @@ class AirSimControl:
 
         if self.snapshot_delta and angle > self.next_snapshot:
             print("Taking snapshot at angle {}".format(angle))
-            self.take_snapshot()
             self.next_snapshot += self.snapshot_delta
 
         diff = abs(angle - self.start_angle)
@@ -244,7 +261,7 @@ class AirSimControl:
     def get_magnitude(self, vector: np.ndarray) -> float:
         return float(np.sqrt(vector.x_val ** 2.0 + vector.y_val ** 2.0 + vector.z_val ** 2.0))
 
-    def get_time_formatted(self, time: datetime= None) -> str:
+    def get_time_formatted(self, time: datetime = None) -> str:
         if time is None:
             time = self.get_time()
 
@@ -286,7 +303,7 @@ class AirSimControl:
 
     def land(self) -> None:
         print('landing...')
-        self.client.moveToPositionAsync(self.center.x_val + 3, self.center.y_val, self.z, self.speed, vehicle_name=self.target_drone).join()
+        self.client.moveToPositionAsync(self.configs[-1].center.x_val + 3, self.configs[-1].center.y_val, self.z, self.speed, vehicle_name=self.target_drone).join()
 
         self.align_north()
 

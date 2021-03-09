@@ -19,5 +19,28 @@
     "validation_sequences": [
         "indoor-modern/warehouse-interior",
         "semi-urban/island-north"
-    ]
+    ],
+
+    "radii": [
+        5.0,
+        7.5,
+        10.0,
+        15.0,
+        20.0
+    ],
+
+    "orientations": [
+        "north",
+        "east",
+        "south",
+        "west"
+    ],
+
+    "trajectories": {
+        "citypark/soccerfield": {
+            "x": 0.0,
+            "y": 0.0,
+            "z": 0.0
+        }
+    }
 }
