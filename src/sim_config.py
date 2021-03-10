@@ -18,7 +18,7 @@ class Orientation(Enum):
             'EAST':  90,
             'SOUTH': 180,
             'WEST':  270,
-        }[str(self)]
+        }[str(self).upper()]
 
 class SimConfig:
     def __init__(self, base_name: str, height_name: str, center: airsim.Vector3r, orientation: Orientation, radius: float, ground_height: float) -> None:

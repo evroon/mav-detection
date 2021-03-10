@@ -21,6 +21,8 @@ class AirSimControl:
         self.observing_drone = 'Drone1'
         self.target_drone = 'Drone2'
 
+        self.root_data_dir = 'data'
+
         orientations_str = RunConfig.get_settings()['orientations']
         locations = RunConfig.get_settings()['locations']
         heights = RunConfig.get_settings()['heights']
@@ -33,16 +35,18 @@ class AirSimControl:
             for height_name, height in heights.items():
                 for orientation in orientations:
                     for radius in radii:
-                        self.configs.append(
-                            SimConfig(
-                                sequence_name,
-                                height_name,
-                                airsim.Vector3r(center['x'], center['y'], center['z'] - height),
-                                orientation,
-                                radius,
-                                center['z']
-                            )
+                        config = SimConfig(
+                            sequence_name,
+                            height_name,
+                            airsim.Vector3r(center['x'], center['y'], center['z'] - height),
+                            orientation,
+                            radius,
+                            center['z']
                         )
+                        if not os.path.exists(self.get_base_dir(config)):
+                            self.configs.append(config)
+                        else:
+                            print(f'Skipping {config}')
 
         print(f'Number of locations: {len(locations)}')
         print(f'Number of configurations: {len(self.configs)}')
@@ -60,7 +64,7 @@ class AirSimControl:
         self.running = True
         self.iteration: int = 0
         self.timestamps: Dict[int, datetime] = {}
-        self.root_data_dir = 'data'
+        self.begin_time: datetime = datetime.now()
 
         if not os.path.exists(self.root_data_dir):
             os.makedirs(self.root_data_dir)
@@ -139,12 +143,14 @@ class AirSimControl:
             if first_sequence_of_kind:
                 self.prepare_run(config)
             elif first_sequence_of_height:
+                print(f'Moving drone to height: {config.center.z_val:.02f}')
                 f1 = self.move_to_position(config, self.observing_drone)
                 f2 = self.move_to_position(config, self.target_drone)
                 f1.join()
                 f2.join()
                 self.teleport(config)
             elif first_sequence_of_pose:
+                print(f'Rotating drone to: {config.orientation}')
                 self.teleport(config)
 
             self.fly_orbit(config)
@@ -188,6 +194,9 @@ class AirSimControl:
 
         print(f'{config.base_name}: New heading: {config.orientation}, altitude: {config.center.z_val:.02f}')
 
+    def get_base_dir(self, config: SimConfig) -> str:
+        return f'{self.root_data_dir}/{config}'
+
     def fly_orbit(self, config: SimConfig) -> None:
         count = 0
         self.start_angle: Optional[float] = None
@@ -198,7 +207,7 @@ class AirSimControl:
         self.start_time = time.time()
 
         print(f'Starting orbit with radius of {config.radius:0.2f}m')
-        self.base_dir = f'{self.root_data_dir}/{config}'
+        self.base_dir = self.get_base_dir(config)
 
         self.prepare_sequence()
 
@@ -328,7 +337,8 @@ class AirSimControl:
         if time is None:
             time = self.get_time()
 
-        return time.strftime("%H-%M-%S.%f")
+        delta = time - self.begin_time
+        return f'{delta.total_seconds() * 1000:010.0f}'
 
     def get_time(self) -> datetime:
         return datetime.now()
@@ -350,7 +360,7 @@ class AirSimControl:
             self.running = False
 
     def clean(self) -> None:
-        print('Removing previous results...')
+        print('Removing previous results of states...')
         max_attempts = 10
         i = 0
 
@@ -358,8 +368,6 @@ class AirSimControl:
             try:
                 for f in os.listdir(f'{self.root_data_dir}/states'):
                     os.remove(f'{self.root_data_dir}/states/{f}')
-
-                shutil.rmtree(self.root_data_dir, ignore_errors=True)
             finally:
                 i += 1
             break
@@ -375,16 +383,6 @@ class AirSimControl:
         f2 = self.client.landAsync(vehicle_name=self.target_drone)
         f1.join()
         f2.join()
-
-    def finish(self) -> None:
-        self.timestamps_str = {}
-
-        if self.timestamps is not None:
-            for idx, time in self.timestamps.items():
-                self.timestamps_str[idx] = self.get_time_formatted(time)
-
-            with open(f'{self.base_dir}/states/timestamps.json', 'w') as f:
-                f.write(json.dumps(self.timestamps_str, indent=4, sort_keys=True))
 
     def finish_sequence(self) -> None:
         self.timestamps_str = {}
@@ -402,6 +400,9 @@ class AirSimControl:
             os.makedirs(dir)
 
     def prepare_sequence(self) -> None:
+        print('Removing previous results of current sequence...')
+        shutil.rmtree(self.base_dir, ignore_errors=True)
+
         self.create_if_not_exists(f'{self.base_dir}/images')
         self.create_if_not_exists(f'{self.base_dir}/segmentations')
         self.create_if_not_exists(f'{self.base_dir}/states')
