@@ -52,7 +52,7 @@ class AirSimControl:
         print(f'Number of configurations: {len(self.configs)}')
 
         self.speed = 2.0
-        self.scale_speed_by_radius = True
+        self.scale_speed_by_radius = False
         self.orbits = 1
         self.snapshots = 0
         self.snapshot_delta = None
