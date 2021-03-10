@@ -46,12 +46,13 @@ class AirSimControl:
                         if not os.path.exists(self.get_base_dir(config)):
                             self.configs.append(config)
                         else:
-                            print(f'Skipping {config}')
+                            print(f'Skipping {config.full_name()}')
 
         print(f'Number of locations: {len(locations)}')
         print(f'Number of configurations: {len(self.configs)}')
 
         self.speed = 2.0
+        self.scale_speed_by_radius = True
         self.orbits = 1
         self.snapshots = 0
         self.snapshot_delta = None
@@ -218,6 +219,10 @@ class AirSimControl:
             # ramp up to full speed in smooth increments so we don't start too aggressively.
             now = time.time()
             speed = self.speed
+
+            if self.scale_speed_by_radius:
+                speed *= config.radius
+
             diff = now - self.start_time
             if diff < ramptime:
                 speed = self.speed * diff / ramptime
@@ -400,7 +405,6 @@ class AirSimControl:
             os.makedirs(dir)
 
     def prepare_sequence(self) -> None:
-        print('Removing previous results of current sequence...')
         shutil.rmtree(self.base_dir, ignore_errors=True)
 
         self.create_if_not_exists(f'{self.base_dir}/images')
