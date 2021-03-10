@@ -10,7 +10,7 @@ class Orientation(Enum):
     WEST  = 3
 
     def __str__(self) -> str:
-        return super().__str__().replace('Orientation.', '')
+        return super().__str__().replace('Orientation.', '').lower()
 
     def get_heading(self) -> float:
         return {
@@ -61,6 +61,9 @@ class SimConfig:
 
     def is_different_height(self, other: SimConfig) -> bool:
         return self.height_name != other.height_name
+
+    def is_different(self, other: SimConfig) -> bool:
+        return self.is_different_location(other) or self.is_different_pose(other) or self.is_different_height(other)
 
     def get_start_position(self, is_observer: bool) -> airsim.Vector3r:
         if is_observer:

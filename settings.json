@@ -43,7 +43,7 @@
         "west"
     ],
 
-    "trajectories": {
+    "locations": {
         "citypark/fountain": {
             "x": -515.20,
             "y": 23.40,

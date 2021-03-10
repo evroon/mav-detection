@@ -22,14 +22,14 @@ class AirSimControl:
         self.target_drone = 'Drone2'
 
         orientations_str = RunConfig.get_settings()['orientations']
-        sequences = RunConfig.get_settings()['trajectories']
+        locations = RunConfig.get_settings()['locations']
         heights = RunConfig.get_settings()['heights']
         radii = RunConfig.get_settings()['radii']
 
         orientations = [SimConfig.get_orientation(x) for x in orientations_str]
         self.configs = []
 
-        for sequence_name, center in sequences.items():
+        for sequence_name, center in locations.items():
             for height_name, height in heights.items():
                 for orientation in orientations:
                     for radius in radii:
@@ -44,7 +44,7 @@ class AirSimControl:
                             )
                         )
 
-        print(f'Number of trajectories: {len(sequences)}')
+        print(f'Number of locations: {len(locations)}')
         print(f'Number of configurations: {len(self.configs)}')
 
         self.speed = 2.0
@@ -133,22 +133,26 @@ class AirSimControl:
             first_sequence_of_kind = config.is_different_location(self.configs[i-1])
             first_sequence_of_pose = config.is_different_pose(self.configs[i-1])
             first_sequence_of_height = config.is_different_height(self.configs[i-1])
-            last_sequence_of_kind = i >= len(self.configs) - 1 or config.is_different_location(self.configs[i+1])
+            will_teleport = i >= len(self.configs) - 1 or config.is_different_location(self.configs[i+1])
+            last_sequence_of_kind = i >= len(self.configs) - 1 or config.is_different(self.configs[i+1])
 
             if first_sequence_of_kind:
                 self.prepare_run(config)
-            elif first_sequence_of_pose:
-                self.teleport(config)
             elif first_sequence_of_height:
                 f1 = self.move_to_position(config, self.observing_drone)
                 f2 = self.move_to_position(config, self.target_drone)
                 f1.join()
                 f2.join()
+                self.teleport(config)
+            elif first_sequence_of_pose:
+                self.teleport(config)
 
             self.fly_orbit(config)
 
             if last_sequence_of_kind:
                 self.finish_sequence()
+
+            if will_teleport:
                 self.client.armDisarm(False, self.observing_drone)
                 self.client.armDisarm(False, self.target_drone)
                 self.wait_for_landing()
@@ -391,6 +395,7 @@ class AirSimControl:
 
             with open(f'{self.base_dir}/states/timestamps.json', 'w') as f:
                 f.write(json.dumps(self.timestamps_str, indent=4, sort_keys=True))
+                self.timestamps = {}
 
     def create_if_not_exists(self, dir: str) -> None:
         if not os.path.exists(dir):
