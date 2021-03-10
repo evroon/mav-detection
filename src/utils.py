@@ -110,13 +110,12 @@ def get_capture_size(capture: cv2.VideoCapture) -> Tuple[int, int]:
     return (int(capture.get(3)), int(capture.get(4)))
 
 def get_output(filename: str, capture: cv2.VideoCapture = None, capture_size: Tuple[int, int] = None, is_grey: bool = False) -> cv2.VideoWriter:
-    path = 'media/output/{}.mp4'.format(filename)
     fourcc = cv2.VideoWriter_fourcc(*'mp4v')
 
     if capture_size is None:
         capture_size = get_capture_size(capture)
 
-    return cv2.VideoWriter(path, fourcc, 15.0, capture_size, not is_grey)
+    return cv2.VideoWriter(filename, fourcc, 15.0, capture_size, not is_grey)
 
 def get_sequence_length(path: str) -> int:
     return count_dir(path)
@@ -218,7 +217,10 @@ def blockshaped(arr: np.ndarray, nrows: int, ncols: int) -> np.ndarray:
                .swapaxes(1,2)
                .reshape(-1, nrows, ncols))
 
-def img_to_video(input: str, output: str) -> None:
+def img_to_video(input: str, output: str, framerate: int = 10) -> None:
     if not os.path.exists(output):
-        command = f'ffmpeg -r 30 -i {input} -c:v libx264 -vf fps=30 -pix_fmt yuv420p {output} -y'
+        images = os.listdir(os.path.dirname(input))
+        images.sort()
+        start_number = images[0].replace('image_', '').replace('.png', '')
+        command = f'ffmpeg -start_number {start_number} -r {framerate} -i {input} -c:v libx264 -vf fps={framerate} -pix_fmt yuv420p {output} -y'
         subprocess.call(command.split(' '))

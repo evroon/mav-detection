@@ -174,20 +174,17 @@ class Validator:
 
     def run_validation(self, estimates: Optional[Dict[int, FrameResult]] = None) -> None:
         dataset = self.config.get_dataset()
-        output = utils.get_output('evaluation', dataset.orig_capture)
+        output = utils.get_output(f'{dataset.seq_path}/evaluation.mp4', dataset.orig_capture)
         self.positives = 0
         self.true_positives = 0
         self.false_positives = 0
         self.false_negatives = 0
 
         try:
-            img_input = dataset.img_pngs
-            video_path = dataset.seq_path + '/video.mp4'
             video_annotated_path = dataset.seq_path + '/video-annotated.mp4'
-            utils.img_to_video(img_input, video_path)
 
             if estimates is None:
-                frames_raw = self.get_inference(video_path, video_annotated_path, False)
+                frames_raw = self.get_inference(dataset.vid_path, video_annotated_path, False)
                 frames = self.parse_frames(frames_raw)
             else:
                 frames = utils.assert_type(estimates)

@@ -15,6 +15,7 @@ class Dataset:
     '''Desscribes a dataset with images, annotations and flow fields.'''
 
     def __init__(self, base_path: str, logger: logging.Logger, sequence: str) -> None:
+        self.base_path = base_path
         self.logger = logger
         self.sequence = sequence
 
@@ -23,8 +24,11 @@ class Dataset:
 
         self.seq_path = f'{base_path}/{self.sequence}'
         self.img_path = f'{self.seq_path}/images'
+        self.seg_path = f'{self.seq_path}/segmentations'
         self.ann_path = f'{self.seq_path}/annotation'
-        self.img_pngs = f'{self.img_path}/image_%5d.png'
+        self.img_pngs = f'{self.img_path}/image_%05d.png'
+        self.vid_path = f'{self.seq_path}/recording.mp4'
+
         self.orig_capture = cv2.VideoCapture(self.img_pngs)
         self.flow_capture = cv2.VideoCapture(f'{self.img_path}/output/flownet2.mp4')
         self.capture_size = utils.get_capture_size(self.orig_capture)
@@ -39,6 +43,9 @@ class Dataset:
 
         if len(os.listdir(self.ann_path)) < 1:
             self.create_annotations()
+
+        if not os.path.exists(self.vid_path):
+            utils.img_to_video(self.img_pngs, self.vid_path)
 
         if self.capture_size != self.flow_size:
             self.logger.warning(f'original capture with size {self.capture_size} does not match flow, which has size {self.flow_size}')

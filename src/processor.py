@@ -31,7 +31,7 @@ class Processor:
             self.frame_columns, self.frame_rows = 3, 2
 
         output_size = (self.dataset.capture_size[0] * self.frame_columns, self.dataset.capture_size[1] * self.frame_rows)
-        self.output = utils.get_output('detection', capture_size=output_size, is_grey=not self.debug_mode)
+        self.output = utils.get_output(f'{self.dataset.seq_path}/processed.mp4', capture_size=output_size, is_grey=not self.debug_mode)
 
         self.frame_index, self.start_frame = 0, 100
         self.is_exiting = False

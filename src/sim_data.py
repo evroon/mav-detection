@@ -9,7 +9,7 @@ import utils
 from dataset import Dataset
 
 class SimData(Dataset):
-    '''Helper functions for the MIDGARD dataset.'''
+    '''Helper functions for the AirSim synthetic dataset.'''
 
     def __init__(self, logger: logging.Logger, sequence: str) -> None:
         simdata_path = os.environ['SIMDATA_PATH']
@@ -25,16 +25,17 @@ class SimData(Dataset):
         img_size = np.array([width, height])
         start_x, start_y = -1, -1
         end_x, end_y = -1, -1
+        threshold = 0.0
 
         for y in range(height):
-            if np.sum(img[y, :, :]) > 0.0:
+            if np.average(img[y, :, :]) > threshold:
                 end_y = y
 
                 if start_y == -1:
                     start_y = y
 
         for x in range(width):
-            if np.sum(img[:, x, :]) > 0.0:
+            if np.average(img[:, x, :]) > threshold:
                 end_x = x
 
                 if start_x == -1:
@@ -49,8 +50,9 @@ class SimData(Dataset):
         return
 
     def create_annotations(self) -> None:
-        for image_path in glob.glob(f'{self.img_path}/image_*.png'):
+        print('Creating YOLOv4 annotations...')
+        for image_path in glob.glob(f'{self.seg_path}/image_*.png'):
             self.write_yolo_annotation(image_path)
 
     def get_default_sequence(self) -> str:
-        return 'citypark/soccerfield'
+        return 'citypark/fountain-north-low'

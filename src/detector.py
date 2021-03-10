@@ -202,7 +202,7 @@ class Detector:
                 gt.get_topleft_int(),
                 gt.get_bottomright_int(),
                 (0, 0, 255),
-                3
+                2
             )
 
         # self.flow_uv_warped_vis = cv2.circle(
