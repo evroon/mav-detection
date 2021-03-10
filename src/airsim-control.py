@@ -39,7 +39,8 @@ class AirSimControl:
                                 height_name,
                                 airsim.Vector3r(center['x'], center['y'], center['z'] - height),
                                 orientation,
-                                radius
+                                radius,
+                                center['z']
                             )
                         )
 
@@ -92,7 +93,10 @@ class AirSimControl:
 
         return self.client.getMultirotorState(vehicle_name=vehicle_name).kinematics_estimated.position
 
-    def takeoff(self, vehicle_name: Optional[str] = None) -> Optional[msgpackrpc.Future]:
+    def is_landed(self, vehicle_name: str) -> bool:
+        return cast(bool, self.client.getMultirotorState(vehicle_name=vehicle_name).landed_state == airsim.LandedState.Landed)
+
+    def takeoff(self, vehicle_name: Optional[str] = None) -> Optional[msgpackrpc.future.Future]:
         if vehicle_name is None:
             print('Takeoff...')
             takeoff1 = self.takeoff(self.observing_drone)
@@ -104,8 +108,8 @@ class AirSimControl:
             if takeoff2 is not None:
                 takeoff2.join()
         else:
-            landed = self.client.getMultirotorState(vehicle_name=vehicle_name).landed_state
-            if landed == airsim.LandedState.Landed:
+            landed = self.is_landed(vehicle_name)
+            if self.is_landed(vehicle_name):
                 return self.client.takeoffAsync(vehicle_name=vehicle_name)
 
         return None
@@ -116,40 +120,69 @@ class AirSimControl:
         align1.join()
         align2.join()
 
+    def move_to_position(self, config: SimConfig, vehicle_name: str, z: float = None) -> msgpackrpc.future.Future:
+        position = config.get_start_position(vehicle_name == self.observing_drone)
+
+        if z is not None:
+            position.z_val = z
+
+        return self.client.moveToPositionAsync(position.x_val, position.y_val, position.z_val, self.speed, vehicle_name=vehicle_name)
+
     def fly(self) -> None:
         for i, config in enumerate(self.configs):
-            new_sequence = str(config) != str(self.configs[i-1])
+            first_sequence_of_kind = config.is_different_location(self.configs[i-1])
+            first_sequence_of_pose = config.is_different_pose(self.configs[i-1])
+            first_sequence_of_height = config.is_different_height(self.configs[i-1])
+            last_sequence_of_kind = i >= len(self.configs) - 1 or config.is_different_location(self.configs[i+1])
 
-            if new_sequence:
+            if first_sequence_of_kind:
                 self.prepare_run(config)
+            elif first_sequence_of_pose:
+                self.teleport(config)
+            elif first_sequence_of_height:
+                f1 = self.move_to_position(config, self.observing_drone)
+                f2 = self.move_to_position(config, self.target_drone)
+                f1.join()
+                f2.join()
 
             self.fly_orbit(config)
 
-            if new_sequence:
+            if last_sequence_of_kind:
                 self.finish_sequence()
-                self.land()
+                self.client.armDisarm(False, self.observing_drone)
+                self.client.armDisarm(False, self.target_drone)
+                self.wait_for_landing()
 
     def teleport(self, config: SimConfig) -> None:
         heading = config.orientation.get_heading() / 180.0 * np.pi
-        offset = airsim.Vector3r(0.0, 0.0, 0.0)
 
         # Move observing drone to center of orbit.
         quat = airsim.to_quaternion(0.0, 0.0, heading)
-        pose = airsim.Pose(config.center + offset, quat)
+        pose = airsim.Pose(config.get_start_position(True), quat)
         self.client.simSetVehiclePose(pose, True, vehicle_name=self.observing_drone)
 
         # Move target drone to start point in orbit.
-        position = config.center + offset + airsim.Vector3r(-np.cos(heading) * config.radius, -np.sin(heading) * config.radius, 0.0)
+        position = config.center + airsim.Vector3r(-np.cos(heading) * config.radius, -np.sin(heading) * config.radius, 0.0)
         quat = airsim.to_quaternion(0.0, 0.0, 0.0)
-        pose = airsim.Pose(position, quat)
+        pose = airsim.Pose(config.get_start_position(False), quat)
         self.client.simSetVehiclePose(pose, True, vehicle_name=self.target_drone)
+
+    def wait_for_landing(self) -> None:
+        old_pos = airsim.Vector3r()
+        while (self.get_position(self.observing_drone) - old_pos).get_length() > 0.01:
+            old_pos = self.get_position(self.observing_drone)
+            time.sleep(1)
 
     def prepare_run(self, config: SimConfig) -> None:
         self.teleport(config)
+        self.wait_for_landing()
+
+        self.client.armDisarm(True, self.observing_drone)
+        self.client.armDisarm(True, self.target_drone)
         self.takeoff()
         self.teleport(config)
 
-        print(f'{config.base_name}: New heading: {config.orientation}, altitude: {config.center.z_val}')
+        print(f'{config.base_name}: New heading: {config.orientation}, altitude: {config.center.z_val:.02f}')
 
     def fly_orbit(self, config: SimConfig) -> None:
         count = 0
@@ -275,7 +308,7 @@ class AirSimControl:
             if self.previous_sign is None:
                 self.previous_sign = direction
             elif self.previous_sign > 0 and direction < 0:
-                if diff < 45:
+                if diff < 45 or diff > 360 - 45:
                     self.quarter = False
                     if self.snapshots <= self.snapshot_index + 1:
                         crossing = True
@@ -314,13 +347,26 @@ class AirSimControl:
 
     def clean(self) -> None:
         print('Removing previous results...')
-        for f in os.listdir(f'{self.root_data_dir}/states'):
-            os.remove(f'{self.root_data_dir}/states/{f}')
+        max_attempts = 10
+        i = 0
 
-        shutil.rmtree(self.root_data_dir)
+        while i < max_attempts:
+            try:
+                for f in os.listdir(f'{self.root_data_dir}/states'):
+                    os.remove(f'{self.root_data_dir}/states/{f}')
 
-    def land(self) -> None:
-        print('landing...')
+                shutil.rmtree(self.root_data_dir, ignore_errors=True)
+            finally:
+                i += 1
+            break
+
+    def land(self, config: SimConfig) -> None:
+        print('Landing...')
+        f1 = self.move_to_position(config, self.observing_drone, z=config.ground_height - 1.0)
+        f2 = self.move_to_position(config, self.target_drone, z=config.ground_height - 1.0)
+        f1.join()
+        f2.join()
+
         f1 = self.client.landAsync(vehicle_name=self.observing_drone)
         f2 = self.client.landAsync(vehicle_name=self.target_drone)
         f1.join()
@@ -358,7 +404,6 @@ class AirSimControl:
     def run(self) -> None:
         self.init()
         self.fly()
-        self.land()
 
 
 control = AirSimControl()

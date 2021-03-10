@@ -1,5 +1,7 @@
+from __future__ import annotations
 import airsim
 from enum import Enum
+import numpy as np
 
 class Orientation(Enum):
     NORTH = 0,
@@ -19,12 +21,13 @@ class Orientation(Enum):
         }[str(self)]
 
 class SimConfig:
-    def __init__(self, base_name: str, height_name: str, center: airsim.Vector3r, orientation: Orientation, radius: float) -> None:
+    def __init__(self, base_name: str, height_name: str, center: airsim.Vector3r, orientation: Orientation, radius: float, ground_height: float) -> None:
         self.base_name: str = base_name
         self.height_name: str = height_name
         self.center: airsim.Vector3r = center
         self.orientation = orientation
         self.radius: float = radius
+        self.ground_height = ground_height
 
 
     @classmethod
@@ -49,3 +52,19 @@ class SimConfig:
 
     def __str__(self) -> str:
         return f'{self.base_name}-{self.orientation}-{self.height_name}'
+
+    def is_different_location(self, other: SimConfig) -> bool:
+        return self.base_name != other.base_name
+
+    def is_different_pose(self, other: SimConfig) -> bool:
+        return self.orientation != other.orientation
+
+    def is_different_height(self, other: SimConfig) -> bool:
+        return self.height_name != other.height_name
+
+    def get_start_position(self, is_observer: bool) -> airsim.Vector3r:
+        if is_observer:
+            return self.center
+
+        heading = self.orientation.get_heading() / 180.0 * np.pi
+        return self.center + airsim.Vector3r(-np.cos(heading) * self.radius, -np.sin(heading) * self.radius, 0.0)
