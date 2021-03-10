@@ -11,7 +11,7 @@ from matplotlib import pyplot as plt
 import utils
 from run_config import RunConfig
 from frame_result import FrameResult
-from midgard import Midgard
+from dataset import Dataset
 
 
 class Validator:
@@ -173,18 +173,18 @@ class Validator:
         return ious
 
     def run_validation(self, estimates: Optional[Dict[int, FrameResult]] = None) -> None:
-        midgard = Midgard(self.config.logger, self.config.sequence)
-        output = utils.get_output('evaluation', midgard.orig_capture)
+        dataset = self.config.get_dataset()
+        output = utils.get_output('evaluation', dataset.orig_capture)
         self.positives = 0
         self.true_positives = 0
         self.false_positives = 0
         self.false_negatives = 0
 
         try:
-            img_input = midgard.img_path + '/image_%5d.png'
-            video_path = midgard.seq_path + '/video.mp4'
-            video_annotated_path = midgard.seq_path + '/video-annotated.mp4'
-            self.img_to_video(img_input, video_path)
+            img_input = dataset.img_pngs
+            video_path = dataset.seq_path + '/video.mp4'
+            video_annotated_path = dataset.seq_path + '/video-annotated.mp4'
+            utils.img_to_video(img_input, video_path)
 
             if estimates is None:
                 frames_raw = self.get_inference(video_path, video_annotated_path, False)
@@ -194,9 +194,9 @@ class Validator:
 
             ious: List[float] = []
 
-            for i in range(midgard.N):
-                frame = midgard.get_frame()
-                ground_truth = midgard.get_annotation(i)
+            for i in range(dataset.N):
+                frame = dataset.get_frame()
+                ground_truth = dataset.get_annotation(i)
                 if i in frames:
                     ious_frame = self.annotate(frame, frames[i], ground_truth)
                     for x in ious_frame:
@@ -248,12 +248,6 @@ class Validator:
             csv_file.write('\n')
 
         self.plot_roc()
-
-    def img_to_video(self, input: str, output: str) -> None:
-        if not os.path.exists(output):
-            command = f'ffmpeg -r 30 -i {input} -c:v libx264 -vf fps=30 -pix_fmt yuv420p {output} -y'.split(
-                ' ')
-            subprocess.call(command)
 
     def plot_roc(self) -> None:
         ''' Plots the ROC curve for different thresholds. '''

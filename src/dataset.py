@@ -24,7 +24,8 @@ class Dataset:
         self.seq_path = f'{base_path}/{self.sequence}'
         self.img_path = f'{self.seq_path}/images'
         self.ann_path = f'{self.seq_path}/annotation'
-        self.orig_capture = cv2.VideoCapture(f'{self.img_path}/image_%5d.png')
+        self.img_pngs = f'{self.img_path}/image_%5d.png'
+        self.orig_capture = cv2.VideoCapture(self.img_pngs)
         self.flow_capture = cv2.VideoCapture(f'{self.img_path}/output/flownet2.mp4')
         self.capture_size = utils.get_capture_size(self.orig_capture)
         self.capture_shape = self.get_capture_shape()

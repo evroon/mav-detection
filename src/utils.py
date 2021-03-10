@@ -2,6 +2,7 @@ from __future__ import annotations
 import cv2
 import os
 import numpy as np
+import subprocess
 from typing import Tuple, List, Optional, TypeVar
 
 
@@ -216,3 +217,8 @@ def blockshaped(arr: np.ndarray, nrows: int, ncols: int) -> np.ndarray:
     return (arr.reshape(h//nrows, nrows, -1, ncols)
                .swapaxes(1,2)
                .reshape(-1, nrows, ncols))
+
+def img_to_video(input: str, output: str) -> None:
+    if not os.path.exists(output):
+        command = f'ffmpeg -r 30 -i {input} -c:v libx264 -vf fps=30 -pix_fmt yuv420p {output} -y'
+        subprocess.call(command.split(' '))
