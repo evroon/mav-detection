@@ -126,14 +126,6 @@ def get_frame_count(cap: cv2.VideoCapture) -> int:
 def get_fps(cap: cv2.VideoCapture) -> int:
     return int(cap.get(cv2.CAP_PROP_FPS))
 
-# Vis-Drone
-def get_vis_drone_path(sequence: str) -> str:
-    vis_drone_path = os.environ['VIS_DRONE_PATH']
-    return vis_drone_path + '/sequences/{}'.format(sequence)
-
-def get_vis_drone_capture(sequence: str) -> cv2.VideoCapture:
-    path = get_vis_drone_path(sequence)
-    return cv2.VideoCapture(path + '/%7d.jpg'), count_dir(path)
 
 # KITTI
 def get_kitti_path(sequence: str) -> str:

@@ -14,7 +14,7 @@ from im_helpers import get_flow_radial, get_flow_vis
 class Dataset:
     '''Desscribes a dataset with images, annotations and flow fields.'''
 
-    def __init__(self, base_path: str, logger: logging.Logger, sequence: str) -> None:
+    def __init__(self, base_path: str, logger: logging.Logger, sequence: str, img_format: str = 'image_%05d.png', img_dir: str = '/images', seq_dir: str = '') -> None:
         self.base_path = base_path
         self.logger = logger
         self.sequence = sequence
@@ -22,11 +22,11 @@ class Dataset:
         if self.sequence == '':
             self.sequence = self.get_default_sequence()
 
-        self.seq_path = f'{base_path}/{self.sequence}'
-        self.img_path = f'{self.seq_path}/images'
+        self.seq_path = f'{base_path}{seq_dir}/{self.sequence}'
+        self.img_path = f'{self.seq_path}{img_dir}'
         self.seg_path = f'{self.seq_path}/segmentations'
         self.ann_path = f'{self.seq_path}/annotation'
-        self.img_pngs = f'{self.img_path}/image_%05d.png'
+        self.img_pngs = f'{self.img_path}/{img_format}'
         self.vid_path = f'{self.seq_path}/recording.mp4'
 
         self.orig_capture = cv2.VideoCapture(self.img_pngs)

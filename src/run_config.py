@@ -6,6 +6,7 @@ from enum import Enum
 from dataset import Dataset
 from midgard import Midgard
 from sim_data import SimData
+from vis_drone import VisDrone
 
 
 class RunConfig:
@@ -22,7 +23,8 @@ class RunConfig:
     class DatasetType(Enum):
         MIDGARD = 0,
         SIMULATION = 1,
-        EXPERIMENT = 2
+        EXPERIMENT = 2,
+        VIS_DRONE = 3,
 
         def __str__(self) -> str:
             return super().__str__().replace('DatasetType.', '')
@@ -114,6 +116,8 @@ class RunConfig:
             dataset: Dataset = Midgard(self.logger, self.sequence)
         elif data_type == RunConfig.DatasetType.SIMULATION:
             dataset = SimData(self.logger, self.sequence)
+        elif data_type == RunConfig.DatasetType.VIS_DRONE:
+            dataset = VisDrone(self.logger, self.sequence)
         else:
             dataset = Dataset('', self.logger, self.sequence)
 
