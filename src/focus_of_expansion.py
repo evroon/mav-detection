@@ -11,21 +11,15 @@ plt.rcParams['axes.axisbelow'] = True
 
 class FocusOfExpansion:
     def __init__(self, lucas_kanade: LucasKanade) -> None:
-        # Script based on: https://docs.opencv.org/3.4/d4/dee/tutorial_optical_flow.html
-
         self.lucas_kanade = lucas_kanade
-
-        # Create some random colors
-        self.color = np.random.randint(0, 255, (self.lucas_kanade.total_num_corners, 3))
-
         self.time = 0
-        self.trace = np.zeros((self.lucas_kanade.total_num_corners, 2000), dtype=np.int)
         self.roll_back = 20
         self.num_features = 0
-        self.random_lines = np.random.randint(0, self.lucas_kanade.total_num_corners, self.lucas_kanade.total_num_corners)
-        self.threshold = np.cos(15 * np.pi / 180.0)
-        self.flow_per_distance = np.zeros((self.lucas_kanade.total_num_corners, 4)) # Store distance, flow magnitude pairs
         self.enable_plots = False
+        self.threshold = np.cos(15 * np.pi / 180.0)
+        self.color = np.random.randint(0, 255, (self.lucas_kanade.total_num_corners, 3))
+        self.trace = np.zeros((self.lucas_kanade.total_num_corners, 2000), dtype=np.int)
+        self.random_lines = np.random.randint(0, self.lucas_kanade.total_num_corners, self.lucas_kanade.total_num_corners)
 
     def get_FOE(self, old_frame: np.ndarray, new_frame: np.ndarray) -> Tuple[float, float]:
         if np.sum(old_frame) < 1:
@@ -140,31 +134,9 @@ class FocusOfExpansion:
                 color = [0, 0, 255]
 
             self.mask = cv2.line(self.mask, line[0], line[1], color, 2)
-            self.flow_per_distance[i, 0] = img_distance
-            self.flow_per_distance[i, 1] = flow_magnitude
-            self.flow_per_distance[i, 2] = img_angle
-            self.flow_per_distance[i, 3] = flow_angle
-
-        if self.enable_plots:
-            plt.figure(1)
-            plt.clf()
-            plt.xlabel('Distance (pixels)')
-            plt.ylabel('Flow magnitude (pixels)')
-            plt.grid()
-            plt.scatter(self.flow_per_distance[:, 0], self.flow_per_distance[:, 1])
-
-            plt.figure(2)
-            plt.clf()
-            plt.xlabel('Angle (pixels)')
-            plt.ylabel('Flow angle (pixels)')
-            plt.grid()
-            plt.scatter(self.flow_per_distance[:, 2], self.flow_per_distance[:, 3])
-            plt.pause(0.01)
 
         # Now update the previous frame and previous points
         self.old_gray = frame_gray.copy()
 
         self.time += 1
-        result = cv2.add(frame, self.mask)
-
-        return result
+        return cv2.add(frame, self.mask)
