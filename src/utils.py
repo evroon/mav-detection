@@ -212,6 +212,7 @@ def blockshaped(arr: np.ndarray, nrows: int, ncols: int) -> np.ndarray:
 def img_to_video(input: str, output: str, framerate: int = 10) -> None:
     if not os.path.exists(output):
         images = os.listdir(os.path.dirname(input))
+        images = [f for f in images if 'image_' in os.path.basename(f)]
         images.sort()
         start_number = images[0].replace('image_', '').replace('.png', '')
         command = f'ffmpeg -start_number {start_number} -r {framerate} -i {input} -c:v libx264 -vf fps={framerate} -pix_fmt yuv420p {output} -y'

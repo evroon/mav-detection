@@ -14,7 +14,7 @@ from im_helpers import get_flow_radial, get_flow_vis
 class Dataset:
     '''Desscribes a dataset with images, annotations and flow fields.'''
 
-    def __init__(self, base_path: str, logger: logging.Logger, sequence: str, img_format: str = 'image_%05d.png', img_dir: str = '/images', seq_dir: str = '') -> None:
+    def __init__(self, base_path: str, logger: logging.Logger, sequence: str, img_dir: str = '/images', seq_dir: str = '') -> None:
         self.base_path = base_path
         self.logger = logger
         self.sequence = sequence
@@ -22,12 +22,15 @@ class Dataset:
         if self.sequence == '':
             self.sequence = self.get_default_sequence()
 
+        img_format: str = 'image_%05d.png'
         self.seq_path = f'{base_path}{seq_dir}/{self.sequence}'
         self.img_path = f'{self.seq_path}{img_dir}'
         self.seg_path = f'{self.seq_path}/segmentations'
         self.ann_path = f'{self.seq_path}/annotation'
         self.img_pngs = f'{self.img_path}/{img_format}'
         self.vid_path = f'{self.seq_path}/recording.mp4'
+
+        self.jpg_to_png()
 
         self.orig_capture = cv2.VideoCapture(self.img_pngs)
         self.flow_capture = cv2.VideoCapture(f'{self.img_path}/output/flownet2.mp4')
@@ -54,13 +57,15 @@ class Dataset:
             self.logger.error(f'Input counts: (images, flow fields): {utils.get_frame_count(self.orig_capture)}, {self.N}')
             self.run_flownet2()
 
+        print('Dataset loaded.')
+
     def run_flownet2(self) -> None:
         self.logger.info('Running FlowNet2...')
         flownet2 = os.environ['FLOWNET2']
         subprocess.call([f'{flownet2}/launch_docker.sh', '--run', '--dataset',  f'{self.img_path}'])
 
     def get_default_sequence(self) -> str:
-        return ''
+        raise ValueError('Not implemented.')
 
     def create_annotations(self) -> None:
         pass
@@ -118,6 +123,16 @@ class Dataset:
         """
         _, orig_frame = self.orig_capture.read()
         return orig_frame
+
+    def jpg_to_png(self) -> None:
+        """Converts JPGs (if they exist) into the correct PNG format."""
+        for img in os.listdir(self.img_path):
+            if os.path.splitext(img)[1] == '.jpg':
+                img_path = self.img_path + '/' + img
+                frame = cv2.imread(img_path)
+                index = int(img.replace('.jpg', ''))
+                cv2.imwrite(f'{self.img_path}/{os.path.dirname(img)}/image_{index:05d}.png', frame)
+                os.remove(img_path)
 
 
     def release(self) -> None:
