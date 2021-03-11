@@ -21,6 +21,10 @@
         "semi-urban/island-north"
     ],
 
+    "base_velocity": [
+        0.0
+    ],
+
     "radii": [
         2.5,
         5.0,

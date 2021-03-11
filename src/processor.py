@@ -38,7 +38,7 @@ class Processor:
         self.is_exiting = False
 
         self.midgard_path = os.environ['MIDGARD_PATH']
-        self.focus_of_expansion = FocusOfExpansion()
+        self.focus_of_expansion = FocusOfExpansion(self.detector.lucas_kanade)
         self.old_frame: np.ndarray = np.zeros((self.dataset.capture_size[1], self.dataset.capture_size[0], 3), dtype=np.uint8)
 
     def annotation_to_yolo(self, rects: List[utils.Rectangle]) -> str:
@@ -287,7 +287,7 @@ class Processor:
                 self.flow_vis = get_flow_vis(self.flow_uv)
 
                 FoE = self.focus_of_expansion.get_FOE(self.old_frame, orig_frame)
-                img = self.focus_of_expansion.draw(orig_frame, FoE)
+                img = self.focus_of_expansion.check_flow(self.flow_uv, FoE)
                 self.old_frame = orig_frame
 
                 if img is not None and np.sum(img) > 0:

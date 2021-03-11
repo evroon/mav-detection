@@ -82,7 +82,7 @@ class Detector:
             flow_uv[self.sample_y, self.sample_x]
 
         if self.use_sparse_of:
-            coords_old_tmp, coords_new_tmp = self.lucas_kanade.get_features(orig_frame)
+            coords_old_tmp, coords_new_tmp, _ = self.lucas_kanade.get_features(orig_frame)
 
             if len(coords_old_tmp) > 0 and len(coords_new_tmp) > 0:
                 coords_old, coords_new = coords_old_tmp, coords_new_tmp

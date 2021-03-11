@@ -31,37 +31,33 @@ class LucasKanade:
         # Create some random colors
         self.color = np.random.randint(0, 255, (self.total_num_corners, 3))
 
-    def get_features(self, frame: np.ndarray) -> Tuple[np.ndarray, np.ndarray]:
+    def get_features(self, frame: np.ndarray) -> Tuple[np.ndarray, np.ndarray, np.ndarray]:
         """Calculates the LK OF for a new frame
 
         Args:
             frame (np.ndarray): the input BGR frame
 
         Returns:
-            Tuple[np.ndarray, np.ndarray]: the arrays with old and new features resp.
+            Tuple[np.ndarray, np.ndarray, np.ndarray]: the arrays with old and new features resp. as well as their status/validity
         """
         self.mask = np.zeros_like(self.old_frame)
         frame_gray = cv2.cvtColor(frame, cv2.COLOR_BGR2GRAY)
         self.old_gray = cv2.cvtColor(self.old_frame.astype(np.uint8), cv2.COLOR_BGR2GRAY)
+        self.old_frame = frame
 
         if np.sum(self.old_gray) < 1:
-            self.old_frame = frame
-            return [], []
+            return [], [], []
 
         if len(self.features) < self.minimum_num_corners:
             # Take first frame and find corners in it
             new_features = cv2.goodFeaturesToTrack(self.old_gray, mask=None, **self.feature_params)
-            self.features = []
 
             for feature in new_features:
                 self.features.append(feature[0])
 
-        self.old_frame = frame
-
         # Calculate optical flow
-        old_features = self.features
-        good_new, status, _ = cv2.calcOpticalFlowPyrLK(self.old_gray, frame_gray, np.array(old_features), None, **self.lk_params)
-        self.features = good_new[status[:, 0] == 1, :].tolist()
-        old_features = np.array(old_features)[status[:, 0] == 1, :].tolist()
+        old_features = np.array(self.features).astype(np.float32)
+        good_new, status, _ = cv2.calcOpticalFlowPyrLK(self.old_gray, frame_gray, old_features, None, **self.lk_params)
+        self.features = good_new.tolist()
 
-        return np.array(old_features), np.array(self.features)
+        return old_features, good_new, status
