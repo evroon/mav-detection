@@ -20,6 +20,10 @@ class FocusOfExpansion:
         self.color = np.random.randint(0, 255, (self.lucas_kanade.total_num_corners, 3))
         self.trace = np.zeros((self.lucas_kanade.total_num_corners, 2000), dtype=np.int)
         self.random_lines = np.random.randint(0, self.lucas_kanade.total_num_corners, self.lucas_kanade.total_num_corners)
+        flow_height, flow_width = self.lucas_kanade.old_frame.shape[0], self.lucas_kanade.old_frame.shape[1]
+
+        self.x_coords = np.tile(np.arange(flow_width), (flow_height, 1))
+        self.y_coords = np.tile(np.arange(flow_height), (flow_width, 1)).T
 
     def get_FOE(self, old_frame: np.ndarray, new_frame: np.ndarray) -> Tuple[float, float]:
         if np.sum(old_frame) < 1:
@@ -93,22 +97,21 @@ class FocusOfExpansion:
         if FoE[0] is np.nan:
             return
 
-        result = np.zeros((flow_uv.shape[0], flow_uv.shape[1], 3), dtype=np.uint8)
+        # Calculate angle between line from FoE and feature with the flow vector of the feature.
+        x_coords_foe = self.x_coords - FoE[0]
+        y_coords_foe = self.y_coords - FoE[1]
 
-        for y in range(0, flow_uv.shape[0], 10):
-            for x in range(0, flow_uv.shape[1], 10):
-                # Calculate angle between line from FoE and feature with the flow vector of the feature.
-                diff1 = flow_uv[y, x]
-                diff2 = np.asarray([x, y]) - np.asarray(FoE)
+        diff1 = flow_uv
+        diff2 = np.zeros((x_coords_foe.shape[0], x_coords_foe.shape[1], 2))
+        diff2[..., 0] = x_coords_foe
+        diff2[..., 1] = y_coords_foe
 
-                flow_magnitude = np.linalg.norm(diff1)
-                img_distance = np.linalg.norm(diff2)
+        flow_magnitude = np.linalg.norm(diff1, axis=2)
+        img_distance = np.linalg.norm(diff2, axis=2)
 
-                angle_diff = np.abs(np.dot(diff1, diff2) / (flow_magnitude * img_distance))
-                color = np.array([255, 255, 255]) * (angle_diff / self.threshold)
-                result[y, x, :] = color.astype(np.uint8)
-
-        return result
+        angle_diff = (diff1[..., 0] * diff2[..., 0] + diff1[..., 1] * diff2[..., 1]) / (flow_magnitude * img_distance)
+        angle_diff = angle_diff * 255 / self.threshold * (flow_magnitude > 1.0)
+        return angle_diff.astype(np.uint8)
 
     def draw(self, frame: np.ndarray, FoE: Tuple[float, float]) -> np.ndarray:
         if FoE[0] is np.nan:
