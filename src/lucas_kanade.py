@@ -31,7 +31,7 @@ class LucasKanade:
         # Create some random colors
         self.color = np.random.randint(0, 255, (self.total_num_corners, 3))
 
-    def process(self, frame: np.ndarray) -> Tuple[np.ndarray, np.ndarray]:
+    def get_features(self, frame: np.ndarray) -> Tuple[np.ndarray, np.ndarray]:
         """Calculates the LK OF for a new frame
 
         Args:

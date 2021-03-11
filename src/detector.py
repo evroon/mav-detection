@@ -11,15 +11,17 @@ from frame_result import FrameResult
 
 
 class Detector:
-    class MatrixMode(Enum):
-        AFFINE = 0,
-        HOMOGRAPHY = 1,
-        FUNDAMENTAL = 2,
-        ESSENTIAL = 3
+    class Algorithm(Enum):
+        NONE = 0,
+        FOE = 1,
+        AFFINE = 2,
+        HOMOGRAPHY = 3,
+        FUNDAMENTAL = 4,
+        ESSENTIAL = 5,
 
-    def __init__(self, dataset: Dataset, matrix_mode: MatrixMode = MatrixMode.AFFINE, use_sparse_of: bool = False) -> None:
+    def __init__(self, dataset: Dataset, algorithm: Algorithm = Algorithm.FOE, use_sparse_of: bool = False) -> None:
         self.dataset = dataset
-        self.matrix_mode = matrix_mode
+        self.algorithm = algorithm
         self.use_sparse_of = use_sparse_of
 
         flow_width = self.dataset.capture_size[0]
@@ -42,7 +44,7 @@ class Detector:
         self.history_index = 0
         self.confidence: int = 0
         self.use_optimization = False
-        self.prev_frame = np.zeros((dataset.get_capture_shape()[0], dataset.get_capture_shape()[1], 3))
+        self.prev_frame = np.zeros((dataset.capture_size[1], dataset.capture_size[0], 3), dtype=np.uint8)
         self.lucas_kanade = LucasKanade(self.prev_frame)
 
     def get_gradient_and_magnitude(self, frame: np.ndarray) -> np.ndarray:
@@ -80,23 +82,23 @@ class Detector:
             flow_uv[self.sample_y, self.sample_x]
 
         if self.use_sparse_of:
-            coords_old_tmp, coords_new_tmp = self.lucas_kanade.process(orig_frame)
+            coords_old_tmp, coords_new_tmp = self.lucas_kanade.get_features(orig_frame)
 
             if len(coords_old_tmp) > 0 and len(coords_new_tmp) > 0:
                 coords_old, coords_new = coords_old_tmp, coords_new_tmp
                 self.dataset.logger.info(f'features: {len(coords_new)}')
 
-        if self.matrix_mode == Detector.MatrixMode.HOMOGRAPHY:
+        if self.algorithm == Detector.Algorithm.HOMOGRAPHY:
             homography, self.confidence = cv2.findHomography(coords_old, coords_new)
             self.homography = np.array(homography)
         elif len(coords_old) > 0 and len(coords_new) > 0:
-            if self.matrix_mode == Detector.MatrixMode.AFFINE:
+            if self.algorithm == Detector.Algorithm.AFFINE:
                 aff, _ = cv2.estimateAffine2D(coords_old, coords_new)
                 self.aff = np.array(aff)
-            if self.matrix_mode == Detector.MatrixMode.FUNDAMENTAL:
+            if self.algorithm == Detector.Algorithm.FUNDAMENTAL:
                 fundamental, _ = cv2.findFundamentalMat(coords_old, coords_new, cv2.FM_RANSAC, 3, 0.99)
                 self.fundamental = np.array(fundamental)
-            if self.matrix_mode == Detector.MatrixMode.ESSENTIAL:
+            if self.algorithm == Detector.Algorithm.ESSENTIAL:
                 fundamental, _ = cv2.findEssentialMat(coords_old, coords_new, cv2.FM_RANSAC, 3, 0.99)
                 self.fundamental = np.array(fundamental)
 
@@ -114,7 +116,7 @@ class Detector:
         global_motion = np.zeros_like(flow_uv)
 
         # Manual matrix multiplication.
-        if self.matrix_mode == Detector.MatrixMode.HOMOGRAPHY:
+        if self.algorithm == Detector.Algorithm.HOMOGRAPHY:
             global_motion[..., 0] = self.homography[0, 0] * self.x_coords + \
                 self.homography[0, 1] * self.y_coords + self.homography[0, 2] - self.x_coords
             global_motion[..., 1] = self.homography[1, 0] * self.x_coords + \
@@ -162,7 +164,7 @@ class Detector:
         """
         flow_uv = flow_uv.copy()
 
-        if self.matrix_mode == Detector.MatrixMode.HOMOGRAPHY:
+        if self.algorithm == Detector.Algorithm.HOMOGRAPHY:
             flow_uv_stable = cv2.warpPerspective(flow_uv, self.homography, (752, 480))
         else:
             flow_uv_stable = cv2.warpAffine(flow_uv, self.aff, (752, 480))
@@ -401,3 +403,9 @@ class Detector:
         mask = rgb[..., 0] >= 225
         rgb[mask, 1] = 0
         return rgb, mask
+
+    def is_homography_based(self) -> bool:
+        return self.algorithm not in [
+            Detector.Algorithm.NONE,
+            Detector.Algorithm.FOE,
+        ]

@@ -7,12 +7,13 @@ import shutil
 import subprocess
 
 from im_helpers import get_flow_vis
-from typing import List, Dict, Tuple
+from typing import List, Dict, Tuple, Optional
 from midgard import Midgard
 from dataset import Dataset
 from detector import Detector
 from run_config import RunConfig
 from frame_result import FrameResult
+from focus_of_expansion import FocusOfExpansion
 
 class Processor:
     '''Converts dataset for use with YOLOv4 or acts as detector.'''
@@ -37,6 +38,8 @@ class Processor:
         self.is_exiting = False
 
         self.midgard_path = os.environ['MIDGARD_PATH']
+        self.focus_of_expansion = FocusOfExpansion()
+        self.old_frame: np.ndarray = np.zeros((self.dataset.capture_size[1], self.dataset.capture_size[0], 3), dtype=np.uint8)
 
     def annotation_to_yolo(self, rects: List[utils.Rectangle]) -> str:
         """Converts the rectangles to the text format read by YOLOv4
@@ -167,7 +170,7 @@ class Processor:
                 self.frame_index += 1
 
     def prepare_sequence(self, sequence: str) -> None:
-        """Prepare a sequence of the MIDGARD dataset
+        """Prepare a sequence of the dataset
 
         Args:
             sequence (str): which sequence to prepare, for example 'indoor-modern/sports-hall'
@@ -198,7 +201,7 @@ class Processor:
                 self.frame_index += 1
 
     def convert(self, mode: RunConfig.Mode) -> None:
-        """Processes the MIDGARD dataset"""
+        """Processes the dataset"""
 
         # The number of channels per mode.
         channel_options = {
@@ -255,31 +258,40 @@ class Processor:
                 with open(os.devnull, 'w') as devnull:
                     subprocess.call(command, stdout=devnull)
 
-
     def run_detection(self) -> Dict[int, FrameResult]:
         """Runs the detection."""
         while self.is_active():
             orig_frame = self.dataset.get_frame()
-            self.flow_uv = self.dataset.get_flow_uv(self.frame_index)
-            self.flow_vis = get_flow_vis(self.flow_uv)
-            self.dataset.get_annotation(self.frame_index)
 
-            self.detector.get_affine_matrix(orig_frame, self.flow_uv)
-            flow_uv_warped_vis, cluster_vis, _, global_motion_vis = self.detector.flow_vec_subtract(orig_frame, self.flow_uv)
-            global_motion_vis = global_motion_vis.astype(np.uint8)
+            if self.detector.is_homography_based():
+                self.flow_uv = self.dataset.get_flow_uv(self.frame_index)
+                self.flow_vis = get_flow_vis(self.flow_uv)
+                self.dataset.get_annotation(self.frame_index)
 
-            if self.debug_mode:
-                # flow_diff_vis, blocks_vis = self.detector.warp_method(self.flow_uv)
-                # blocks_vis, _ = self.detector.clustering(self.detector.flow_diff_mag)
-                # summed_mag = self.detector.get_history(self.flow_uv)
-                self.detector.draw(orig_frame)
+                self.detector.get_affine_matrix(orig_frame, self.flow_uv)
+                flow_uv_warped_vis, cluster_vis, _, global_motion_vis = self.detector.flow_vec_subtract(orig_frame, self.flow_uv)
+                global_motion_vis = global_motion_vis.astype(np.uint8)
 
-                top_frames = np.hstack((orig_frame, global_motion_vis, flow_uv_warped_vis))
-                bottom_frames = np.hstack((self.flow_vis, global_motion_vis, cluster_vis))
-                self.write(np.vstack((top_frames, bottom_frames)))
-                self.detection_results[self.frame_index] = self.detector.frame_result
+                if self.debug_mode:
+                    self.detector.draw(orig_frame)
+
+                    top_frames = np.hstack((orig_frame, global_motion_vis, flow_uv_warped_vis))
+                    bottom_frames = np.hstack((self.flow_vis, global_motion_vis, cluster_vis))
+                    self.write(np.vstack((top_frames, bottom_frames)))
+                    self.detection_results[self.frame_index] = self.detector.frame_result
+                else:
+                    self.write(cluster_vis)
             else:
-                self.write(cluster_vis)
+                self.detection_results[self.frame_index] = FrameResult()
+                self.flow_uv = self.dataset.get_flow_uv(self.frame_index)
+                self.flow_vis = get_flow_vis(self.flow_uv)
+
+                FoE = self.focus_of_expansion.get_FOE(self.old_frame, orig_frame)
+                img = self.focus_of_expansion.draw(orig_frame, FoE)
+                self.old_frame = orig_frame
+
+                if img is not None and np.sum(img) > 0:
+                    self.write(img)
 
         return self.detection_results
 
