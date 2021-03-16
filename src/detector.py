@@ -39,7 +39,7 @@ class Detector:
         self.x_coords = np.tile(np.arange(flow_width), (flow_height, 1))
         self.y_coords = np.tile(np.arange(flow_height), (flow_width, 1)).T
 
-        self.history_length = 10
+        self.history_length = 20
         self.flow_uv_history = np.zeros((self.history_length, flow_height, flow_width, 2))
         self.flow_map_history = np.zeros((self.history_length, flow_height, flow_width))
         self.history_index = 0

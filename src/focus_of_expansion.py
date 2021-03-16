@@ -26,7 +26,28 @@ class FocusOfExpansion:
         self.x_coords = np.tile(np.arange(flow_width), (flow_height, 1))
         self.y_coords = np.tile(np.arange(flow_height), (flow_width, 1)).T
 
-    def get_FOE(self, old_frame: np.ndarray, new_frame: np.ndarray) -> Tuple[float, float]:
+    def get_FOE_dense(self, flow_uv: np.ndarray) -> Tuple[float, float]:
+        N = 10000
+        intersections = np.zeros((N, 2))
+
+        # rand1 has shape (2*N, (y, x)).
+        rand1 = np.zeros((N*2, 2), dtype=np.uint32)
+        rand1[..., 0] = np.random.randint(0, flow_uv.shape[0], N*2)
+        rand1[..., 1] = np.random.randint(0, flow_uv.shape[1], N*2)
+
+        # Sample intersections between flow vectors.
+        for i in range(N):
+            coord1, coord2 = rand1[i, :], rand1[i+N, :]
+            flow1, flow2 = flow_uv[coord1[0], coord1[1], :], flow_uv[coord2[0], coord2[1], :]
+            coord1 = coord1[::-1]
+            coord2 = coord2[::-1]
+            intersections[i, :] = utils.line_intersection((coord1, flow1 + coord1), (coord2, flow2 + coord2))
+
+        intersections = intersections[intersections[:, 0] != 0.0, :]
+        FoE = np.median(intersections, axis=0).astype(np.uint16)
+        return (FoE[0], FoE[1])
+
+    def get_FOE_sparse(self, old_frame: np.ndarray, new_frame: np.ndarray) -> Tuple[float, float]:
         if np.sum(old_frame) < 1:
             return (np.nan, np.nan)
 
@@ -44,37 +65,24 @@ class FocusOfExpansion:
             a, b, c, d = [int(x) for x in [*new.ravel(), *old.ravel()]]
             color = self.color[i].tolist()
 
-            # new_frame = cv2.circle(new_frame, (a, b), 4, color, -1)
-
             l = self.trace[i, 0] + 1
             self.trace[i, l] = c
             self.trace[i, l+1] = d
             self.trace[i, 0] += 2
             color = self.color[i].tolist()
-            # m, n = self.trace[i, 1:3]
             self.num_features += 1
-
-            # for j in range(3, l+2, 2):
-                # self.mask = cv2.line(self.mask, (m, n), (self.trace[i, j], self.trace[i, j+1]), color, 2)
-                # m, n = self.trace[i, j], self.trace[i, j+1]
 
             if l >= 3:
                 k = 1 if l < 1 + self.roll_back * 2 else l - self.roll_back * 2
                 a, b = self.trace[i, l:l+2]
                 c, d = self.trace[i, k:k+2]
 
-                diff_x = float(c) - float(a)
-                diff_y = float(d) - float(b)
-
-                diff = np.array([diff_x, diff_y])
-                # length = np.linalg.norm(diff)
-
-                # if length < 5: # or b < capture_size[1] // 4:
-                    # continue
+                diff = np.array([float(c) - float(a), float(d) - float(b)])
 
                 new_xy = np.array([a, b]) + diff
                 new_xy = new_xy.astype(np.uint16)
 
+                # Let flow vector fit inside image bounds.
                 while new_xy[1] < 0.0 or new_xy[1] > new_frame.shape[1]:
                     diff /= 2.0
                     new_xy = np.array([a, b]) + diff
@@ -119,7 +127,12 @@ class FocusOfExpansion:
 
         angle_diff = np.arccos((diff1[..., 0] * diff2[..., 0] + diff1[..., 1] * diff2[..., 1]) / norm)
         max_angle_diff = np.max(angle_diff)
-        return im_helpers.to_int(angle_diff, normalize=True)
+        return im_helpers.to_rgb(angle_diff)
+
+    def draw_FoE(self, frame: np.ndarray, FoE: Tuple[float, float], color: List[int]=[0, 42, 255]) -> np.ndarray:
+        if FoE[0] is np.nan or FoE[1] is np.nan:
+            return frame
+        return cv2.circle(frame, (int(FoE[0]), int(FoE[1])), 10, color, -1)
 
     def draw(self, frame: np.ndarray, FoE: Tuple[float, float]) -> np.ndarray:
         if FoE[0] is np.nan:

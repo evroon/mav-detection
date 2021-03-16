@@ -291,9 +291,12 @@ class Processor:
                 self.flow_averaged = self.detector.get_history(self.flow_uv)
                 self.flow_vis = im_helpers.get_flow_vis(self.flow_uv)
 
-                FoE = self.focus_of_expansion.get_FOE(self.old_frame, orig_frame)
-                img = self.focus_of_expansion.check_flow(self.flow_averaged, FoE)
+                FoE_sparse = self.focus_of_expansion.get_FOE_sparse(self.old_frame, orig_frame)
+                FoE_dense  = self.focus_of_expansion.get_FOE_dense(self.flow_averaged)
+                img = self.focus_of_expansion.check_flow(self.flow_averaged, FoE_sparse)
                 self.old_frame = orig_frame
+                img = self.focus_of_expansion.draw_FoE(img, FoE_sparse, [0, 42, 255])
+                img = self.focus_of_expansion.draw_FoE(img, FoE_dense,  [255, 42, 0])
                 out_img = img
 
                 if out_img is not None and np.sum(out_img) > 0:
