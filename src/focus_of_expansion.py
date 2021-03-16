@@ -5,6 +5,7 @@ import matplotlib.pyplot as plt
 from typing import Tuple, Optional, List
 
 from lucas_kanade import LucasKanade
+import im_helpers
 
 plt.rcParams['axes.axisbelow'] = True
 
@@ -107,20 +108,18 @@ class FocusOfExpansion:
             return
 
         # Calculate angle between line from FoE and feature with the flow vector of the feature.
-        x_coords_foe = self.x_coords - FoE[0]
-        y_coords_foe = self.y_coords - FoE[1]
-
         diff1 = flow_uv
         diff2 = np.zeros_like(flow_uv)
-        diff2[..., 0] = x_coords_foe
-        diff2[..., 1] = y_coords_foe
+        diff2[..., 0] = self.x_coords - FoE[0]
+        diff2[..., 1] = self.y_coords - FoE[1]
 
         flow_magnitude = np.linalg.norm(diff1, axis=2)
         img_distance = np.linalg.norm(diff2, axis=2)
+        norm = np.maximum(np.ones_like(flow_magnitude) * 1e-6, flow_magnitude * img_distance)
 
-        angle_diff = (diff1[..., 0] * diff2[..., 0] + diff1[..., 1] * diff2[..., 1]) / (flow_magnitude * img_distance)
-        angle_diff = angle_diff * 255 / self.threshold# * (flow_magnitude > 10.0)
-        return angle_diff.astype(np.uint8)
+        angle_diff = np.arccos((diff1[..., 0] * diff2[..., 0] + diff1[..., 1] * diff2[..., 1]) / norm)
+        max_angle_diff = np.max(angle_diff)
+        return im_helpers.to_int(angle_diff, normalize=True)
 
     def draw(self, frame: np.ndarray, FoE: Tuple[float, float]) -> np.ndarray:
         if FoE[0] is np.nan:

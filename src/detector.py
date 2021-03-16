@@ -4,6 +4,7 @@ import numpy as np
 from typing import Tuple, cast
 from enum import Enum
 
+import im_helpers
 from dataset import Dataset
 from lucas_kanade import LucasKanade
 from im_helpers import pyramid, sliding_window, get_flow_vis
@@ -38,7 +39,7 @@ class Detector:
         self.x_coords = np.tile(np.arange(flow_width), (flow_height, 1))
         self.y_coords = np.tile(np.arange(flow_height), (flow_width, 1)).T
 
-        self.history_length = 5
+        self.history_length = 10
         self.flow_uv_history = np.zeros((self.history_length, flow_height, flow_width, 2))
         self.flow_map_history = np.zeros((self.history_length, flow_height, flow_width))
         self.history_index = 0
@@ -58,14 +59,6 @@ class Detector:
         """
         return np.sqrt(frame[..., 0] ** 2.0 + frame[..., 1] ** 2.0), \
             np.arctan2(frame[..., 1], frame[..., 0])
-
-    def get_fft(self, frame: np.ndarray) -> np.ndarray:
-        fft = np.fft.fft2(frame[..., 0])
-        fshift = np.fft.fftshift(fft)
-        magnitude_spectrum = 20*np.log(np.abs(fshift))
-        magnitude_rgb = np.zeros_like(frame)
-        magnitude_rgb[..., 0] = magnitude_spectrum
-        return magnitude_rgb
 
     # def get_rotation(self, flow_uv: np.ndarray, use_fundamental = True) -> np.ndarray:
     #     pass
@@ -132,9 +125,9 @@ class Detector:
         self.flow_uv_warped_mag = np.sqrt(self.flow_uv_warped[..., 0] ** 2.0 + self.flow_uv_warped[..., 1] ** 2.0)
         self.flow_max = np.unravel_index(self.flow_uv_warped_mag.argmax(), self.flow_uv_warped_mag.shape)
         # self.cluster_vis, _ = self.clustering(self.flow_uv_warped_mag)
-        self.cluster_vis = self.to_rgb(self.flow_uv_warped_mag)
+        self.cluster_vis = im_helpers.to_rgb(self.flow_uv_warped_mag)
 
-        flow_uv_warped_mag_vis = self.to_rgb(self.flow_uv_warped_mag)
+        flow_uv_warped_mag_vis = im_helpers.to_rgb(self.flow_uv_warped_mag)
 
         self.opt_window: Tuple[float, utils.Rectangle, np.ndarray, float] = self.analyze_pyramid(self.cluster_vis)
         window_optimized = self.opt_window[1]
@@ -188,7 +181,7 @@ class Detector:
         blocks = cv2.resize(blocks, self.flow_diff_mag.shape)
         blocks = np.transpose(blocks)
 
-        blocks_vis = self.to_rgb(self.flow_diff_mag)
+        blocks_vis = im_helpers.to_rgb(self.flow_diff_mag)
         return flow_diff_vis, blocks_vis
 
     def draw(self, orig_frame: np.ndarray) -> None:
@@ -325,19 +318,6 @@ class Detector:
     #     if feature_pos[0] != feature_pos_clipped[0] or feature_pos[1] != feature_pos_clipped[1]:
     #         feature_pos = np.array(ground_truth.get_center())
     #         feature_pos = np.clip(feature_pos, min_coords, max_coords)
-
-    def get_magnitude(self, img: np.ndarray) -> np.ndarray:
-        return np.sqrt(np.sum(img ** 2.0, axis=-1))
-
-    def to_rgb(self, img: np.ndarray)-> np.ndarray:
-        max_intensity = np.max(img)
-        if max_intensity == 0.0:
-            max_intensity = 1.0
-
-        return cv2.cvtColor(np.around(img * 255 / max_intensity).astype(np.uint8), cv2.COLOR_GRAY2RGB)
-
-    def to_int(self, img: np.ndarray, type: type=np.uint8) -> np.ndarray:
-        return np.around(img).astype(type)
 
     def clip(self, img: np.ndarray) -> np.ndarray:
         img[..., 0] = np.clip(img[..., 0], 0, img.shape[1] - 1)

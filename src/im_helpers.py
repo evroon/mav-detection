@@ -73,3 +73,48 @@ def get_flow_vis(frame: np.ndarray) -> np.ndarray:
 		np.ndarray: BGR flow field visualized in HSV space
 	"""
 	return flow_vis.flow_to_color(frame, convert_to_bgr=True)
+
+
+def get_magnitude(img: np.ndarray) -> np.ndarray:
+	"""Calculates the magnitude of the vectors in the last dimension of img.
+
+	Args:
+		img (np.ndarray): the input image
+
+	Returns:
+		np.ndarray: (h, w) array of magnitudes
+	"""
+	return np.sqrt(np.sum(img ** 2.0, axis=-1))
+
+def to_rgb(img: np.ndarray)-> np.ndarray:
+	"""Converts grayscale to RGB.
+
+	Args:
+		img (np.ndarray): grayscale input image
+
+	Returns:
+		np.ndarray: output RGB image
+	"""
+
+	return cv2.cvtColor(to_int(img, np.uint8, True), cv2.COLOR_GRAY2RGB)
+
+def to_int(img: np.ndarray, type: type=np.uint8, normalize: bool=False) -> np.ndarray:
+	img_normalized = img
+
+	if normalize:
+		max_intensity = np.max(img)
+		if max_intensity == 0.0:
+			max_intensity = 1.0
+
+		img_normalized = np.abs(img_normalized) * 255 / max_intensity
+
+	return np.around(img_normalized).astype(type)
+
+
+def get_fft(frame: np.ndarray) -> np.ndarray:
+	fft = np.fft.fft2(frame[..., 0])
+	fshift = np.fft.fftshift(fft)
+	magnitude_spectrum = 20*np.log(np.abs(fshift))
+	magnitude_rgb = np.zeros_like(frame)
+	magnitude_rgb[..., 0] = magnitude_spectrum
+	return magnitude_rgb

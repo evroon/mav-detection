@@ -6,7 +6,7 @@ import glob
 import shutil
 import subprocess
 
-from im_helpers import get_flow_vis
+import im_helpers
 from typing import List, Dict, Tuple, Optional
 from midgard import Midgard
 from dataset import Dataset
@@ -32,7 +32,9 @@ class Processor:
             self.frame_columns, self.frame_rows = 3, 2
 
         output_size = (self.dataset.capture_size[0] * self.frame_columns, self.dataset.capture_size[1] * self.frame_rows)
-        self.output = utils.get_output(f'{self.dataset.seq_path}/processed.mp4', capture_size=output_size, is_grey=not self.debug_mode)
+        output_path = f'{self.dataset.seq_path}/processed.mp4'
+        self.output = utils.get_output(output_path, capture_size=output_size, is_grey=not self.debug_mode)
+        self.logger.info(f'Writing output to: {output_path}')
 
         self.frame_index, self.start_frame = 0, 100
         self.is_exiting = False
@@ -115,7 +117,7 @@ class Processor:
 
             if self.mode == RunConfig.Mode.FLOW_UV:
                 flow_uv = self.dataset.get_flow_uv(self.frame_index)
-                flow_vis = get_flow_vis(flow_uv)
+                flow_vis = im_helpers.get_flow_vis(flow_uv)
                 cv2.imwrite(dst, flow_vis)
             elif self.mode in [RunConfig.Mode.FLOW_FOE_CLUSTERING, RunConfig.Mode.FLOW_FOE_YOLO]:
                 orig_frame = self.dataset.get_frame()
@@ -150,6 +152,7 @@ class Processor:
         return images, annotations
 
     def annotations_to_yolo(self) -> None:
+        """Converts annotations from MIDGARD to YOLOv4 format."""
         sequences = self.config.get_all_sequences()
 
         for sequence in sequences:
@@ -230,7 +233,6 @@ class Processor:
         for sequence in sequences:
             self.prepare_sequence(sequence)
 
-
     def undistort(self) -> None:
         sequences = self.config.get_all_sequences()
 
@@ -265,7 +267,7 @@ class Processor:
 
             if self.detector.is_homography_based():
                 self.flow_uv = self.dataset.get_flow_uv(self.frame_index)
-                self.flow_vis = get_flow_vis(self.flow_uv)
+                self.flow_vis = im_helpers.get_flow_vis(self.flow_uv)
                 self.dataset.get_annotation(self.frame_index)
 
                 self.detector.get_affine_matrix(orig_frame, self.flow_uv)
@@ -284,15 +286,15 @@ class Processor:
             else:
                 self.detection_results[self.frame_index] = FrameResult()
                 self.flow_uv = self.dataset.get_flow_uv(self.frame_index)
-                self.flow_uv[..., 0] /= self.detector.get_magnitude(self.flow_uv)
-                self.flow_uv[..., 1] /= self.detector.get_magnitude(self.flow_uv)
+                self.flow_uv[..., 0] /= im_helpers.get_magnitude(self.flow_uv)
+                self.flow_uv[..., 1] /= im_helpers.get_magnitude(self.flow_uv)
                 self.flow_averaged = self.detector.get_history(self.flow_uv)
-                self.flow_vis = get_flow_vis(self.flow_uv)
+                self.flow_vis = im_helpers.get_flow_vis(self.flow_uv)
 
                 FoE = self.focus_of_expansion.get_FOE(self.old_frame, orig_frame)
                 img = self.focus_of_expansion.check_flow(self.flow_averaged, FoE)
                 self.old_frame = orig_frame
-                out_img = get_flow_vis(self.flow_averaged)
+                out_img = img
 
                 if out_img is not None and np.sum(out_img) > 0:
                     self.write(out_img)
