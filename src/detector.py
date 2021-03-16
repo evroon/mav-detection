@@ -336,6 +336,14 @@ class Detector:
 
         return cv2.cvtColor(np.around(img * 255 / max_intensity).astype(np.uint8), cv2.COLOR_GRAY2RGB)
 
+    def to_int(self, img: np.ndarray, type: type=np.uint8) -> np.ndarray:
+        return np.around(img).astype(type)
+
+    def clip(self, img: np.ndarray) -> np.ndarray:
+        img[..., 0] = np.clip(img[..., 0], 0, img.shape[1] - 1)
+        img[..., 1] = np.clip(img[..., 1], 0, img.shape[0] - 1)
+        return img
+
     def get_history(self, flow_uv: np.ndarray) -> np.ndarray:
         """Calculates the averaged tracked history of flow vectors.
 
@@ -346,23 +354,20 @@ class Detector:
             np.ndarray: history of flow field
         """
         self.flow_uv_history[self.history_index, ...] = flow_uv
-        self.flow_map_history[self.history_index, ...] = self.flow_uv_warped_mag
+
         k = (self.history_index + 2) % (self.history_length - 1)
-        summed_mag = self.flow_map_history[(self.history_index + 1) % (self.history_length - 1), ...]
+        orig_map = np.zeros_like(flow_uv, dtype=np.float64)
+        orig_map[..., 0] = self.y_coords
+        orig_map[..., 1] = self.x_coords
+        lookup_map = np.copy(orig_map)
 
-        while k != (self.history_index  + 1) % (self.history_length - 1):
-            lookup_x = self.x_coords + self.flow_uv_history[k, ..., 0]
-            lookup_y = self.y_coords + self.flow_uv_history[k, ..., 1]
-            lookup_x = np.around(np.clip(lookup_x, 0.0, summed_mag.shape[1] - 1)).astype(np.uint16)
-            lookup_y = np.around(np.clip(lookup_y, 0.0, summed_mag.shape[0] - 1)).astype(np.uint16)
-
-            summed_mag = summed_mag[lookup_y, lookup_x]
-            summed_mag += self.flow_map_history[(k - 1) % (self.history_length - 1), ...]
-
+        while k != (self.history_index + 1) % (self.history_length - 1):
+            warped = lookup_map.astype(np.float32)
+            lookup_map += cv2.remap(self.flow_uv_history[k, ...], warped[..., 1], warped[..., 0], cv2.INTER_LINEAR)
             k = (k + 1) % self.history_length
 
         self.history_index = (self.history_index + 1) % self.history_length
-        return self.to_rgb(summed_mag)
+        return lookup_map - orig_map
 
     def predict(self, segment: np.ndarray, flow_uv: np.ndarray, orig_frame: np.ndarray) -> None:
         avg = np.average(flow_uv[segment], 0)

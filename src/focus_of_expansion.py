@@ -94,6 +94,15 @@ class FocusOfExpansion:
         return (FoE[0], FoE[1])
 
     def check_flow(self, flow_uv: np.ndarray, FoE: Tuple[float, float]) -> np.ndarray:
+        """Checks which parts of a flow field are parallel with the FoE.
+
+        Args:
+            flow_uv (np.ndarray): the flow field
+            FoE (Tuple[float, float]): the Focus of Expansion
+
+        Returns:
+            np.ndarray: BGR image with higher intensities for higher local motion.
+        """
         if FoE[0] is np.nan:
             return
 
@@ -102,7 +111,7 @@ class FocusOfExpansion:
         y_coords_foe = self.y_coords - FoE[1]
 
         diff1 = flow_uv
-        diff2 = np.zeros((x_coords_foe.shape[0], x_coords_foe.shape[1], 2))
+        diff2 = np.zeros_like(flow_uv)
         diff2[..., 0] = x_coords_foe
         diff2[..., 1] = y_coords_foe
 
@@ -110,7 +119,7 @@ class FocusOfExpansion:
         img_distance = np.linalg.norm(diff2, axis=2)
 
         angle_diff = (diff1[..., 0] * diff2[..., 0] + diff1[..., 1] * diff2[..., 1]) / (flow_magnitude * img_distance)
-        angle_diff = angle_diff * 255 / self.threshold * (flow_magnitude > 1.0)
+        angle_diff = angle_diff * 255 / self.threshold# * (flow_magnitude > 10.0)
         return angle_diff.astype(np.uint8)
 
     def draw(self, frame: np.ndarray, FoE: Tuple[float, float]) -> np.ndarray:

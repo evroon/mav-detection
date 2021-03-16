@@ -284,14 +284,18 @@ class Processor:
             else:
                 self.detection_results[self.frame_index] = FrameResult()
                 self.flow_uv = self.dataset.get_flow_uv(self.frame_index)
+                self.flow_uv[..., 0] /= self.detector.get_magnitude(self.flow_uv)
+                self.flow_uv[..., 1] /= self.detector.get_magnitude(self.flow_uv)
+                self.flow_averaged = self.detector.get_history(self.flow_uv)
                 self.flow_vis = get_flow_vis(self.flow_uv)
 
                 FoE = self.focus_of_expansion.get_FOE(self.old_frame, orig_frame)
-                img = self.focus_of_expansion.check_flow(self.flow_uv, FoE)
+                img = self.focus_of_expansion.check_flow(self.flow_averaged, FoE)
                 self.old_frame = orig_frame
+                out_img = get_flow_vis(self.flow_averaged)
 
-                if img is not None and np.sum(img) > 0:
-                    self.write(img)
+                if out_img is not None and np.sum(out_img) > 0:
+                    self.write(out_img)
 
         return self.detection_results
 
