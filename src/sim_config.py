@@ -54,7 +54,7 @@ class SimConfig:
         return f'{self.base_name}-{self.orientation}-{self.height_name}'
 
     def full_name(self) -> str:
-        return f'{self.base_name}-{self.orientation}-{self.height_name} ({self.radius})'
+        return f'{self.base_name}-{self.orientation}-{self.height_name} ({self.radius}m)'
 
     def is_different_location(self, other: SimConfig) -> bool:
         return self.base_name != other.base_name

@@ -10,7 +10,7 @@ import time
 import shutil
 
 from datetime import datetime
-from typing import Dict, List, Any, Optional, cast
+from typing import Dict, List, Any, Optional, Tuple, cast
 
 from sim_config import SimConfig
 from run_config import RunConfig
@@ -51,6 +51,7 @@ class AirSimControl:
         print(f'Number of locations: {len(locations)}')
         print(f'Number of configurations: {len(self.configs)}')
 
+        self.base_velocity: Tuple[float, float] = (0, 0)
         self.speed = 2.0
         self.scale_speed_by_radius = False
         self.orbits = 1
@@ -114,7 +115,6 @@ class AirSimControl:
             if takeoff2 is not None:
                 takeoff2.join()
         else:
-            landed = self.is_landed(vehicle_name)
             if self.is_landed(vehicle_name):
                 return self.client.takeoffAsync(vehicle_name=vehicle_name)
 
@@ -194,7 +194,7 @@ class AirSimControl:
         self.takeoff()
         self.teleport(config)
 
-        print(f'{config.base_name}: New heading: {config.orientation}, altitude: {config.center.z_val:.02f}')
+        print(f'{config.base_name}: New heading: {config.orientation}, altitude: {config.center.z_val:.02f}m')
 
     def get_base_dir(self, config: SimConfig) -> str:
         return f'{self.root_data_dir}/{config}'
@@ -405,8 +405,6 @@ class AirSimControl:
             os.makedirs(dir)
 
     def prepare_sequence(self) -> None:
-        shutil.rmtree(self.base_dir, ignore_errors=True)
-
         self.create_if_not_exists(f'{self.base_dir}/images')
         self.create_if_not_exists(f'{self.base_dir}/segmentations')
         self.create_if_not_exists(f'{self.base_dir}/states')
