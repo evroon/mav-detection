@@ -67,6 +67,7 @@ class AirSimControl:
         self.iteration: int = 0
         self.timestamps: Dict[int, datetime] = {}
         self.begin_time: datetime = datetime.now()
+        self.direction = 1
 
         if not os.path.exists(self.root_data_dir):
             os.makedirs(self.root_data_dir)
@@ -212,6 +213,8 @@ class AirSimControl:
         self.base_dir = self.get_base_dir(config)
 
         self.prepare_sequence()
+        self.drone_in_frame_previous = False
+        self.direction *= -1
 
         while count < self.orbits:
             if self.snapshots > 0 and not (self.snapshot_index < self.snapshots):
@@ -231,7 +234,7 @@ class AirSimControl:
                 # print("reached full speed...")
                 ramptime = 0
 
-            lookahead_angle = speed / config.radius
+            lookahead_angle = speed / config.radius * self.direction
 
             pos = self.get_position()
             dx = pos.x_val - config.center.x_val
@@ -246,9 +249,6 @@ class AirSimControl:
             vx = lookahead_x - pos.x_val
             vy = lookahead_y - pos.y_val
 
-            if self.track_orbits(config.radius, angle_to_center * 180 / math.pi):
-                count += 1
-
             self.camera_heading = camera_heading
             self.client.moveByVelocityZAsync(vx, vy, config.center.z_val, 1, airsim.DrivetrainType.MaxDegreeOfFreedom, airsim.YawMode(
                 False, camera_heading), vehicle_name=self.target_drone)
@@ -257,8 +257,8 @@ class AirSimControl:
             self.get_states()
 
             responses = self.client.simGetImages([
+                airsim.ImageRequest("segment", airsim.ImageType.Segmentation),
                 airsim.ImageRequest("high_res", airsim.ImageType.Scene),
-                airsim.ImageRequest("segment", airsim.ImageType.Segmentation)
             ], vehicle_name=self.observing_drone)
 
             # Save images.
@@ -267,10 +267,22 @@ class AirSimControl:
                     airsim.write_pfm(os.path.normpath('depth.pfm'), airsim.get_pfm_array(response))
                 else:
                     image_type: str = 'images' if response.image_type == airsim.ImageType.Scene else 'segmentations'
-                    airsim.write_file(os.path.normpath(
-                        f'{self.base_dir}/{image_type}/image_{self.iteration:05d}.png'), response.image_data_uint8)
+                    image_path = f'{self.base_dir}/{image_type}/image_{self.iteration:05d}.png'
+                    seg_1d = np.frombuffer(response.image_data_uint8, dtype=np.uint8)
 
-            self.timestamps[self.iteration] = self.get_time()
+                    if response.image_type == airsim.ImageType.Segmentation:
+                        # 343392 is needed for a 800x600 image because the image is compressed,
+                        # would be zero is image is uncompressed, see airsim.ImageRequest.
+                        drone_in_frame = np.sum(seg_1d) > 343392 and self.iteration > 10
+                        if drone_in_frame:
+                            airsim.write_file(os.path.normpath(image_path), response.image_data_uint8)
+                        elif self.drone_in_frame_previous:
+                            count += 1
+
+                        self.drone_in_frame_previous = drone_in_frame
+                    elif self.drone_in_frame_previous:
+                        airsim.write_file(os.path.normpath(image_path), response.image_data_uint8)
+                        self.timestamps[self.iteration] = self.get_time()
 
             # if self.iteration > 1:
             # difference = self.timestamps[self.iteration] - self.timestamps[self.iteration - 1]
@@ -289,10 +301,6 @@ class AirSimControl:
             if self.snapshot_delta:
                 self.next_snapshot = angle + self.snapshot_delta
             self.previous_angle = angle
-            self.shifted = False
-            self.previous_sign = None
-            self.previous_diff = None
-            self.quarter = False
             return False
 
         # now we just have to watch for a smooth crossing from negative diff to positive diff
@@ -306,7 +314,6 @@ class AirSimControl:
                 self.next_snapshot -= 360
             return False
 
-        diff = self.previous_angle - angle
         crossing = False
         self.previous_angle = angle
 
@@ -314,26 +321,6 @@ class AirSimControl:
             print("Taking snapshot at angle {}".format(angle))
             self.next_snapshot += self.snapshot_delta
 
-        diff = abs(angle - self.start_angle)
-
-        if diff > 45:
-            self.quarter = True
-
-        if self.quarter and self.previous_diff is not None and diff != self.previous_diff:
-            # watch direction this diff is moving if it switches from shrinking to growing
-            # then we passed the starting point.
-            direction = 1.0 if self.previous_diff - diff > 0.0 else -1.0
-            # print(direction, diff, self.snapshot)
-            if self.previous_sign is None:
-                self.previous_sign = direction
-            elif self.previous_sign > 0 and direction < 0:
-                if diff < 45 or diff > 360 - 45:
-                    self.quarter = False
-                    if self.snapshots <= self.snapshot_index + 1:
-                        crossing = True
-            self.previous_sign = direction
-
-        self.previous_diff = diff
         return crossing
 
     def get_magnitude(self, vector: np.ndarray) -> float:

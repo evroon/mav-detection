@@ -51,7 +51,7 @@ class SimConfig:
         return Orientation[orientation_key]
 
     def __str__(self) -> str:
-        return f'{self.base_name}-{self.orientation}-{self.height_name}'
+        return f'{self.base_name}-{self.orientation}-{self.height_name}-{self.radius}'
 
     def full_name(self) -> str:
         return f'{self.base_name}-{self.orientation}-{self.height_name} ({self.radius}m)'
@@ -65,8 +65,11 @@ class SimConfig:
     def is_different_height(self, other: SimConfig) -> bool:
         return self.height_name != other.height_name
 
+    def is_different_radius(self, other: SimConfig) -> bool:
+        return self.radius != other.radius
+
     def is_different(self, other: SimConfig) -> bool:
-        return self.is_different_location(other) or self.is_different_pose(other) or self.is_different_height(other)
+        return self.is_different_location(other) or self.is_different_pose(other) or self.is_different_height(other) or self.is_different_radius(other)
 
     def get_start_position(self, is_observer: bool) -> airsim.Vector3r:
         if is_observer:
