@@ -342,8 +342,7 @@ class AirSimControl:
         if time is None:
             time = self.get_time()
 
-        delta = time - self.begin_time
-        return f'{delta.total_seconds() * 1000:010.0f}'
+        return f'{time.timestamp() * 1000:.0f}'
 
     def get_time(self) -> datetime:
         return datetime.now()
