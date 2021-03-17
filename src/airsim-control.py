@@ -54,7 +54,6 @@ class AirSimControl:
         self.base_velocity: Tuple[float, float] = (0, 0)
         self.speed = 2.0
         self.scale_speed_by_radius = False
-        self.orbits = 1
         self.snapshots = 0
         self.snapshot_delta = None
         self.next_snapshot = None
@@ -63,7 +62,6 @@ class AirSimControl:
         self.did_takeoff = False
         self.drones_offset_x = 5
         self.executable = r'D:\UnrealProjects\CityParkEnvironmentCollec\Builds\WindowsNoEditor\CityParkEnvironmentCollec.exe'
-        self.running = True
         self.iteration: int = 0
         self.timestamps: Dict[int, datetime] = {}
         self.begin_time: datetime = datetime.now()
@@ -201,7 +199,7 @@ class AirSimControl:
         return f'{self.root_data_dir}/{config}'
 
     def fly_orbit(self, config: SimConfig) -> None:
-        count = 0
+        running = True
         self.start_angle: Optional[float] = None
         self.next_snapshot = None
 
@@ -216,7 +214,7 @@ class AirSimControl:
         self.drone_in_frame_previous = False
         self.direction *= -1
 
-        while count < self.orbits:
+        while running:
             if self.snapshots > 0 and not (self.snapshot_index < self.snapshots):
                 break
 
@@ -254,8 +252,6 @@ class AirSimControl:
                 False, camera_heading), vehicle_name=self.target_drone)
 
             # Capture frames.
-            self.get_states()
-
             responses = self.client.simGetImages([
                 airsim.ImageRequest("segment", airsim.ImageType.Segmentation),
                 airsim.ImageRequest("high_res", airsim.ImageType.Scene),
@@ -277,51 +273,21 @@ class AirSimControl:
                         if drone_in_frame:
                             airsim.write_file(os.path.normpath(image_path), response.image_data_uint8)
                         elif self.drone_in_frame_previous:
-                            count += 1
+                            running = False
 
                         self.drone_in_frame_previous = drone_in_frame
                     elif self.drone_in_frame_previous:
                         airsim.write_file(os.path.normpath(image_path), response.image_data_uint8)
                         self.timestamps[self.iteration] = self.get_time()
 
+            if self.drone_in_frame_previous:
+                self.write_states()
+
             # if self.iteration > 1:
             # difference = self.timestamps[self.iteration] - self.timestamps[self.iteration - 1]
             # print(f'Elapsed time during iteration {self.iteration} in real-time: {difference.microseconds / 1000}ms')
 
             self.iteration += 1
-
-    def track_orbits(self, radius: float, angle: float) -> bool:
-        # tracking # of completed orbits is surprisingly tricky to get right in order to handle random wobbles
-        # about the starting point.  So we watch for complete 1/2 orbits to avoid that problem.
-        if angle < 0:
-            angle += 360
-
-        if self.start_angle is None:
-            self.start_angle = angle
-            if self.snapshot_delta:
-                self.next_snapshot = angle + self.snapshot_delta
-            self.previous_angle = angle
-            return False
-
-        # now we just have to watch for a smooth crossing from negative diff to positive diff
-        if self.previous_angle is None:
-            self.previous_angle = angle
-            return False
-
-        # ignore the click over from 360 back to 0
-        if self.previous_angle > 350 and angle < 10:
-            if self.snapshot_delta and self.next_snapshot >= 360:
-                self.next_snapshot -= 360
-            return False
-
-        crossing = False
-        self.previous_angle = angle
-
-        if self.snapshot_delta and angle > self.next_snapshot:
-            print("Taking snapshot at angle {}".format(angle))
-            self.next_snapshot += self.snapshot_delta
-
-        return crossing
 
     def get_magnitude(self, vector: np.ndarray) -> float:
         return float(np.sqrt(vector.x_val ** 2.0 + vector.y_val ** 2.0 + vector.z_val ** 2.0))
@@ -340,16 +306,11 @@ class AirSimControl:
             json.dumps(obj, default=lambda o: getattr(o, '__dict__', str(o)))
         ))
 
-    def get_states(self) -> None:
+    def write_states(self) -> None:
         state1 = self.client.getMultirotorState(vehicle_name=self.target_drone)
-        # state2 = self.client.getMultirotorState(vehicle_name=self.target_drone)
 
         with open(f'{self.base_dir}/states/{self.get_time_formatted()}.json', 'w') as f:
             f.write(json.dumps(self.get_json(state1), indent=4, sort_keys=True))
-
-        if self.iteration > 10 and abs(self.get_magnitude(state1.kinematics_estimated.position)) < 2.0:
-            print('stopped')
-            self.running = False
 
     def clean(self) -> None:
         print('Removing previous results of states...')
