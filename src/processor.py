@@ -25,16 +25,8 @@ class Processor:
         self.headless = config.headless
         self.dataset = config.get_dataset()
         self.detector = Detector(self.dataset)
-        self.frame_columns, self.frame_rows = 1, 1
         self.detection_results: Dict[int, FrameResult] = dict()
-
-        if self.debug_mode:
-            self.frame_columns, self.frame_rows = 3, 2
-
-        output_size = (self.dataset.capture_size[0] * self.frame_columns, self.dataset.capture_size[1] * self.frame_rows)
-        output_path = f'{self.dataset.seq_path}/processed.mp4'
-        self.output = utils.get_output(output_path, capture_size=output_size, is_grey=not self.debug_mode)
-        self.logger.info(f'Writing output to: {output_path}')
+        self.output: Optional[cv2.VideoWriter] = None
 
         self.frame_index, self.start_frame = 0, 100
         self.is_exiting = False
@@ -70,6 +62,12 @@ class Processor:
         Args:
             frame (np.ndarray): the final frame to save
         """
+        output_path = f'{self.dataset.seq_path}/processed.mp4'
+        if self.output is None:
+            height, width, channels = frame.shape
+            self.output = utils.get_output(output_path, capture_size=(width, height), is_grey=(channels==1))
+            self.logger.info(f'Writing output to: {output_path}')
+
         self.output.write(frame)
 
         if not self.headless:
@@ -297,6 +295,7 @@ class Processor:
                 self.old_frame = orig_frame
                 img = self.focus_of_expansion.draw_FoE(img, FoE_sparse, [0, 42, 255])
                 img = self.focus_of_expansion.draw_FoE(img, FoE_dense,  [255, 42, 0])
+                # print(self.focus_of_expansion.max_flow * 180 / np.pi)
                 out_img = img
 
                 if out_img is not None and np.sum(out_img) > 0:
@@ -307,4 +306,5 @@ class Processor:
     def release(self) -> None:
         """Release all media resources"""
         self.dataset.release()
-        self.output.release()
+        if self.output is not None:
+            self.output.release()
