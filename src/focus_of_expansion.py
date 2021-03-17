@@ -17,6 +17,7 @@ class FocusOfExpansion:
         self.roll_back = 20
         self.num_features = 0
         self.enable_plots = False
+        self.max_flow = 0.0 # maximum flow in the image (degrees).
         self.threshold = np.cos(15 * np.pi / 180.0)
         self.color = np.random.randint(0, 255, (self.lucas_kanade.total_num_corners, 3))
         self.trace = np.zeros((self.lucas_kanade.total_num_corners, 2000), dtype=np.int)
@@ -126,8 +127,8 @@ class FocusOfExpansion:
         norm = np.maximum(np.ones_like(flow_magnitude) * 1e-6, flow_magnitude * img_distance)
 
         angle_diff = np.arccos((diff1[..., 0] * diff2[..., 0] + diff1[..., 1] * diff2[..., 1]) / norm)
-        max_angle_diff = np.max(angle_diff)
-        return im_helpers.to_rgb(angle_diff)
+        self.max_flow = np.max(angle_diff) * 180.0 / np.pi
+        return im_helpers.to_rgb(np.minimum(90.0 / 180 * np.pi, angle_diff))
 
     def draw_FoE(self, frame: np.ndarray, FoE: Tuple[float, float], color: List[int]=[0, 42, 255]) -> np.ndarray:
         if FoE[0] is np.nan or FoE[1] is np.nan:
