@@ -387,6 +387,39 @@ class AirSimControl:
                 f.write(json.dumps(self.timestamps_str, indent=4, sort_keys=True))
                 self.timestamps = {}
 
+        self.link_ue4_output()
+
+    def link_ue4_output(self) -> None:
+        """
+        Link the output of ue4 json files to the json files generated in self.get_states()
+        according to their timestamp.
+        """
+        states_in_dir = f'{self.root_data_dir}/states'
+        states_out_dir = f'{self.base_dir}/states'
+
+        def list_timestamps(states_dir):
+            files = os.listdir(states_dir)
+            files.sort()
+            timestamps = [int(os.path.basename(x).rstrip('.json')) for x in files if 'timestamp' not in x]
+            timestamps = np.array(timestamps)
+            return [f'{states_dir}/{x}' for x in files], timestamps
+
+        in_files, in_timestamps = list_timestamps(states_in_dir)
+        out_files, out_timestamps = list_timestamps(states_out_dir)
+
+        for out_file, out_timestamp in zip(out_files, out_timestamps):
+            diffs = in_timestamps - out_timestamp
+            selected_input = np.argmin(np.abs(diffs))
+
+            with open(out_file, 'r') as f_out:
+                result = json.load(f_out)
+
+            with open(in_files[selected_input], 'r') as f_in:
+                with open(out_file, 'w') as f_out:
+                    result['ue4'] = json.load(f_in)
+                    result['thread_difference'] = int(diffs[selected_input])
+                    f_out.write(json.dumps(result, indent=4, sort_keys=True))
+
     def create_if_not_exists(self, dir: str) -> None:
         if not os.path.exists(dir):
             os.makedirs(dir)
