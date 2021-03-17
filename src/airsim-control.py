@@ -74,6 +74,7 @@ class AirSimControl:
         # Connect to the AirSim simulator
         self.client = airsim.MultirotorClient()
         try:
+            print('Connecting...')
             self.client.confirmConnection()
         except msgpackrpc.error.TransportError:
             print('AirSim is not running or could not connect.')
