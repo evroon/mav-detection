@@ -58,12 +58,12 @@
             ],
 
             "locations": {
-                "citypark/soccerfield": {
+                "citypark-orbit/soccerfield": {
                     "x": -671.70,
                     "y": 289.60,
                     "z": -1.05389
                 },
-                "citypark/fountain": {
+                "citypark-orbit/fountain": {
                     "x": -520.00,
                     "y": 23.40,
                     "z": 6.9191
@@ -97,7 +97,7 @@
             ],
 
             "locations": {
-                "citypark/soccerfield": {
+                "citypark-foe/soccerfield": {
                     "x": -721.70,
                     "y": 289.60,
                     "z": -1.05389
