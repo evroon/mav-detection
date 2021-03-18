@@ -24,7 +24,6 @@ def plot_states(observable: str) -> None:
         'position': '$m$',
         'linear_velocity': '$m/s$',
         'linear_acceleration': '$m/s^2$',
-
         'orientation': '$\deg$',
         'angular_velocity': '$\deg/s$',
         'angular_acceleration': '$\deg/s^2$',
@@ -49,6 +48,7 @@ def plot_states(observable: str) -> None:
     plt.xlabel('Time [s]')
     plt.ylabel(f'{observable_pretty} [{y_unit}]')
     plt.grid()
+
     for i, label in zip(range(3), ['x', 'y', 'z']):
         if observable in ['position', 'orientation']:
             x[:, i] -= x[0, i]
@@ -57,6 +57,7 @@ def plot_states(observable: str) -> None:
             x[:, i] *= 180 / np.pi
 
         plt.plot(t, x[:, i], label=label)
+
     plt.legend()
     plt.savefig(f'media/states/{observable}.png', bbox_inches='tight')
 
