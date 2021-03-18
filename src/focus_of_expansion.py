@@ -127,8 +127,10 @@ class FocusOfExpansion:
         norm = np.maximum(np.ones_like(flow_magnitude) * 1e-6, flow_magnitude * img_distance)
 
         angle_diff = np.arccos((diff1[..., 0] * diff2[..., 0] + diff1[..., 1] * diff2[..., 1]) / norm)
+        angle_diff[np.isnan(angle_diff)] = 0
+
         self.max_flow = np.max(angle_diff) * 180.0 / np.pi
-        return im_helpers.to_rgb(np.minimum(90.0 / 180 * np.pi, angle_diff))
+        return im_helpers.to_rgb(angle_diff)
 
     def draw_FoE(self, frame: np.ndarray, FoE: Tuple[float, float], color: List[int]=[0, 42, 255]) -> np.ndarray:
         if FoE[0] is np.nan or FoE[1] is np.nan:

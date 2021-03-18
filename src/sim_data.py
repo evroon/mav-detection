@@ -57,8 +57,8 @@ class SimData(Dataset):
             return json.load(f)
 
     def get_gt_foe(self, i:int) -> Optional[Tuple[float, float]]:
-        FoE = self.get_state(i)['ue4']['FoE']
-        return (FoE['X'] / 2560 * 800, FoE['Y'] / 1440 * 600)
+        FoE = self.get_state(i)['ue4']['Drone1']['FoE']
+        return (FoE['X'] * 800, FoE['Y'] * 600)
 
     def create_annotations(self) -> None:
         print('Creating YOLOv4 annotations...')
