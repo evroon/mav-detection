@@ -22,7 +22,7 @@
     ],
 
     "collections": {
-        "orbit": {
+        "stationary": {
             "orbit_speed": [
                 10
             ],
@@ -58,12 +58,12 @@
             ],
 
             "locations": {
-                "citypark-orbit/soccerfield": {
+                "citypark-stationary/soccerfield": {
                     "x": -671.70,
                     "y": 289.60,
                     "z": -1.05389
                 },
-                "citypark-orbit/fountain": {
+                "citypark-stationary/fountain": {
                     "x": -520.00,
                     "y": 23.40,
                     "z": 6.9191
@@ -71,7 +71,7 @@
             }
         },
 
-        "FoE": {
+        "moving": {
             "orbit_speed": [
                 10
             ],
@@ -97,7 +97,7 @@
             ],
 
             "locations": {
-                "citypark-foe/soccerfield": {
+                "citypark-moving/soccerfield": {
                     "x": -721.70,
                     "y": 289.60,
                     "z": -1.05389
