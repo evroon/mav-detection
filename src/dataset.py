@@ -31,6 +31,10 @@ class Dataset:
         self.vid_path = f'{self.seq_path}/recording.mp4'
 
         self.jpg_to_png()
+        self.reorder_pngs()
+
+        if not os.path.exists(self.vid_path):
+            utils.img_to_video(self.img_pngs, self.vid_path)
 
         self.orig_capture = cv2.VideoCapture(self.img_pngs)
         self.flow_capture = cv2.VideoCapture(f'{self.img_path}/output/flownet2.mp4')
@@ -46,9 +50,6 @@ class Dataset:
 
         if len(os.listdir(self.ann_path)) < 1:
             self.create_annotations()
-
-        if not os.path.exists(self.vid_path):
-            utils.img_to_video(self.img_pngs, self.vid_path)
 
         if self.capture_size != self.flow_size:
             self.logger.warning(f'original capture with size {self.capture_size} does not match flow, which has size {self.flow_size}')
@@ -134,6 +135,24 @@ class Dataset:
                 cv2.imwrite(f'{self.img_path}/{os.path.dirname(img)}/image_{index:05d}.png', frame)
                 os.remove(img_path)
 
+    def reorder_pngs(self) -> None:
+        """Lets the image indices start at 0."""
+        pngs = glob.glob(self.img_path + '/image_*.png')
+        pngs.sort()
+
+        for i, png in enumerate(pngs):
+            shutil.move(png, f'{self.img_path}/image_{i:05d}.png')
+
+    def get_gt_foe(self, i:int) -> Optional[Tuple[float, float]]:
+        """Returns the ground truth Focus of Expansion.
+
+        Args:
+            i (int): frame index
+
+        Returns:
+            Optional[Tuple[float, float]]: Focus of Expansion
+        """
+        return None
 
     def release(self) -> None:
         """Release all media resources"""

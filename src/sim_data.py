@@ -4,6 +4,8 @@ import glob
 import cv2
 import re
 import os
+import json
+from typing import Optional, Tuple
 
 import utils
 from dataset import Dataset
@@ -14,6 +16,10 @@ class SimData(Dataset):
     def __init__(self, logger: logging.Logger, sequence: str) -> None:
         simdata_path = os.environ['SIMDATA_PATH']
         super().__init__(simdata_path, logger, sequence)
+        self.state_path = f'{self.seq_path}/states'
+        self.states = glob.glob(f'{self.state_path}/*.json')
+        self.states.sort()
+
 
     def write_yolo_annotation(self, image_path: str) -> None:
         filename = os.path.basename(image_path)
@@ -46,8 +52,13 @@ class SimData(Dataset):
         with open(f'{self.ann_path}/image_{index}.txt', 'w') as f:
             f.write(rect.to_yolo(img_size))
 
-    def get_gt_foe(self) -> np.ndarray:
-        return
+    def get_state(self, i:int) -> np.ndarray:
+        with open(self.states[i], 'r') as f:
+            return json.load(f)
+
+    def get_gt_foe(self, i:int) -> Optional[Tuple[float, float]]:
+        FoE = self.get_state(i)['ue4']['FoE']
+        return (FoE['X'] / 2560 * 800, FoE['Y'] / 1440 * 600)
 
     def create_annotations(self) -> None:
         print('Creating YOLOv4 annotations...')
@@ -55,4 +66,4 @@ class SimData(Dataset):
             self.write_yolo_annotation(image_path)
 
     def get_default_sequence(self) -> str:
-        return 'citypark/fountain-north-low'
+        return 'citypark-moving/soccerfield-north-medium-5.0-10-default'

@@ -291,10 +291,16 @@ class Processor:
 
                 FoE_sparse = self.focus_of_expansion.get_FOE_sparse(self.old_frame, orig_frame)
                 FoE_dense  = self.focus_of_expansion.get_FOE_dense(self.flow_averaged)
+                gt_foe = self.dataset.get_gt_foe(self.frame_index)
+
                 img = self.focus_of_expansion.check_flow(self.flow_averaged, FoE_sparse)
                 self.old_frame = orig_frame
                 img = self.focus_of_expansion.draw_FoE(img, FoE_sparse, [0, 42, 255])
                 img = self.focus_of_expansion.draw_FoE(img, FoE_dense,  [255, 42, 0])
+
+                if gt_foe is not None:
+                    self.focus_of_expansion.draw_FoE(img, gt_foe, [255, 42, 255])
+
                 # print(self.focus_of_expansion.max_flow * 180 / np.pi)
                 out_img = img
 

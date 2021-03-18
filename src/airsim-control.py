@@ -18,11 +18,11 @@ from run_config import RunConfig
 
 
 class AirSimControl:
-    def __init__(self, collection: str) -> None:
+    def __init__(self, collection_name: str) -> None:
         self.observing_drone = 'Drone1'
         self.target_drone = 'Drone2'
         self.root_data_dir = 'data'
-        self.collection_name = collection
+        self.collection_name = collection_name
 
         collection = RunConfig.get_settings()['collections'][self.collection_name]
 
@@ -72,6 +72,7 @@ class AirSimControl:
         self.timestamps: Dict[int, datetime] = {}
         self.begin_time: datetime = datetime.now()
         self.direction = 1
+        self.drone_in_frame_previous = False
 
         if not os.path.exists(self.root_data_dir):
             os.makedirs(self.root_data_dir)
