@@ -21,14 +21,16 @@ class Orientation(Enum):
         }[str(self).upper()]
 
 class SimConfig:
-    def __init__(self, base_name: str, height_name: str, center: airsim.Vector3r, orientation: Orientation, radius: float, ground_height: float) -> None:
+    def __init__(self, base_name: str, height_name: str, center: airsim.Vector3r, orientation: Orientation, radius: float, ground_height: float, orbit_speed: float, global_speed: airsim.Vector3r, global_speed_name: str) -> None:
         self.base_name: str = base_name
         self.height_name: str = height_name
         self.center: airsim.Vector3r = center
         self.orientation = orientation
         self.radius: float = radius
-        self.ground_height = ground_height
-
+        self.ground_height: float = ground_height
+        self.orbit_speed: float = orbit_speed
+        self.global_speed: airsim.Vector3r = global_speed
+        self.global_speed_name: str = global_speed_name
 
     @classmethod
     def get_orientation(cls, orientation_key: str) -> Orientation:
@@ -51,10 +53,10 @@ class SimConfig:
         return Orientation[orientation_key]
 
     def __str__(self) -> str:
-        return f'{self.base_name}-{self.orientation}-{self.height_name}-{self.radius}'
+        return f'{self.base_name}-{self.orientation}-{self.height_name}-{self.radius}-{self.orbit_speed}-{self.global_speed_name}'
 
     def full_name(self) -> str:
-        return f'{self.base_name}-{self.orientation}-{self.height_name} ({self.radius}m)'
+        return f'{self.base_name}-{self.orientation}-{self.height_name} ({self.radius}m) {self.orbit_speed} {self.global_speed_name}'
 
     def is_different_location(self, other: SimConfig) -> bool:
         return self.base_name != other.base_name
@@ -65,11 +67,11 @@ class SimConfig:
     def is_different_height(self, other: SimConfig) -> bool:
         return self.height_name != other.height_name
 
-    def is_different_radius(self, other: SimConfig) -> bool:
-        return self.radius != other.radius
+    def is_different_simple(self, other: SimConfig) -> bool:
+        return self.radius != other.radius or self.orbit_speed != other.orbit_speed or self.global_speed != other.global_speed
 
     def is_different(self, other: SimConfig) -> bool:
-        return self.is_different_location(other) or self.is_different_pose(other) or self.is_different_height(other) or self.is_different_radius(other)
+        return self.is_different_location(other) or self.is_different_pose(other) or self.is_different_height(other) or self.is_different_simple(other)
 
     def get_start_position(self, is_observer: bool) -> airsim.Vector3r:
         if is_observer:

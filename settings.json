@@ -21,57 +21,88 @@
         "semi-urban/island-north"
     ],
 
-    "base_velocity": [
-        0.0
-    ],
+    "collections": {
+        "orbit": {
+            "orbit_speed": [
+                10
+            ],
 
-    "radii": [
-        2.5,
-        5.0,
-        7.5,
-        10.0,
-        15.0,
-        20.0
-    ],
+            "global_speed": {
+                "default": {
+                    "lin_x": 0.0,
+                    "sin_y": 0.0,
+                    "sin_z": 0.0
+                }
+            },
 
-    "heights": {
-        "low": 2.0,
-        "medium": 10.0,
-        "high": 30.0
-    },
+            "radii": [
+                2.5,
+                5.0,
+                7.5,
+                10.0,
+                15.0,
+                20.0
+            ],
 
-    "orientations": [
-        "north",
-        "east",
-        "south",
-        "west"
-    ],
+            "heights": {
+                "low": 2.0,
+                "medium": 10.0,
+                "high": 30.0
+            },
 
-    "locations": {
-        "citypark/fountain": {
-            "x": -520.00,
-            "y": 23.40,
-            "z": 6.9191
+            "orientations": [
+                "north",
+                "east",
+                "south",
+                "west"
+            ],
+
+            "locations": {
+                "citypark/soccerfield": {
+                    "x": -671.70,
+                    "y": 289.60,
+                    "z": -1.05389
+                },
+                "citypark/fountain": {
+                    "x": -520.00,
+                    "y": 23.40,
+                    "z": 6.9191
+                }
+            }
         },
-        "citypark/soccerfield": {
-            "x": -671.70,
-            "y": 289.60,
-            "z": -1.05389
-        },
-        "citypark/park": {
-            "x": -767.60,
-            "y": -231.60,
-            "z": -1.093285
-        },
-        "citypark/park-center": {
-            "x": -240.10,
-            "y": -166.20,
-            "z": 1.60121094
-        },
-        "citypark/road": {
-            "x": -140.30,
-            "y": 45.51,
-            "z": -0.95582
+
+        "FoE": {
+            "orbit_speed": [
+                10
+            ],
+
+            "global_speed": {
+                "default": {
+                    "lin_x": 1.0,
+                    "sin_y": 0.0,
+                    "sin_z": 0.0
+                }
+            },
+
+            "radii": [
+                5.0
+            ],
+
+            "heights": {
+                "medium": 5.0
+            },
+
+            "orientations": [
+                "north"
+            ],
+
+            "locations": {
+                "citypark/soccerfield": {
+                    "x": -721.70,
+                    "y": 289.60,
+                    "z": -1.05389
+                }
+            }
         }
     }
 }

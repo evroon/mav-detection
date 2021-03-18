@@ -8,6 +8,7 @@ import numpy as np
 import math
 import time
 import shutil
+import argparse
 
 from datetime import datetime
 from typing import Dict, List, Any, Optional, Tuple, cast
@@ -17,51 +18,56 @@ from run_config import RunConfig
 
 
 class AirSimControl:
-    def __init__(self) -> None:
+    def __init__(self, collection: str) -> None:
         self.observing_drone = 'Drone1'
         self.target_drone = 'Drone2'
-
         self.root_data_dir = 'data'
+        self.collection_name = collection
 
-        orientations_str = RunConfig.get_settings()['orientations']
-        locations = RunConfig.get_settings()['locations']
-        heights = RunConfig.get_settings()['heights']
-        radii = RunConfig.get_settings()['radii']
+        collection = RunConfig.get_settings()['collections'][self.collection_name]
+
+        orientations_str = collection['orientations']
+        locations = collection['locations']
+        orbit_speeds = collection['orbit_speed']
+        global_speeds = collection['global_speed']
+        heights = collection['heights']
+        radii = collection['radii']
 
         orientations = [SimConfig.get_orientation(x) for x in orientations_str]
         self.configs = []
+        self.largest_radius = radii[-1]
+        print(self.largest_radius)
 
         for sequence_name, center in locations.items():
-            for height_name, height in heights.items():
-                for orientation in orientations:
-                    for radius in radii:
-                        config = SimConfig(
-                            sequence_name,
-                            height_name,
-                            airsim.Vector3r(center['x'], center['y'], center['z'] - height),
-                            orientation,
-                            radius,
-                            center['z']
-                        )
-                        if not os.path.exists(self.get_base_dir(config)):
-                            self.configs.append(config)
-                        else:
-                            print(f'Skipping {config.full_name()}')
+            for orbit_speed in orbit_speeds:
+                for global_speed_key, global_speed in global_speeds.items():
+                    for height_name, height in heights.items():
+                        for orientation in orientations:
+                            for radius in radii:
+                                config = SimConfig(
+                                    sequence_name,
+                                    height_name,
+                                    airsim.Vector3r(center['x'], center['y'], center['z'] - height),
+                                    orientation,
+                                    radius,
+                                    center['z'],
+                                    orbit_speed,
+                                    airsim.Vector3r(global_speed['lin_x'], global_speed['sin_y'], global_speed['sin_z']),
+                                    global_speed_key
+                                )
+                                if not os.path.exists(self.get_base_dir(config)):
+                                    self.configs.append(config)
+                                else:
+                                    print(f'Skipping {config.full_name()}')
 
         print(f'Number of locations: {len(locations)}')
         print(f'Number of configurations: {len(self.configs)}')
 
         self.base_velocity: Tuple[float, float] = (0, 0)
-        self.speed = 2.0
-        self.scale_speed_by_radius = False
-        self.snapshots = 0
-        self.snapshot_delta = None
-        self.next_snapshot = None
-        self.z = None
+        self.speed = 3.0
         self.snapshot_index = 0
         self.did_takeoff = False
         self.drones_offset_x = 5
-        self.executable = r'D:\UnrealProjects\CityParkEnvironmentCollec\Builds\WindowsNoEditor\CityParkEnvironmentCollec.exe'
         self.iteration: int = 0
         self.timestamps: Dict[int, datetime] = {}
         self.begin_time: datetime = datetime.now()
@@ -89,9 +95,6 @@ class AirSimControl:
         self.client.armDisarm(True, self.target_drone)
 
         self.clean()
-
-    def start_sim(self) -> None:
-        subprocess.call([self.executable])
 
     def get_position(self, vehicle_name: str = None) -> airsim.MultirotorState:
         if vehicle_name is None:
@@ -135,10 +138,10 @@ class AirSimControl:
 
     def fly(self) -> None:
         for i, config in enumerate(self.configs):
-            first_sequence_of_kind = config.is_different_location(self.configs[i-1])
-            first_sequence_of_pose = config.is_different_pose(self.configs[i-1])
-            first_sequence_of_height = config.is_different_height(self.configs[i-1])
-            will_teleport = i >= len(self.configs) - 1 or config.is_different_location(self.configs[i+1])
+            first_sequence_of_kind = i == 0 or config.is_different_location(self.configs[i-1])
+            first_sequence_of_pose = i == 0 or config.is_different_pose(self.configs[i-1])
+            first_sequence_of_height = i == 0 or config.is_different_height(self.configs[i-1])
+            will_teleport = i == 0 or i >= len(self.configs) - 1 or config.is_different_location(self.configs[i+1])
             last_sequence_of_kind = i >= len(self.configs) - 1 or config.is_different(self.configs[i+1])
 
             if first_sequence_of_kind:
@@ -173,7 +176,6 @@ class AirSimControl:
         self.client.simSetVehiclePose(pose, True, vehicle_name=self.observing_drone)
 
         # Move target drone to start point in orbit.
-        position = config.center + airsim.Vector3r(-np.cos(heading) * config.radius, -np.sin(heading) * config.radius, 0.0)
         quat = airsim.to_quaternion(0.0, 0.0, 0.0)
         pose = airsim.Pose(config.get_start_position(False), quat)
         self.client.simSetVehiclePose(pose, True, vehicle_name=self.target_drone)
@@ -198,95 +200,77 @@ class AirSimControl:
     def get_base_dir(self, config: SimConfig) -> str:
         return f'{self.root_data_dir}/{config}'
 
+    def capture(self) -> bool:
+        # Capture frames.
+        responses = self.client.simGetImages([
+            airsim.ImageRequest("segment", airsim.ImageType.Segmentation),
+            airsim.ImageRequest("high_res", airsim.ImageType.Scene),
+        ], vehicle_name=self.observing_drone)
+
+        # Save images.
+        for response in responses:
+            if response.pixels_as_float:
+                airsim.write_pfm(os.path.normpath('depth.pfm'), airsim.get_pfm_array(response))
+            else:
+                image_type: str = 'images' if response.image_type == airsim.ImageType.Scene else 'segmentations'
+                image_path = f'{self.base_dir}/{image_type}/image_{self.iteration:05d}.png'
+                seg_1d = np.frombuffer(response.image_data_uint8, dtype=np.uint8)
+
+                if response.image_type == airsim.ImageType.Segmentation:
+                    # 343392 is needed for a 800x600 image because the image is compressed,
+                    # would be zero is image is uncompressed, see airsim.ImageRequest.
+                    drone_in_frame = np.sum(seg_1d) > 343392 and self.iteration > 10
+                    if drone_in_frame:
+                        airsim.write_file(os.path.normpath(image_path), response.image_data_uint8)
+                    elif self.drone_in_frame_previous and self.iteration > 30:
+                        return False
+
+                    self.drone_in_frame_previous = drone_in_frame
+                elif self.drone_in_frame_previous:
+                    airsim.write_file(os.path.normpath(image_path), response.image_data_uint8)
+                    self.timestamps[self.iteration] = self.get_time()
+
+        if self.drone_in_frame_previous:
+            self.write_states()
+
+        return True
+
     def fly_orbit(self, config: SimConfig) -> None:
-        running = True
-        self.start_angle: Optional[float] = None
-        self.next_snapshot = None
-
-        # ramp up time
-        ramptime = config.radius / 10
-        self.start_time = time.time()
-
         print(f'Starting orbit with radius of {config.radius:0.2f}m')
-        self.base_dir = self.get_base_dir(config)
 
-        self.prepare_sequence()
+        self.start_angle: Optional[float] = None
+        self.base_dir = self.get_base_dir(config)
         self.drone_in_frame_previous = False
         self.direction *= -1
+        running = True
+        lookahead_angle = config.orbit_speed * np.pi / 180.0 * self.direction
+
+        self.prepare_sequence()
 
         while running:
-            if self.snapshots > 0 and not (self.snapshot_index < self.snapshots):
-                break
+            pos_target_drone = self.get_position()
+            pos_observer_drone = self.get_position(self.observing_drone)
 
-            # ramp up to full speed in smooth increments so we don't start too aggressively.
-            now = time.time()
-            speed = self.speed
-
-            if self.scale_speed_by_radius:
-                speed *= config.radius
-
-            diff = now - self.start_time
-            if diff < ramptime:
-                speed = self.speed * diff / ramptime
-            elif ramptime > 0:
-                # print("reached full speed...")
-                ramptime = 0
-
-            lookahead_angle = speed / config.radius * self.direction
-
-            pos = self.get_position()
-            dx = pos.x_val - config.center.x_val
-            dy = pos.y_val - config.center.y_val
+            dx = pos_target_drone.x_val - pos_observer_drone.x_val
+            dy = pos_target_drone.y_val - pos_observer_drone.y_val
             angle_to_center = math.atan2(dy, dx)
             camera_heading = (angle_to_center - math.pi) * 180 / math.pi
 
             # compute lookahead
-            lookahead_x = config.center.x_val + config.radius * math.cos(angle_to_center + lookahead_angle)
-            lookahead_y = config.center.y_val + config.radius * math.sin(angle_to_center + lookahead_angle)
+            lookahead_x = pos_observer_drone.x_val + config.radius * math.cos(angle_to_center + lookahead_angle)
+            lookahead_y = pos_observer_drone.y_val + config.radius * math.sin(angle_to_center + lookahead_angle)
 
-            vx = lookahead_x - pos.x_val
-            vy = lookahead_y - pos.y_val
+            vx = lookahead_x - pos_target_drone.x_val + config.global_speed.x_val
+            vy = lookahead_y - pos_target_drone.y_val
+            vz = pos_observer_drone.z_val
 
-            self.camera_heading = camera_heading
-            self.client.moveByVelocityZAsync(vx, vy, config.center.z_val, 1, airsim.DrivetrainType.MaxDegreeOfFreedom, airsim.YawMode(
-                False, camera_heading), vehicle_name=self.target_drone)
+            self.client.moveByVelocityZAsync(vx, vy, vz, 1, airsim.DrivetrainType.MaxDegreeOfFreedom,
+                airsim.YawMode(False, camera_heading), vehicle_name=self.target_drone)
 
-            # Capture frames.
-            responses = self.client.simGetImages([
-                airsim.ImageRequest("segment", airsim.ImageType.Segmentation),
-                airsim.ImageRequest("high_res", airsim.ImageType.Scene),
-            ], vehicle_name=self.observing_drone)
+            self.client.moveByVelocityZAsync(config.global_speed.x_val, config.global_speed.y_val, config.center.z_val,
+                1, airsim.DrivetrainType.MaxDegreeOfFreedom, airsim.YawMode(), vehicle_name=self.observing_drone)
 
-            # Save images.
-            for response in responses:
-                if response.pixels_as_float:
-                    airsim.write_pfm(os.path.normpath('depth.pfm'), airsim.get_pfm_array(response))
-                else:
-                    image_type: str = 'images' if response.image_type == airsim.ImageType.Scene else 'segmentations'
-                    image_path = f'{self.base_dir}/{image_type}/image_{self.iteration:05d}.png'
-                    seg_1d = np.frombuffer(response.image_data_uint8, dtype=np.uint8)
-
-                    if response.image_type == airsim.ImageType.Segmentation:
-                        # 343392 is needed for a 800x600 image because the image is compressed,
-                        # would be zero is image is uncompressed, see airsim.ImageRequest.
-                        drone_in_frame = np.sum(seg_1d) > 343392 and self.iteration > 10
-                        if drone_in_frame:
-                            airsim.write_file(os.path.normpath(image_path), response.image_data_uint8)
-                        elif self.drone_in_frame_previous:
-                            running = False
-
-                        self.drone_in_frame_previous = drone_in_frame
-                    elif self.drone_in_frame_previous:
-                        airsim.write_file(os.path.normpath(image_path), response.image_data_uint8)
-                        self.timestamps[self.iteration] = self.get_time()
-
-            if self.drone_in_frame_previous:
-                self.write_states()
-
-            # if self.iteration > 1:
-            # difference = self.timestamps[self.iteration] - self.timestamps[self.iteration - 1]
-            # print(f'Elapsed time during iteration {self.iteration} in real-time: {difference.microseconds / 1000}ms')
-
+            running = self.capture()
             self.iteration += 1
 
     def get_magnitude(self, vector: np.ndarray) -> float:
@@ -358,7 +342,7 @@ class AirSimControl:
         states_in_dir = f'{self.root_data_dir}/states'
         states_out_dir = f'{self.base_dir}/states'
 
-        def list_timestamps(states_dir):
+        def list_timestamps(states_dir: str) -> Tuple[List[str], np.ndarray]:
             files = os.listdir(states_dir)
             files.sort()
             timestamps = [int(os.path.basename(x).rstrip('.json')) for x in files if 'timestamp' not in x]
@@ -395,5 +379,10 @@ class AirSimControl:
         self.fly()
 
 
-control = AirSimControl()
-control.run()
+if __name__ == '__main__':
+    parser = argparse.ArgumentParser(description='Detects MAVs in the dataset using optical flow.')
+    parser.add_argument('--collection', type=str, help='collection to process', default='FoE')
+    args = parser.parse_args()
+
+    control = AirSimControl(args.collection)
+    control.run()
