@@ -293,20 +293,20 @@ class Processor:
                 FoE_dense  = self.focus_of_expansion.get_FOE_dense(self.flow_averaged)
                 gt_foe = self.dataset.get_gt_foe(self.frame_index)
 
-                img = self.focus_of_expansion.check_flow(self.flow_uv, FoE_sparse)
+                result_img = self.focus_of_expansion.check_flow(self.flow_uv, FoE_sparse)
                 self.old_frame = orig_frame
 
-                out_img = self.flow_vis
-                out_img = self.focus_of_expansion.draw_FoE(out_img, FoE_sparse, [0, 0, 255])
-                out_img = self.focus_of_expansion.draw_FoE(out_img, FoE_dense,  [255, 0, 0])
+                for img in [orig_frame, result_img]:
+                    img = self.focus_of_expansion.draw_FoE(img, FoE_sparse, [0, 0, 255])
+                    img = self.focus_of_expansion.draw_FoE(img, FoE_dense,  [255, 0, 0])
 
-                if gt_foe is not None:
-                    out_img = self.focus_of_expansion.draw_FoE(out_img, gt_foe, [0, 255, 0])
+                    if gt_foe is not None:
+                        img = self.focus_of_expansion.draw_FoE(img, gt_foe, [0, 255, 0])
 
                 # print(self.focus_of_expansion.max_flow * 180 / np.pi)
 
-                if out_img is not None and np.sum(out_img) > 0:
-                    self.write(out_img)
+                if result_img is not None and np.sum(result_img) > 0:
+                    self.write(np.hstack((orig_frame, result_img)))
 
         return self.detection_results
 
