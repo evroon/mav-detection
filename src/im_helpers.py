@@ -3,6 +3,7 @@ import numpy as np
 import cv2
 from   typing import Iterator, Tuple
 import flow_vis
+import os
 
 # Based on: https://www.pyimagesearch.com/2015/03/23/sliding-windows-for-object-detection-with-python-and-opencv/
 
@@ -118,3 +119,16 @@ def get_fft(frame: np.ndarray) -> np.ndarray:
 	magnitude_rgb = np.zeros_like(frame)
 	magnitude_rgb[..., 0] = magnitude_spectrum
 	return magnitude_rgb
+
+
+def plot_colorbar(path: str = 'media/colorbar.png') -> np.ndarray:
+	if os.path.exists(path):
+		return cv2.imread(path)
+
+	img = np.zeros((200, 30, 3), dtype=np.uint8)
+	for y in range(img.shape[0]):
+		img[y, ...] = y
+
+	img = cv2.applyColorMap(img, cv2.COLORMAP_JET)
+	cv2.imwrite(path, img)
+	return img

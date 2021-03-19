@@ -209,11 +209,12 @@ class AirSimControl:
 
         # Save images.
         for response in responses:
+            image_type: str = 'images' if response.image_type == airsim.ImageType.Scene else 'segmentations'
+            image_path: str = f'{self.base_dir}/{image_type}/image_{self.iteration:05d}.png'
+
             if response.pixels_as_float:
-                airsim.write_pfm(os.path.normpath('depth.pfm'), airsim.get_pfm_array(response))
+                airsim.write_pfm(os.path.normpath(image_path), airsim.get_pfm_array(response))
             else:
-                image_type: str = 'images' if response.image_type == airsim.ImageType.Scene else 'segmentations'
-                image_path = f'{self.base_dir}/{image_type}/image_{self.iteration:05d}.png'
                 seg_1d = np.frombuffer(response.image_data_uint8, dtype=np.uint8)
 
                 if response.image_type == airsim.ImageType.Segmentation:
@@ -292,9 +293,13 @@ class AirSimControl:
 
     def write_states(self) -> None:
         state1 = self.client.getMultirotorState(vehicle_name=self.target_drone)
+        imu_data = self.client.getImuData(imu_name = "Imu", vehicle_name=self.target_drone)
+
+        result = self.get_json(state1)
+        result['imu'] = self.get_json(imu_data)
 
         with open(f'{self.base_dir}/states/{self.get_time_formatted()}.json', 'w') as f:
-            f.write(json.dumps(self.get_json(state1), indent=4, sort_keys=True))
+            f.write(json.dumps(result, indent=4, sort_keys=True))
 
     def clean(self) -> None:
         print('Removing previous results of states...')

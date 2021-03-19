@@ -13,8 +13,19 @@
                     "CaptureSettings" : [
                         {
                             "ImageType" : 0,
-                            "Width" : 800,
-                            "Height" : 600
+                            "Width" : 1920,
+                            "Height" : 1080
+                        }
+                    ],
+                    "X": 0.50, "Y": 0.00, "Z": 0.10,
+                    "Pitch": 0.0, "Roll": 0.0, "Yaw": 0.0
+                },
+                "depth": {
+                    "CaptureSettings" : [
+                        {
+                            "ImageType" : 1,
+                            "Width" : 1920,
+                            "Height" : 1080
                         }
                     ],
                     "X": 0.50, "Y": 0.00, "Z": 0.10,
@@ -24,8 +35,8 @@
                     "CaptureSettings" : [
                         {
                             "ImageType" : 5,
-                            "Width" : 800,
-                            "Height" : 600
+                            "Width" : 1920,
+                            "Height" : 1080
                         }
                     ],
                     "X": 0.50, "Y": 0.00, "Z": 0.10,
@@ -37,5 +48,11 @@
           "VehicleType": "SimpleFlight",
           "X": 0, "Y": 0, "Z": -0.1
         }
-    }
+    },
+    "DefaultSensors": {
+        "Imu": {
+             "SensorType": 2,
+             "Enabled" : true
+        }
+    },
 }

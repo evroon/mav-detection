@@ -34,6 +34,7 @@ class Processor:
         self.midgard_path = os.environ['MIDGARD_PATH']
         self.focus_of_expansion = FocusOfExpansion(self.detector.lucas_kanade)
         self.old_frame: np.ndarray = np.zeros((self.dataset.capture_size[1], self.dataset.capture_size[0], 3), dtype=np.uint8)
+        self.colorbar = im_helpers.plot_colorbar()
 
     def annotation_to_yolo(self, rects: List[utils.Rectangle]) -> str:
         """Converts the rectangles to the text format read by YOLOv4
@@ -294,6 +295,9 @@ class Processor:
                 gt_foe = self.dataset.get_gt_foe(self.frame_index)
 
                 result_img = self.focus_of_expansion.check_flow(self.flow_uv, FoE_sparse)
+                if result_img is not None:
+                    result_img = cv2.applyColorMap(result_img, cv2.COLORMAP_JET)
+
                 self.old_frame = orig_frame
 
                 for img in [orig_frame, result_img]:
