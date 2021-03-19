@@ -36,7 +36,6 @@ class AirSimControl:
         orientations = [SimConfig.get_orientation(x) for x in orientations_str]
         self.configs = []
         self.largest_radius = radii[-1]
-        print(self.largest_radius)
 
         for sequence_name, center in locations.items():
             for orbit_speed in orbit_speeds:
@@ -74,8 +73,8 @@ class AirSimControl:
         self.direction = 1
         self.drone_in_frame_previous = False
 
-        if not os.path.exists(self.root_data_dir):
-            os.makedirs(self.root_data_dir)
+        if not os.path.exists(self.root_data_dir + '/states'):
+            os.makedirs(self.root_data_dir + '/states')
 
     def init(self) -> None:
         # Connect to the AirSim simulator
@@ -387,3 +386,11 @@ if __name__ == '__main__':
 
     control = AirSimControl(args.collection)
     control.run()
+
+    scp_command = [
+        'scp',
+        '-r',
+        'data',
+        'erik@192.168.178.235:~/tno/datasets'
+    ]
+    subprocess.call(scp_command)
