@@ -218,9 +218,9 @@ class AirSimControl:
                 seg_1d = np.frombuffer(response.image_data_uint8, dtype=np.uint8)
 
                 if response.image_type == airsim.ImageType.Segmentation:
-                    # 343392 is needed for a 800x600 image because the image is compressed,
+                    # 1398831 is needed for a 1920x1080 image because the image is compressed,
                     # would be zero is image is uncompressed, see airsim.ImageRequest.
-                    drone_in_frame = np.sum(seg_1d) > 343392 and self.iteration > 10
+                    drone_in_frame = np.sum(seg_1d) > 1398831 and self.iteration > 10
                     if drone_in_frame:
                         airsim.write_file(os.path.normpath(image_path), response.image_data_uint8)
                     elif self.drone_in_frame_previous and self.iteration > 30:
@@ -263,9 +263,9 @@ class AirSimControl:
 
             vx = lookahead_x - pos_target_drone.x_val + config.global_speed.x_val
             vy = lookahead_y - pos_target_drone.y_val
-            vz = pos_observer_drone.z_val
+            z = pos_observer_drone.z_val
 
-            self.client.moveByVelocityZAsync(vx, vy, vz, 1, airsim.DrivetrainType.MaxDegreeOfFreedom,
+            self.client.moveByVelocityZAsync(vx, vy, z, 1, airsim.DrivetrainType.MaxDegreeOfFreedom,
                 airsim.YawMode(False, camera_heading), vehicle_name=self.target_drone)
 
             self.client.moveByVelocityZAsync(config.global_speed.x_val, config.global_speed.y_val, config.center.z_val,
