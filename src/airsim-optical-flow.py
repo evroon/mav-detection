@@ -7,8 +7,9 @@ import matplotlib.pyplot as plt
 import airsim
 import cv2
 from sklearn.preprocessing import normalize
+from typing import List, Tuple, IO
 
-def mat4x4_vec4_mult(mat4x4, vec4):
+def mat4x4_vec4_mult(mat4x4: np.ndarray, vec4: np.ndarray) -> np.ndarray:
     return np.array(
         [
             mat4x4[0, 0] * vec4[..., 0] + mat4x4[0, 1] * vec4[..., 1] + mat4x4[0, 2] * vec4[..., 2] + mat4x4[0, 3] * vec4[..., 3],
@@ -19,7 +20,7 @@ def mat4x4_vec4_mult(mat4x4, vec4):
     ).T.swapaxes(0, 1)
 
 
-def world_to_screen(view_proj, screen_res, world_pos):
+def world_to_screen(view_proj: np.ndarray, screen_res: Tuple[int, int], world_pos: np.ndarray) -> np.ndarray:
     world_pos_4d = np.zeros((world_pos.shape[0], world_pos.shape[1], 4))
     world_pos_4d[..., :3] = world_pos
     world_pos_4d[..., 3] = 1.0
@@ -38,7 +39,7 @@ def world_to_screen(view_proj, screen_res, world_pos):
 
     return result
 
-def screen_to_world(view_proj_inv, screen_res, screen_pos, depth):
+def screen_to_world(view_proj_inv: np.ndarray, screen_res: Tuple[int, int], screen_pos: np.ndarray, depth: np.ndarray) -> np.ndarray:
     NormalizedX = screen_pos[..., 0] / screen_res[0]
     NormalizedY = screen_pos[..., 1] / screen_res[1]
 
@@ -74,7 +75,7 @@ def screen_to_world(view_proj_inv, screen_res, screen_pos, depth):
 
     return result
 
-def get_view_proj_mat(f):
+def get_view_proj_mat(f: IO) -> np.ndarray:
     state_dict = json.load(f)
     view_proj_str = state_dict['Drone1']['viewProjectionMatrix']
     view_proj = view_proj_str.replace('[', '').replace(']', '').strip().split(' ')
@@ -106,7 +107,6 @@ def get_flow() -> np.ndarray:
             world_pos = screen_to_world(view_proj_inv, screen_res, coords, depth_img)
             screen_pos = world_to_screen(view_proj, screen_res, world_pos)
 
-            # print(screen_pos.shape)
             screen_pos = np.maximum(screen_pos, 0)
             screen_pos[..., 0] = np.minimum(screen_pos[..., 0], screen_res[0] - 1)
             screen_pos[..., 1] = np.minimum(screen_pos[..., 1], screen_res[1] - 1)

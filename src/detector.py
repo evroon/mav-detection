@@ -47,6 +47,8 @@ class Detector:
         self.use_optimization = False
         self.prev_frame = np.zeros((dataset.capture_size[1], dataset.capture_size[0], 3), dtype=np.uint8)
         self.lucas_kanade = LucasKanade(self.prev_frame)
+        self.fov = 90 # degrees
+        self.focal_length = 1 / np.tan(np.deg2rad(self.fov) / 2)
 
     def get_gradient_and_magnitude(self, frame: np.ndarray) -> np.ndarray:
         """Returns the polar representation of a cartesian flow field.
@@ -60,8 +62,9 @@ class Detector:
         return np.sqrt(frame[..., 0] ** 2.0 + frame[..., 1] ** 2.0), \
             np.arctan2(frame[..., 1], frame[..., 0])
 
-    # def get_rotation(self, flow_uv: np.ndarray, use_fundamental = True) -> np.ndarray:
-    #     pass
+    def get_rotation(self, flow_uv: np.ndarray, use_fundamental: bool = True) -> np.ndarray:
+        R1, R2, t = cv2.decomposeEssentialMat(self.essential)
+        print(R1, R2, t)
 
     def get_affine_matrix(self, orig_frame: np.ndarray, flow_uv: np.ndarray) -> None:
         """Calculates the affine or homography matrix.
@@ -89,11 +92,13 @@ class Detector:
                 aff, _ = cv2.estimateAffine2D(coords_old, coords_new)
                 self.aff = np.array(aff)
             if self.algorithm == Detector.Algorithm.FUNDAMENTAL:
-                fundamental, _ = cv2.findFundamentalMat(coords_old, coords_new, cv2.FM_RANSAC, 3, 0.99)
+                fundamental, _ = cv2.findFundamentalMat(coords_old, coords_new, cv2.FM_RANSAC, 0.999, 1.0)
                 self.fundamental = np.array(fundamental)
             if self.algorithm == Detector.Algorithm.ESSENTIAL:
-                fundamental, _ = cv2.findEssentialMat(coords_old, coords_new, cv2.FM_RANSAC, 3, 0.99)
-                self.fundamental = np.array(fundamental)
+                principal_point = (self.dataset.capture_size[0] / 2, self.dataset.capture_size[1] / 2)
+                essential, _ = cv2.findEssentialMat(coords_old, coords_new, self.focal_length,
+                    principal_point, cv2.FM_RANSAC, 0.999, 1.0)
+                self.essential = np.array(essential)
 
     def flow_vec_subtract(self, orig_frame: np.ndarray, flow_uv: np.ndarray) -> Tuple[np.ndarray, np.ndarray, np.ndarray, np.ndarray]:
         """Calculates global motion using perspective or affine matrices and subtracts it from the original field.

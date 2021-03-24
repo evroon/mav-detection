@@ -72,6 +72,7 @@ class AirSimControl:
         self.begin_time: datetime = datetime.now()
         self.direction = 1
         self.drone_in_frame_previous = False
+        self.minimum_segmentation_sum = 1e12
 
         if not os.path.exists(self.root_data_dir + '/states'):
             os.makedirs(self.root_data_dir + '/states')
@@ -95,6 +96,7 @@ class AirSimControl:
         self.client.armDisarm(True, self.target_drone)
 
         self.clean()
+        self.prev_time = self.get_time()
 
     def get_position(self, vehicle_name: str = None) -> airsim.MultirotorState:
         if vehicle_name is None:
@@ -205,12 +207,22 @@ class AirSimControl:
         responses = self.client.simGetImages([
             airsim.ImageRequest("segment", airsim.ImageType.Segmentation),
             airsim.ImageRequest("high_res", airsim.ImageType.Scene),
+            airsim.ImageRequest("depth", airsim.ImageType.DepthPlanner, True),
         ], vehicle_name=self.observing_drone)
+
+        time = self.get_time()
+        print(time - self.prev_time)
+        self.prev_time = time
 
         # Save images.
         for response in responses:
-            image_type: str = 'images' if response.image_type == airsim.ImageType.Scene else 'segmentations'
-            image_path: str = f'{self.base_dir}/{image_type}/image_{self.iteration:05d}.png'
+            image_type: str = {
+                airsim.ImageType.Scene: 'images',
+                airsim.ImageType.DepthPlanner: 'depths',
+                airsim.ImageType.Segmentation: 'segmentations',
+            }[response.image_type]
+            extension = 'pfm' if response.pixels_as_float else 'png'
+            image_path: str = f'{self.base_dir}/{image_type}/image_{self.iteration:05d}.{extension}'
 
             if response.pixels_as_float:
                 airsim.write_pfm(os.path.normpath(image_path), airsim.get_pfm_array(response))
@@ -218,9 +230,12 @@ class AirSimControl:
                 seg_1d = np.frombuffer(response.image_data_uint8, dtype=np.uint8)
 
                 if response.image_type == airsim.ImageType.Segmentation:
-                    # 1398831 is needed for a 1920x1080 image because the image is compressed,
-                    # would be zero is image is uncompressed, see airsim.ImageRequest.
-                    drone_in_frame = np.sum(seg_1d) > 1398831 and self.iteration > 10
+                    # Determine the sum of seg_1d for a complete black mask.
+                    seg_sum = np.sum(seg_1d)
+                    if self.minimum_segmentation_sum > seg_sum:
+                        self.minimum_segmentation_sum = seg_sum
+
+                    drone_in_frame = seg_sum > self.minimum_segmentation_sum and self.iteration > 10
                     if drone_in_frame:
                         airsim.write_file(os.path.normpath(image_path), response.image_data_uint8)
                     elif self.drone_in_frame_previous and self.iteration > 30:
@@ -357,6 +372,10 @@ class AirSimControl:
         in_files, in_timestamps = list_timestamps(states_in_dir)
         out_files, out_timestamps = list_timestamps(states_out_dir)
 
+        if len(in_files) < 1:
+            print('No input json files found.')
+            return
+
         for out_file, out_timestamp in zip(out_files, out_timestamps):
             diffs = in_timestamps - out_timestamp
             selected_input = np.argmin(np.abs(diffs))
@@ -377,6 +396,7 @@ class AirSimControl:
     def prepare_sequence(self) -> None:
         self.create_if_not_exists(f'{self.base_dir}/images')
         self.create_if_not_exists(f'{self.base_dir}/segmentations')
+        self.create_if_not_exists(f'{self.base_dir}/depths')
         self.create_if_not_exists(f'{self.base_dir}/states')
 
     def run(self) -> None:
