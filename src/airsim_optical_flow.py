@@ -106,12 +106,10 @@ def calculate_flow(
     screen_pos1 = world_to_screen(view_proj1, screen_res, world_pos)
     return screen_pos1 - screen_pos2
 
-def get_flow() -> np.ndarray:
-    base_path = 'data/mountains-moving/lake-north-medium-5.0-10-default'
-    # base_path = 'data/mountains-stationary/lake-north-low-2.5-10-default'
-    states_dir = f'{base_path}/states'
-    depths_dir = f'{base_path}/depths'
-    segmentations_dir = f'{base_path}/segmentations'
+def get_flow(seq_path: str) -> np.ndarray:
+    states_dir = f'{seq_path}/states'
+    depths_dir = f'{seq_path}/depths'
+    segmentations_dir = f'{seq_path}/segmentations'
     screen_res = (1920, 1080)
 
     states = glob.glob(f'{states_dir}/*.json')
@@ -131,14 +129,10 @@ def get_flow() -> np.ndarray:
 
         drone_velocity = state1['ue4']['Drone2']['linearVelocity']
 
-        depth_img = np.array(
-            airsim.read_pfm(f'{depths_dir}/image_{i+25:05d}.pfm')[0]
-        ).T
+        img_path = f'{depths_dir}/image_{i:05d}.pfm'
+        depth_img = np.array(airsim.read_pfm(img_path)[0]).T
 
-        segmentation_img = cv2.imread(f'{segmentations_dir}/image_{i+25:05d}.png', 0).T
+        segmentation_img = cv2.imread(f'{segmentations_dir}/image_{i:05d}.png', 0).T
 
         result = calculate_flow(view_proj1, view_proj2, screen_res, coords, depth_img, drone_velocity, segmentation_img)
-        cv2.imwrite(f'media/result_{i:05d}.png', get_flow_vis(result).swapaxes(0, 1))
-
-
-get_flow()
+        cv2.imwrite(f'{seq_path}/optical-flow/image_{i:05d}.png', get_flow_vis(result).swapaxes(0, 1))

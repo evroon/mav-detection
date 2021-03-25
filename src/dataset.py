@@ -26,6 +26,7 @@ class Dataset:
         self.seq_path = f'{base_path}{seq_dir}/{self.sequence}'
         self.img_path = f'{self.seq_path}{img_dir}'
         self.seg_path = f'{self.seq_path}/segmentations'
+        self.gt_of_path = f'{self.seq_path}/optical-flow'
         self.ann_path = f'{self.seq_path}/annotation'
         self.img_pngs = f'{self.img_path}/{img_format}'
         self.vid_path = f'{self.seq_path}/recording.mp4'
@@ -51,6 +52,9 @@ class Dataset:
         if len(os.listdir(self.ann_path)) < 1:
             self.create_annotations()
 
+        if not os.path.exists(self.ann_path):
+            self.create_ground_truth_optical_flow()
+
         if self.capture_size != self.flow_size:
             self.logger.warning(f'original capture with size {self.capture_size} does not match flow, which has size {self.flow_size}')
 
@@ -67,6 +71,9 @@ class Dataset:
 
     def get_default_sequence(self) -> str:
         raise ValueError('Not implemented.')
+
+    def create_ground_truth_optical_flow(self) -> None:
+        pass
 
     def create_annotations(self) -> None:
         pass

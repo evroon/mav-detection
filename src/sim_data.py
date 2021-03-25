@@ -9,6 +9,7 @@ from typing import Optional, Tuple
 
 import utils
 from dataset import Dataset
+from airsim_optical_flow import get_flow
 
 class SimData(Dataset):
     '''Helper functions for the AirSim synthetic dataset.'''
@@ -19,7 +20,6 @@ class SimData(Dataset):
         self.state_path = f'{self.seq_path}/states'
         self.states = glob.glob(f'{self.state_path}/*.json')
         self.states.sort()
-
 
     def write_yolo_annotation(self, image_path: str) -> None:
         filename = os.path.basename(image_path)
@@ -59,6 +59,10 @@ class SimData(Dataset):
     def get_gt_foe(self, i:int) -> Optional[Tuple[float, float]]:
         FoE = self.get_state(i)['ue4']['Drone1']['FoE']
         return (FoE['X'] * 800, FoE['Y'] * 600)
+
+    def create_ground_truth_optical_flow(self) -> None:
+        get_flow(self.seq_path)
+        pass
 
     def create_annotations(self) -> None:
         print('Creating YOLOv4 annotations...')
