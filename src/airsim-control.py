@@ -202,12 +202,18 @@ class AirSimControl:
     def get_base_dir(self, config: SimConfig) -> str:
         return f'{self.root_data_dir}/{config}'
 
+    def write_frame(self, image_path: str, response: airsim.ImageResponse) -> None:
+        if response.pixels_as_float:
+            airsim.write_pfm(os.path.normpath(image_path), airsim.get_pfm_array(response))
+        else:
+            airsim.write_file(os.path.normpath(image_path), response.image_data_uint8)
+
     def capture(self) -> bool:
         # Capture frames.
         responses = self.client.simGetImages([
             airsim.ImageRequest("segment", airsim.ImageType.Segmentation),
             airsim.ImageRequest("high_res", airsim.ImageType.Scene),
-            airsim.ImageRequest("depth", airsim.ImageType.DepthPlanner, True),
+            airsim.ImageRequest("depth", airsim.ImageType.DepthPerspective, True),
         ], vehicle_name=self.observing_drone)
 
         time = self.get_time()
@@ -218,33 +224,29 @@ class AirSimControl:
         for response in responses:
             image_type: str = {
                 airsim.ImageType.Scene: 'images',
-                airsim.ImageType.DepthPlanner: 'depths',
+                airsim.ImageType.DepthPerspective: 'depths',
                 airsim.ImageType.Segmentation: 'segmentations',
             }[response.image_type]
             extension = 'pfm' if response.pixels_as_float else 'png'
             image_path: str = f'{self.base_dir}/{image_type}/image_{self.iteration:05d}.{extension}'
+            seg_1d = np.frombuffer(response.image_data_uint8, dtype=np.uint8)
 
-            if response.pixels_as_float:
-                airsim.write_pfm(os.path.normpath(image_path), airsim.get_pfm_array(response))
-            else:
-                seg_1d = np.frombuffer(response.image_data_uint8, dtype=np.uint8)
+            if response.image_type == airsim.ImageType.Segmentation:
+                # Determine the sum of seg_1d for a complete black mask.
+                seg_sum = np.sum(seg_1d)
+                if self.minimum_segmentation_sum > seg_sum:
+                    self.minimum_segmentation_sum = seg_sum
 
-                if response.image_type == airsim.ImageType.Segmentation:
-                    # Determine the sum of seg_1d for a complete black mask.
-                    seg_sum = np.sum(seg_1d)
-                    if self.minimum_segmentation_sum > seg_sum:
-                        self.minimum_segmentation_sum = seg_sum
+                drone_in_frame = seg_sum > self.minimum_segmentation_sum and self.iteration > 10
+                if drone_in_frame:
+                    self.write_frame(image_path, response)
+                elif self.drone_in_frame_previous and self.iteration > 20:
+                    return False
 
-                    drone_in_frame = seg_sum > self.minimum_segmentation_sum and self.iteration > 10
-                    if drone_in_frame:
-                        airsim.write_file(os.path.normpath(image_path), response.image_data_uint8)
-                    elif self.drone_in_frame_previous and self.iteration > 30:
-                        return False
-
-                    self.drone_in_frame_previous = drone_in_frame
-                elif self.drone_in_frame_previous:
-                    airsim.write_file(os.path.normpath(image_path), response.image_data_uint8)
-                    self.timestamps[self.iteration] = self.get_time()
+                self.drone_in_frame_previous = drone_in_frame
+            elif self.drone_in_frame_previous:
+                self.write_frame(image_path, response)
+                self.timestamps[self.iteration] = self.get_time()
 
         if self.drone_in_frame_previous:
             self.write_states()

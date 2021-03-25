@@ -23,7 +23,7 @@
                 "depth": {
                     "CaptureSettings" : [
                         {
-                            "ImageType" : 1,
+                            "ImageType" : 2,
                             "Width" : 1920,
                             "Height" : 1080
                         }
