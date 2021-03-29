@@ -408,11 +408,13 @@ class AirSimControl:
 
 if __name__ == '__main__':
     parser = argparse.ArgumentParser(description='Detects MAVs in the dataset using optical flow.')
-    parser.add_argument('--collection', type=str, help='collection to process', default='moving')
+    parser.add_argument('--collection',  type=str, help='collection to process', default='moving')
+    parser.add_argument('--upload-only', action='store_true', help='upload images only')
     args = parser.parse_args()
 
-    control = AirSimControl(args.collection)
-    control.run()
+    if not args.upload_only:
+        control = AirSimControl(args.collection)
+        control.run()
 
     scp_command = [
         'scp',
