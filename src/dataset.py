@@ -26,13 +26,16 @@ class Dataset:
         self.seq_path = f'{base_path}{seq_dir}/{self.sequence}'
         self.img_path = f'{self.seq_path}{img_dir}'
         self.seg_path = f'{self.seq_path}/segmentations'
+        self.depth_path = f'{self.seq_path}/depths'
         self.gt_of_path = f'{self.seq_path}/optical-flow'
         self.ann_path = f'{self.seq_path}/annotation'
         self.img_pngs = f'{self.img_path}/{img_format}'
         self.vid_path = f'{self.seq_path}/recording.mp4'
 
         self.jpg_to_png()
-        self.reorder_pngs()
+        self.reorder_pngs(self.img_path)
+        self.reorder_pngs(self.seg_path)
+        self.reorder_pngs(self.depth_path)
 
         if not os.path.exists(self.vid_path):
             utils.img_to_video(self.img_pngs, self.vid_path)
@@ -52,7 +55,7 @@ class Dataset:
         if len(os.listdir(self.ann_path)) < 1:
             self.create_annotations()
 
-        if not os.path.exists(self.ann_path):
+        if not os.path.exists(self.gt_of_path):
             self.create_ground_truth_optical_flow()
 
         if self.capture_size != self.flow_size:
@@ -142,13 +145,14 @@ class Dataset:
                 cv2.imwrite(f'{self.img_path}/{os.path.dirname(img)}/image_{index:05d}.png', frame)
                 os.remove(img_path)
 
-    def reorder_pngs(self) -> None:
+    def reorder_pngs(self, base_path: str) -> None:
         """Lets the image indices start at 0."""
-        pngs = glob.glob(self.img_path + '/image_*.png')
+        pngs = glob.glob(base_path + '/image_*')
         pngs.sort()
 
         for i, png in enumerate(pngs):
-            shutil.move(png, f'{self.img_path}/image_{i:05d}.png')
+            extension = os.path.splitext(png)[-1]
+            shutil.move(png, f'{base_path}/image_{i:05d}{extension}')
 
     def get_gt_foe(self, i:int) -> Optional[Tuple[float, float]]:
         """Returns the ground truth Focus of Expansion.

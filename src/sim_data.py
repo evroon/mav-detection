@@ -61,6 +61,7 @@ class SimData(Dataset):
         return (FoE['X'] * 800, FoE['Y'] * 600)
 
     def create_ground_truth_optical_flow(self) -> None:
+        os.makedirs(self.gt_of_path)
         get_flow(self.seq_path)
         pass
 
@@ -70,4 +71,4 @@ class SimData(Dataset):
             self.write_yolo_annotation(image_path)
 
     def get_default_sequence(self) -> str:
-        return 'citypark-moving/soccerfield-north-medium-5.0-10-default'
+        return 'mountains-stationary/lake-north-low-2.5-10-default'

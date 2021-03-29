@@ -209,7 +209,7 @@ def blockshaped(arr: np.ndarray, nrows: int, ncols: int) -> np.ndarray:
                .swapaxes(1,2)
                .reshape(-1, nrows, ncols))
 
-def img_to_video(input: str, output: str, framerate: int = 10) -> None:
+def img_to_video(input: str, output: str, framerate: int = 30) -> None:
     if not os.path.exists(output):
         images = os.listdir(os.path.dirname(input))
         images = [f for f in images if 'image_' in os.path.basename(f)]

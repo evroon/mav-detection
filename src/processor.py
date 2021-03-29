@@ -8,8 +8,6 @@ import subprocess
 
 import im_helpers
 from typing import List, Dict, Tuple, Optional
-from midgard import Midgard
-from dataset import Dataset
 from detector import Detector
 from run_config import RunConfig
 from frame_result import FrameResult
