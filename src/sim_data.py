@@ -56,6 +56,10 @@ class SimData(Dataset):
         with open(self.states[i], 'r') as f:
             return json.load(f)
 
+    def get_angular_velocity(self, i:int) -> np.ndarray:
+        angular_velocity = self.get_state(i)['imu']['angular_velocity']
+        return np.array([angular_velocity['x_val'], angular_velocity['y_val'], angular_velocity['z_val']])
+
     def get_gt_foe(self, i:int) -> Optional[Tuple[float, float]]:
         FoE = self.get_state(i)['ue4']['Drone1']['FoE']
         return (FoE['X'] * 800, FoE['Y'] * 600)

@@ -154,6 +154,9 @@ class Dataset:
             extension = os.path.splitext(png)[-1]
             shutil.move(png, f'{base_path}/image_{i:05d}{extension}')
 
+    def get_angular_velocity(self, i:int) -> np.ndarray:
+        pass
+
     def get_gt_foe(self, i:int) -> Optional[Tuple[float, float]]:
         """Returns the ground truth Focus of Expansion.
 

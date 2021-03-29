@@ -66,6 +66,14 @@ class Detector:
         R1, R2, t = cv2.decomposeEssentialMat(self.essential)
         print(R1, R2, t)
 
+    def derotate(self, i:int,  flow_uv: np.ndarray) -> np.ndarray:
+        result = flow_uv.copy()
+        ang_vel = self.dataset.get_angular_velocity(i)
+        pix_per_angle = self.dataset.capture_size[0] / np.deg2rad(self.fov)
+        derotation_pixels = pix_per_angle * ang_vel
+        result[:2] -= derotation_pixels[:2]
+        return result
+
     def get_affine_matrix(self, orig_frame: np.ndarray, flow_uv: np.ndarray) -> None:
         """Calculates the affine or homography matrix.
 
