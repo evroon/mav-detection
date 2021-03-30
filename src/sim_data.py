@@ -71,4 +71,4 @@ class SimData(Dataset):
             self.write_yolo_annotation(image_path)
 
     def get_default_sequence(self) -> str:
-        return 'mountains-stationary/lake-north-low-2.5-10-default'
+        return 'mountains-moving/lake-north-medium-5.0-10-default'
