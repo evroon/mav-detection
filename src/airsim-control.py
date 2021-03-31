@@ -11,6 +11,7 @@ import shutil
 import argparse
 
 from datetime import datetime
+from scipy.spatial.transform import Rotation
 from typing import Dict, List, Any, Optional, Tuple, cast
 
 from sim_config import SimConfig
@@ -73,6 +74,8 @@ class AirSimControl:
         self.direction = 1
         self.drone_in_frame_previous = False
         self.minimum_segmentation_sum = 1e12
+        self.yaw_rate = 15 # rad/s
+        self.max_yaw = np.deg2rad(30)
 
         if not os.path.exists(self.root_data_dir + '/states'):
             os.makedirs(self.root_data_dir + '/states')
@@ -103,6 +106,14 @@ class AirSimControl:
             vehicle_name = self.target_drone
 
         return self.client.getMultirotorState(vehicle_name=vehicle_name).kinematics_estimated.position
+
+    def get_yaw(self, vehicle_name: str = None) -> airsim.MultirotorState:
+        if vehicle_name is None:
+            vehicle_name = self.target_drone
+
+        orientatation = self.client.getMultirotorState(vehicle_name=vehicle_name).kinematics_estimated.orientation
+        euler = Rotation.from_quat([orientatation.x_val, orientatation.y_val, orientatation.z_val, orientatation.w_val]).as_euler('xyz', degrees=False)
+        return euler[2]
 
     def is_landed(self, vehicle_name: str) -> bool:
         return cast(bool, self.client.getMultirotorState(vehicle_name=vehicle_name).landed_state == airsim.LandedState.Landed)
@@ -170,7 +181,7 @@ class AirSimControl:
                 self.wait_for_landing()
 
     def teleport(self, config: SimConfig) -> None:
-        heading = config.orientation.get_heading() / 180.0 * np.pi
+        heading = np.deg2rad(config.orientation.get_heading())
 
         # Move observing drone to center of orbit.
         quat = airsim.to_quaternion(0.0, 0.0, heading)
@@ -262,6 +273,7 @@ class AirSimControl:
         self.direction *= -1
         running = True
         lookahead_angle = config.orbit_speed * np.pi / 180.0 * self.direction
+        yaw_rate_direction = 1
 
         self.prepare_sequence()
 
@@ -282,11 +294,18 @@ class AirSimControl:
             vy = lookahead_y - pos_target_drone.y_val
             z = pos_observer_drone.z_val
 
-            self.client.moveByVelocityZAsync(vx, vy, z, 1, airsim.DrivetrainType.MaxDegreeOfFreedom,
+            self.client.moveByVelocityZAsync(vx, vy, z, 10, airsim.DrivetrainType.MaxDegreeOfFreedom,
                 airsim.YawMode(False, camera_heading), vehicle_name=self.target_drone)
 
+            yaw_mode = airsim.YawMode(True, self.yaw_rate * yaw_rate_direction)
+
             self.client.moveByVelocityZAsync(config.global_speed.x_val, config.global_speed.y_val, config.center.z_val,
-                1, airsim.DrivetrainType.MaxDegreeOfFreedom, airsim.YawMode(), vehicle_name=self.observing_drone)
+                10, airsim.DrivetrainType.MaxDegreeOfFreedom, yaw_mode, vehicle_name=self.observing_drone)
+
+            base_heading = np.deg2rad(config.orientation.get_heading())
+            angle_diff = self.get_yaw(self.observing_drone) - base_heading
+            if abs(angle_diff) > self.max_yaw:
+                yaw_rate_direction = -angle_diff / abs(angle_diff)
 
             running = self.capture()
             self.iteration += 1
@@ -416,10 +435,10 @@ if __name__ == '__main__':
         control = AirSimControl(args.collection)
         control.run()
 
-    scp_command = [
-        'scp',
-        '-r',
-        'data',
-        'erik@192.168.178.235:~/tno/datasets'
-    ]
-    subprocess.call(scp_command)
+    # scp_command = [
+    #     'scp',
+    #     '-r',
+    #     'data',
+    #     'erik@192.168.178.235:~/tno/datasets'
+    # ]
+    # subprocess.call(scp_command)
