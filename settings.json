@@ -83,7 +83,7 @@
 
             "global_speed": {
                 "default": {
-                    "lin_x": 1.0,
+                    "lin_x": 4.0,
                     "sin_y": 0.0,
                     "sin_z": 0.0
                 }
@@ -108,7 +108,7 @@
                     "z": 0.18
                 },
                 "citypark-moving/soccerfield": {
-                    "x": -721.70,
+                    "x": -711.70,
                     "y": 289.60,
                     "z": -1.05389
                 }
