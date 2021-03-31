@@ -18,7 +18,9 @@ class FocusOfExpansion:
         self.num_features = 0
         self.enable_plots = False
         self.max_flow = 0.0 # maximum flow in the image (degrees).
-        self.threshold = np.cos(15 * np.pi / 180.0)
+        self.radial_threshold = np.cos(np.deg2rad(15))
+        self.magnitude_threshold = 1.0
+        self.ransac_threshold = 30.0 # pixels
         self.color = np.random.randint(0, 255, (self.lucas_kanade.total_num_corners, 3))
         self.trace = np.zeros((self.lucas_kanade.total_num_corners, 2000), dtype=np.int)
         self.random_lines = np.random.randint(0, self.lucas_kanade.total_num_corners, self.lucas_kanade.total_num_corners)
@@ -26,6 +28,23 @@ class FocusOfExpansion:
 
         self.x_coords = np.tile(np.arange(flow_width), (flow_height, 1))
         self.y_coords = np.tile(np.arange(flow_height), (flow_width, 1)).T
+
+    def ransac(self, estimates: np.ndarray) -> Tuple[float, float]:
+        optimum = 0
+        optimal_foe = (0.0, 0.0)
+
+        for i in range(estimates.shape[0]):
+            chosen_sample = estimates[i]
+            count = np.linalg.norm(estimates - chosen_sample, axis=1)
+            inliers = count[count < self.ransac_threshold]
+            score = inliers.shape[0] - 1
+
+            if score > optimum:
+                optimum = score
+                optimal_foe = chosen_sample
+
+
+        return optimal_foe
 
     def get_FOE_dense(self, flow_uv: np.ndarray) -> Tuple[float, float]:
         N = 10000
@@ -40,13 +59,16 @@ class FocusOfExpansion:
         for i in range(N):
             coord1, coord2 = rand1[i, :], rand1[i+N, :]
             flow1, flow2 = flow_uv[coord1[0], coord1[1], :], flow_uv[coord2[0], coord2[1], :]
+
+            if np.linalg.norm(flow2) < self.magnitude_threshold:
+                continue
+
             coord1 = coord1[::-1]
             coord2 = coord2[::-1]
             intersections[i, :] = utils.line_intersection((coord1, flow1 + coord1), (coord2, flow2 + coord2))
 
         intersections = intersections[intersections[:, 0] != 0.0, :]
-        FoE = np.median(intersections, axis=0).astype(np.uint16)
-        return (FoE[0], FoE[1])
+        return self.ransac(intersections)
 
     def get_FOE_sparse(self, old_frame: np.ndarray, new_frame: np.ndarray) -> Tuple[float, float]:
         if np.sum(old_frame) < 1:
@@ -99,9 +121,7 @@ class FocusOfExpansion:
             intersections[i, :] = int_x, int_y
 
         intersections = intersections[intersections[:, 0] != 0.0, :]
-        FoE = np.median(intersections, axis=0).astype(np.uint16)
-
-        return (FoE[0], FoE[1])
+        return self.ransac(intersections)
 
     def check_flow(self, flow_uv: np.ndarray, FoE: Tuple[float, float]) -> np.ndarray:
         """Checks which parts of a flow field are parallel with the FoE.
@@ -157,7 +177,7 @@ class FocusOfExpansion:
             angle_diff = np.dot(diff1, diff2) / (flow_magnitude * img_distance)
             color = [0, 255, 0]
 
-            if angle_diff < self.threshold:
+            if angle_diff < self.radial_threshold:
                 color = [0, 0, 255]
 
             self.mask = cv2.line(self.mask, line[0], line[1], color, 2)
