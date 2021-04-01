@@ -119,7 +119,7 @@ class Processor:
             elif self.mode in [RunConfig.Mode.FLOW_FOE_CLUSTERING, RunConfig.Mode.FLOW_FOE_YOLO]:
                 orig_frame = self.dataset.get_frame()
                 flow_uv = self.dataset.get_flow_uv(self.frame_index)
-                self.detector.get_affine_matrix(orig_frame, flow_uv)
+                self.detector.get_transformation_matrix(orig_frame, flow_uv)
                 self.detector.flow_vec_subtract(orig_frame, flow_uv)
                 cv2.imwrite(dst, self.detector.flow_uv_warped_mag * 255 / np.max(self.detector.flow_uv_warped_mag))
 
@@ -267,7 +267,7 @@ class Processor:
                 self.flow_vis = im_helpers.get_flow_vis(self.flow_uv)
                 self.dataset.get_annotation(self.frame_index)
 
-                self.detector.get_affine_matrix(orig_frame, self.flow_uv)
+                self.detector.get_transformation_matrix(orig_frame, self.flow_uv)
                 flow_uv_warped_vis, cluster_vis, _, global_motion_vis = self.detector.flow_vec_subtract(orig_frame, self.flow_uv)
                 global_motion_vis = global_motion_vis.astype(np.uint8)
 
@@ -283,6 +283,10 @@ class Processor:
             else:
                 self.detection_results[self.frame_index] = FrameResult()
                 self.flow_uv = self.dataset.get_flow_uv(self.frame_index)
+
+                self.detector.get_transformation_matrix(orig_frame, self.flow_uv)
+
+                self.flow_uv = self.detector.derotate(self.frame_index, self.flow_uv)
                 self.flow_uv[..., 0] /= im_helpers.get_magnitude(self.flow_uv)
                 self.flow_uv[..., 1] /= im_helpers.get_magnitude(self.flow_uv)
                 self.flow_averaged = self.detector.get_history(self.flow_uv)
@@ -297,6 +301,13 @@ class Processor:
                     result_img = cv2.applyColorMap(result_img, cv2.COLORMAP_JET)
 
                 self.old_frame = orig_frame
+
+                # rotation = self.detector.get_rotation(self.flow_uv, False)
+                # print(rotation[0])
+                # print(rotation[1])
+                # print(rotation[2])
+                # print(np.rad2deg(self.dataset.get_angular_velocity(self.frame_index))[2])
+                # print()
 
                 for img in [orig_frame, result_img]:
                     img = self.focus_of_expansion.draw_FoE(img, FoE_sparse, [0, 0, 255])

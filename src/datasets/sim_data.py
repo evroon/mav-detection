@@ -5,7 +5,7 @@ import cv2
 import re
 import os
 import json
-from typing import Optional, Tuple
+from typing import Optional, Tuple, cast
 
 import utils
 from datasets.dataset import Dataset
@@ -62,11 +62,11 @@ class SimData(Dataset):
 
     def get_delta_time(self, i:int) -> float:
         if i < 1:
-            return np.nan
+            return cast(float, np.nan)
 
         time_stamp1 = self.get_state(i-1)['imu']['time_stamp']
         time_stamp2 = self.get_state(i)['imu']['time_stamp']
-        return (time_stamp2 - time_stamp1) / 1e9
+        return float(time_stamp2 - time_stamp1) / 1e9
 
     def get_gt_foe(self, i:int) -> Optional[Tuple[float, float]]:
         FoE = self.get_state(i)['ue4']['Drone1']['FoE']

@@ -3,7 +3,7 @@ import cv2
 import os
 import numpy as np
 import subprocess
-from typing import Tuple, List, Optional, TypeVar
+from typing import Tuple, List, Optional, TypeVar, cast
 
 
 class Rectangle:
@@ -217,3 +217,31 @@ def img_to_video(input: str, output: str, framerate: int = 30) -> None:
         start_number = images[0].replace('image_', '').replace('.png', '')
         command = f'ffmpeg -start_number {start_number} -r {framerate} -i {input} -c:v libx264 -vf fps={framerate} -pix_fmt yuv420p {output} -y'
         subprocess.call(command.split(' '))
+
+# Checks if a matrix is a valid rotation matrix.
+def is_rotation_matrix(R: np.ndarray) -> bool:
+    Rt = np.transpose(R)
+    shouldBeIdentity = np.dot(Rt, R)
+    I = np.identity(3, dtype = R.dtype)
+    n = np.linalg.norm(I - shouldBeIdentity)
+    return cast(bool, n < 1e-6)
+
+# Calculates rotation matrix to euler angles
+# The result is the same as MATLAB except the order
+# of the euler angles ( x and z are swapped ).
+def rotation_matrix_to_euler(R: np.ndarray) -> np.ndarray:
+    assert(is_rotation_matrix(R))
+
+    sy = np.sqrt(R[0,0] * R[0,0] +  R[1,0] * R[1,0])
+    singular = sy < 1e-6
+
+    if not singular:
+        x = np.arctan2(R[2,1] , R[2,2])
+        y = np.arctan2(-R[2,0], sy)
+        z = np.arctan2(R[1,0], R[0,0])
+    else:
+        x = np.arctan2(-R[1,2], R[1,1])
+        y = np.arctan2(-R[2,0], sy)
+        z = 0
+
+    return np.rad2deg(np.array([x, y, z]))

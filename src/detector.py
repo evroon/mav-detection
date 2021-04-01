@@ -20,7 +20,7 @@ class Detector:
         FUNDAMENTAL = 4,
         ESSENTIAL = 5,
 
-    def __init__(self, dataset: Dataset, algorithm: Algorithm = Algorithm.FOE, use_sparse_of: bool = False) -> None:
+    def __init__(self, dataset: Dataset, algorithm: Algorithm = Algorithm.ESSENTIAL, use_sparse_of: bool = False) -> None:
         self.dataset = dataset
         self.algorithm = algorithm
         self.use_sparse_of = use_sparse_of
@@ -62,19 +62,24 @@ class Detector:
         return np.sqrt(frame[..., 0] ** 2.0 + frame[..., 1] ** 2.0), \
             np.arctan2(frame[..., 1], frame[..., 0])
 
-    def get_rotation(self, flow_uv: np.ndarray, use_fundamental: bool = True) -> np.ndarray:
+    def get_rotation(self, flow_uv: np.ndarray, use_fundamental: bool = True) -> Tuple[np.ndarray, np.ndarray, np.ndarray]:
+        # self.get_transformation_matrix()
         R1, R2, t = cv2.decomposeEssentialMat(self.essential)
-        print(R1, R2, t)
+        return utils.rotation_matrix_to_euler(R1), utils.rotation_matrix_to_euler(R2), t
 
     def derotate(self, i:int,  flow_uv: np.ndarray) -> np.ndarray:
+        if i < 1:
+            return flow_uv
+
         result = flow_uv.copy()
         ang_vel = self.dataset.get_angular_velocity(i)
+        delta_time = self.dataset.get_delta_time(i)
         pix_per_angle = self.dataset.capture_size[0] / np.deg2rad(self.fov)
-        derotation_pixels = pix_per_angle * ang_vel
-        result[:2] -= derotation_pixels[:2]
+        derotation_pixels = pix_per_angle * ang_vel * delta_time
+        result[[2, 1]] -= derotation_pixels[[2, 1]]
         return result
 
-    def get_affine_matrix(self, orig_frame: np.ndarray, flow_uv: np.ndarray) -> None:
+    def get_transformation_matrix(self, orig_frame: np.ndarray, flow_uv: np.ndarray) -> None:
         """Calculates the affine or homography matrix.
 
         Args:
@@ -103,7 +108,7 @@ class Detector:
                 fundamental, _ = cv2.findFundamentalMat(coords_old, coords_new, cv2.FM_RANSAC, 0.999, 1.0)
                 self.fundamental = np.array(fundamental)
             if self.algorithm == Detector.Algorithm.ESSENTIAL:
-                principal_point = (self.dataset.capture_size[0] / 2, self.dataset.capture_size[1] / 2)
+                principal_point = (0, 0)
                 essential, _ = cv2.findEssentialMat(coords_old, coords_new, self.focal_length,
                     principal_point, cv2.FM_RANSAC, 0.999, 1.0)
                 self.essential = np.array(essential)
@@ -403,7 +408,6 @@ class Detector:
         return rgb, mask
 
     def is_homography_based(self) -> bool:
-        return self.algorithm not in [
-            Detector.Algorithm.NONE,
-            Detector.Algorithm.FOE,
+        return self.algorithm in [
+            Detector.Algorithm.HOMOGRAPHY,
         ]
