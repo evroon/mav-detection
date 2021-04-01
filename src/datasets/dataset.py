@@ -157,6 +157,9 @@ class Dataset:
     def get_angular_velocity(self, i:int) -> np.ndarray:
         pass
 
+    def get_delta_time(self, i:int) -> float:
+        pass
+
     def get_gt_foe(self, i:int) -> Optional[Tuple[float, float]]:
         """Returns the ground truth Focus of Expansion.
 

@@ -5,7 +5,7 @@ from typing import Tuple, cast
 from enum import Enum
 
 import im_helpers
-from dataset import Dataset
+from datasets.dataset import Dataset
 from lucas_kanade import LucasKanade
 from im_helpers import pyramid, sliding_window, get_flow_vis
 from frame_result import FrameResult

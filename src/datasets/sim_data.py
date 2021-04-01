@@ -8,7 +8,7 @@ import json
 from typing import Optional, Tuple
 
 import utils
-from dataset import Dataset
+from datasets.dataset import Dataset
 from airsim_optical_flow import get_flow
 
 class SimData(Dataset):
@@ -60,6 +60,14 @@ class SimData(Dataset):
         angular_velocity = self.get_state(i)['imu']['angular_velocity']
         return np.array([angular_velocity['x_val'], angular_velocity['y_val'], angular_velocity['z_val']])
 
+    def get_delta_time(self, i:int) -> float:
+        if i < 1:
+            return np.nan
+
+        time_stamp1 = self.get_state(i-1)['imu']['time_stamp']
+        time_stamp2 = self.get_state(i)['imu']['time_stamp']
+        return (time_stamp2 - time_stamp1) / 1e9
+
     def get_gt_foe(self, i:int) -> Optional[Tuple[float, float]]:
         FoE = self.get_state(i)['ue4']['Drone1']['FoE']
         return (FoE['X'] * 800, FoE['Y'] * 600)
@@ -75,4 +83,4 @@ class SimData(Dataset):
             self.write_yolo_annotation(image_path)
 
     def get_default_sequence(self) -> str:
-        return 'mountains-moving/lake-north-medium-5.0-10-default'
+        return 'citypark-moving/soccerfield-north-medium-5.0-10-default'

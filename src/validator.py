@@ -11,7 +11,7 @@ from matplotlib import pyplot as plt
 import utils
 from run_config import RunConfig
 from frame_result import FrameResult
-from dataset import Dataset
+from datasets.dataset import Dataset
 
 
 class Validator:

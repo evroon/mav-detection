@@ -1,5 +1,5 @@
 import os
-from dataset import Dataset
+from datasets.dataset import Dataset
 import logging
 
 class VisDrone(Dataset):

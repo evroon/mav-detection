@@ -3,10 +3,10 @@ import json
 from typing import Iterator, Any, Dict, List, cast
 from enum import Enum
 
-from dataset import Dataset
-from midgard import Midgard
-from sim_data import SimData
-from vis_drone import VisDrone
+from datasets.dataset import Dataset
+from datasets.midgard import Midgard
+from datasets.sim_data import SimData
+from datasets.vis_drone import VisDrone
 
 
 class RunConfig:
