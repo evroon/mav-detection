@@ -74,7 +74,7 @@ class AirSimControl:
         self.direction = 1
         self.drone_in_frame_previous = False
         self.minimum_segmentation_sum = 1e12
-        self.yaw_rate = 15 # rad/s
+        self.yaw_rate = 15 # deg/s
         self.max_yaw = np.deg2rad(30)
 
         if not os.path.exists(self.root_data_dir + '/states'):
@@ -328,11 +328,14 @@ class AirSimControl:
         ))
 
     def write_states(self) -> None:
-        state1 = self.client.getMultirotorState(vehicle_name=self.target_drone)
-        imu_data = self.client.getImuData(imu_name = "Imu", vehicle_name=self.target_drone)
+        result: Dict[str, Any] = {}
 
-        result = self.get_json(state1)
-        result['imu'] = self.get_json(imu_data)
+        for vehicle_name in [self.observing_drone, self.target_drone]:
+            state = self.client.getMultirotorState(vehicle_name=vehicle_name)
+            imu_data = self.client.getImuData(imu_name="Imu", vehicle_name=vehicle_name)
+
+            result[vehicle_name] = self.get_json(state)
+            result[vehicle_name]['imu'] = self.get_json(imu_data)
 
         with open(f'{self.base_dir}/states/{self.get_time_formatted()}.json', 'w') as f:
             f.write(json.dumps(result, indent=4, sort_keys=True))
@@ -406,7 +409,11 @@ class AirSimControl:
 
             with open(in_files[selected_input], 'r') as f_in:
                 with open(out_file, 'w') as f_out:
-                    result['ue4'] = json.load(f_in)
+                    json_in = json.load(f_in)
+
+                    for vehicle_name in [self.observing_drone, self.target_drone]:
+                        result[vehicle_name]['ue4'] = json_in[vehicle_name]
+
                     result['thread_difference'] = int(diffs[selected_input])
                     f_out.write(json.dumps(result, indent=4, sort_keys=True))
 
