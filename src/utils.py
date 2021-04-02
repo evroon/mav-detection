@@ -3,7 +3,8 @@ import cv2
 import os
 import numpy as np
 import subprocess
-from typing import Tuple, List, Optional, TypeVar, cast
+import json
+from typing import Tuple, List, Optional, TypeVar, cast, Dict, Any
 
 
 class Rectangle:
@@ -192,7 +193,7 @@ def read_flow(filename: str) -> np.ndarray:
 
         return np.resize(data, (int(h), int(w), 2))
 
-def write_flow(filename: str, uv: np.ndarray, v=None):
+def write_flow(filename: str, uv: np.ndarray, v: np.ndarray=None) -> None:
     """ Write optical flow to file.
 
     If v is None, uv is assumed to contain both u and v channels,
@@ -278,3 +279,17 @@ def rotation_matrix_to_euler(R: np.ndarray) -> np.ndarray:
         z = 0
 
     return np.rad2deg(np.array([x, y, z]))
+
+
+def get_json(obj: Dict[str, Any]) -> Dict[str, Any]:
+    """Convert object to JSON dictionary.
+
+    Args:
+        obj (Dict[str, Any]): object to convert
+
+    Returns:
+        Dict[str, Any]: resulting dictionary that can be saved as JSON
+    """
+    return cast(Dict[str, Any], json.loads(
+        json.dumps(obj, default=lambda o: getattr(o, '__dict__', str(o)))
+    ))

@@ -5,6 +5,7 @@ import numpy as np
 import glob
 import shutil
 import subprocess
+import json
 
 import im_helpers
 from typing import List, Dict, Tuple, Optional
@@ -77,6 +78,9 @@ class Processor:
                 self.is_exiting = True
 
         self.frame_index += 1
+
+        with open(f'{self.dataset.results_path}/image_{self.frame_index:05d}.json', 'w') as f:
+            f.write(json.dumps(utils.get_json(self.config.results), indent=4, sort_keys=True))
 
         if self.frame_index % int(self.dataset.N / 10) == 0:
             self.logger.info(f'{self.frame_index / self.dataset.N * 100:.2f}% {self.frame_index} / {self.dataset.N}')
@@ -231,6 +235,7 @@ class Processor:
             self.prepare_sequence(sequence)
 
     def undistort(self) -> None:
+        """Undistorts the MIDGARD dataset."""
         sequences = self.config.get_all_sequences()
 
         for sequence in sequences:
@@ -294,13 +299,18 @@ class Processor:
 
                 FoE_sparse = self.focus_of_expansion.get_FOE_sparse(self.old_frame, orig_frame)
                 FoE_dense  = self.focus_of_expansion.get_FOE_dense(self.flow_averaged)
-                gt_foe = self.dataset.get_gt_foe(self.frame_index)
+                FoE_gt = self.dataset.get_gt_foe(self.frame_index)
 
                 result_img = self.focus_of_expansion.check_flow(self.flow_uv, FoE_sparse)
                 if result_img is not None:
                     result_img = cv2.applyColorMap(result_img, cv2.COLORMAP_JET)
 
                 self.old_frame = orig_frame
+                self.config.results = {
+                    'foe_sparse': FoE_sparse,
+                    'foe_dense': FoE_dense,
+                    'foe_gt': FoE_gt,
+                }
 
                 # rotation = self.detector.get_rotation(self.flow_uv, False)
                 # print(rotation[0])
@@ -313,8 +323,8 @@ class Processor:
                     img = self.focus_of_expansion.draw_FoE(img, FoE_sparse, [0, 0, 255])
                     img = self.focus_of_expansion.draw_FoE(img, FoE_dense,  [255, 0, 0])
 
-                    if gt_foe is not None:
-                        img = self.focus_of_expansion.draw_FoE(img, gt_foe, [0, 255, 0])
+                    if FoE_gt is not None:
+                        img = self.focus_of_expansion.draw_FoE(img, FoE_gt, [0, 255, 0])
 
                 # print(self.focus_of_expansion.max_flow * 180 / np.pi)
 

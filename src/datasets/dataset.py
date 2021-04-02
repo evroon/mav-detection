@@ -29,6 +29,7 @@ class Dataset:
         self.depth_path = f'{self.seq_path}/depths'
         self.gt_of_path = f'{self.seq_path}/optical-flow'
         self.ann_path = f'{self.seq_path}/annotation'
+        self.results_path = f'{self.seq_path}/results'
         self.img_pngs = f'{self.img_path}/{img_format}'
         self.vid_path = f'{self.seq_path}/recording.mp4'
 
@@ -51,6 +52,9 @@ class Dataset:
 
         if not os.path.exists(self.ann_path):
             os.makedirs(self.ann_path)
+
+        if not os.path.exists(self.results_path):
+            os.makedirs(self.results_path)
 
         if len(os.listdir(self.ann_path)) < 1:
             self.create_annotations()

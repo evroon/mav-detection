@@ -14,6 +14,7 @@ from datetime import datetime
 from scipy.spatial.transform import Rotation
 from typing import Dict, List, Any, Optional, Tuple, cast
 
+import utils
 from sim_config import SimConfig
 from run_config import RunConfig
 
@@ -322,11 +323,6 @@ class AirSimControl:
     def get_time(self) -> datetime:
         return datetime.now()
 
-    def get_json(self, obj: Dict[str, Any]) -> Dict[str, Any]:
-        return cast(Dict[str, Any], json.loads(
-            json.dumps(obj, default=lambda o: getattr(o, '__dict__', str(o)))
-        ))
-
     def write_states(self) -> None:
         result: Dict[str, Any] = {}
 
@@ -334,8 +330,8 @@ class AirSimControl:
             state = self.client.getMultirotorState(vehicle_name=vehicle_name)
             imu_data = self.client.getImuData(imu_name="Imu", vehicle_name=vehicle_name)
 
-            result[vehicle_name] = self.get_json(state)
-            result[vehicle_name]['imu'] = self.get_json(imu_data)
+            result[vehicle_name] = utils.get_json(state)
+            result[vehicle_name]['imu'] = utils.get_json(imu_data)
 
         with open(f'{self.base_dir}/states/{self.get_time_formatted()}.json', 'w') as f:
             f.write(json.dumps(result, indent=4, sort_keys=True))
