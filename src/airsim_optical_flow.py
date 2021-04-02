@@ -2,12 +2,14 @@ import os
 import glob
 import json
 import numpy as np
-from scipy.spatial.transform import Rotation
 import matplotlib.pyplot as plt
 import airsim
 import cv2
 from im_helpers import get_flow_vis
+from scipy.spatial.transform import Rotation
 from typing import List, Tuple, Dict, Any, cast
+
+import utils
 
 def mat4x4_vec4_mult(mat4x4: np.ndarray, vec4: np.ndarray) -> np.ndarray:
     return np.array(
@@ -135,4 +137,8 @@ def get_flow(seq_path: str) -> np.ndarray:
         segmentation_img = cv2.imread(f'{segmentations_dir}/image_{i:05d}.png', 0).T
 
         result = calculate_flow(view_proj1, view_proj2, screen_res, coords, depth_img, drone_velocity, segmentation_img)
-        cv2.imwrite(f'{seq_path}/optical-flow/image_{i:05d}.png', get_flow_vis(result).swapaxes(0, 1))
+        utils.write_flow(
+            f'{seq_path}/optical-flow/image_{i:05d}.flo',
+            result
+        )
+        # cv2.imwrite(f'{seq_path}/optical-flow/image_{i:05d}.png', get_flow_vis(result).swapaxes(0, 1))
