@@ -9,7 +9,6 @@ import logging
 import subprocess
 from typing import Optional, Tuple, cast, List
 
-from im_helpers import get_flow_radial, get_flow_vis
 
 class Dataset:
     '''Desscribes a dataset with images, annotations and flow fields.'''
@@ -72,17 +71,28 @@ class Dataset:
         print('Dataset loaded.')
 
     def run_flownet2(self) -> None:
+        """Runs FlowNet2 on the current sequence."""
         self.logger.info('Running FlowNet2...')
         flownet2 = os.environ['FLOWNET2']
         subprocess.call([f'{flownet2}/launch_docker.sh', '--run', '--dataset',  f'{self.img_path}'])
 
     def get_default_sequence(self) -> str:
+        """The default sequence to use if no sequence was specified by user
+
+        Raises:
+            ValueError: If the method is not called on an inherited class
+
+        Returns:
+            str: the name of the default sequence
+        """
         raise ValueError('Not implemented.')
 
     def create_ground_truth_optical_flow(self) -> None:
+        """Creates ground truth optical flow if possible."""
         pass
 
     def create_annotations(self) -> None:
+        """Creates annotations in YOLOv4 format if possible."""
         pass
 
     def get_annotation(self, i: int, ann_path: str = None) -> List[utils.Rectangle]:
@@ -159,19 +169,46 @@ class Dataset:
             shutil.move(png, f'{base_path}/image_{i:05d}{extension}')
 
     def get_angular_velocity(self, i:int) -> np.ndarray:
+        """Returns the angular velocity of the IMU if known.
+
+        Args:
+            i (int): Frame index
+
+        Returns:
+            np.ndarray: the angular velocity Euler rates in body frame
+        """
         pass
 
     def get_delta_time(self, i:int) -> float:
+        """Returns the time difference in seconds between the previous and current frame
+
+        Args:
+            i (int): Current frame index
+
+        Returns:
+            float: Time difference in seconds
+        """
         pass
 
     def get_gt_foe(self, i:int) -> Optional[Tuple[float, float]]:
         """Returns the ground truth Focus of Expansion.
 
         Args:
-            i (int): frame index
+            i (int): Frame index
 
         Returns:
-            Optional[Tuple[float, float]]: Focus of Expansion
+            Optional[Tuple[float, float]]: Ground truth Focus of Expansion
+        """
+        return None
+
+    def get_gt_of(self, i:int) -> Optional[np.ndarray]:
+        """Returns the ground truth optical flow field for a given frame
+
+        Args:
+            i (int): Frame index
+
+        Returns:
+            Optional[np.ndarray]: the ground truth optical flow field
         """
         return None
 

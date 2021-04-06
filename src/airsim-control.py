@@ -1,13 +1,11 @@
 import airsim
 import os
-import pprint
 import subprocess
 import msgpackrpc
 import json
 import numpy as np
 import math
 import time
-import shutil
 import argparse
 
 from datetime import datetime
@@ -82,14 +80,23 @@ class AirSimControl:
             os.makedirs(self.root_data_dir + '/states')
 
     def init(self) -> None:
+        """Initialize the AirSim connection."""
         # Connect to the AirSim simulator
-        self.client = airsim.MultirotorClient()
-        try:
-            print('Connecting...')
-            self.client.confirmConnection()
-        except msgpackrpc.error.TransportError:
-            print('AirSim is not running or could not connect.')
-            exit(-1)
+        is_starting = False
+
+        while True:
+            try:
+                print('Connecting...')
+                self.client = airsim.MultirotorClient()
+                self.client.confirmConnection()
+                break
+            except msgpackrpc.error.TransportError:
+                if not is_starting:
+                    with open(os.devnull, 'w') as devnull:
+                        subprocess.Popen(['/home/erik/tno/UE4/LinuxNoEditor/LandscapeMountains.sh'], stdout=devnull)
+                        is_starting = True
+
+                time.sleep(1)
 
         self.client.simSetSegmentationObjectID("[\w]*", 0, True)
         self.client.simSetSegmentationObjectID("Drone[\w]*", 255, True)
@@ -102,24 +109,49 @@ class AirSimControl:
         self.clean()
         self.prev_time = self.get_time()
 
-    def get_position(self, vehicle_name: str = None) -> airsim.MultirotorState:
+    def get_position(self, vehicle_name: str = None) -> airsim.Vector3r:
+        """Get the position of an MAV.
+
+        Args:
+            vehicle_name (str, optional): the name of the vehicle to get the position of. Defaults to None.
+
+        Returns:
+            airsim.Vector3r: the position in meters.
+        """
         if vehicle_name is None:
             vehicle_name = self.target_drone
 
         return self.client.getMultirotorState(vehicle_name=vehicle_name).kinematics_estimated.position
 
-    def get_yaw(self, vehicle_name: str = None) -> airsim.MultirotorState:
+    def get_yaw(self, vehicle_name: str = None) -> float:
+        """Returns the yaw of a vehicle in radians.
+
+        Args:
+            vehicle_name (str, optional): the vehicle to get the yaw angle of. Defaults to None.
+
+        Returns:
+            float: the yaw angle in radians
+        """
         if vehicle_name is None:
             vehicle_name = self.target_drone
 
         orientatation = self.client.getMultirotorState(vehicle_name=vehicle_name).kinematics_estimated.orientation
         euler = Rotation.from_quat([orientatation.x_val, orientatation.y_val, orientatation.z_val, orientatation.w_val]).as_euler('xyz', degrees=False)
-        return euler[2]
+        return cast(float, euler[2])
 
     def is_landed(self, vehicle_name: str) -> bool:
+        """Whether an MAV has landed."""
         return cast(bool, self.client.getMultirotorState(vehicle_name=vehicle_name).landed_state == airsim.LandedState.Landed)
 
     def takeoff(self, vehicle_name: Optional[str] = None) -> Optional[msgpackrpc.future.Future]:
+        """Performs a takeoff for an MAV.
+
+        Args:
+            vehicle_name (Optional[str], optional): the name of the vehicle that will takeoff. Defaults to None.
+
+        Returns:
+            Optional[msgpackrpc.future.Future]: the async future result
+        """
         if vehicle_name is None:
             print('Takeoff...')
             takeoff1 = self.takeoff(self.observing_drone)
@@ -137,12 +169,23 @@ class AirSimControl:
         return None
 
     def align_north(self) -> None:
+        """Align both drones to the north."""
         align1 = self.client.rotateToYawAsync(0, 2, vehicle_name=self.observing_drone)
         align2 = self.client.rotateToYawAsync(0, 2, vehicle_name=self.target_drone)
         align1.join()
         align2.join()
 
     def move_to_position(self, config: SimConfig, vehicle_name: str, z: float = None) -> msgpackrpc.future.Future:
+        """Moves a vehicle to its new start position.
+
+        Args:
+            config (SimConfig): the configuration specifying the start position.
+            vehicle_name (str): the name of the vehicle that will move
+            z (float, optional): the altitude of the drone in meters. Defaults to None.
+
+        Returns:
+            msgpackrpc.future.Future: the result of the async move method
+        """
         position = config.get_start_position(vehicle_name == self.observing_drone)
 
         if z is not None:
@@ -151,6 +194,7 @@ class AirSimControl:
         return self.client.moveToPositionAsync(position.x_val, position.y_val, position.z_val, self.speed, vehicle_name=vehicle_name)
 
     def fly(self) -> None:
+        """Runs the control and data acquisition loop."""
         for i, config in enumerate(self.configs):
             first_sequence_of_kind = i == 0 or config.is_different_location(self.configs[i-1])
             first_sequence_of_pose = i == 0 or config.is_different_pose(self.configs[i-1])
@@ -182,6 +226,11 @@ class AirSimControl:
                 self.wait_for_landing()
 
     def teleport(self, config: SimConfig) -> None:
+        """Teleport drones to the start locations of a new configuration.
+
+        Args:
+            config (SimConfig): the configuration specifying the start positions.
+        """
         heading = np.deg2rad(config.orientation.get_heading())
 
         # Move observing drone to center of orbit.
@@ -195,12 +244,18 @@ class AirSimControl:
         self.client.simSetVehiclePose(pose, True, vehicle_name=self.target_drone)
 
     def wait_for_landing(self) -> None:
+        """Wait until the observing drone has landed."""
         old_pos = airsim.Vector3r()
         while (self.get_position(self.observing_drone) - old_pos).get_length() > 0.01:
             old_pos = self.get_position(self.observing_drone)
             time.sleep(1)
 
     def prepare_run(self, config: SimConfig) -> None:
+        """Prepares the simulation for a new run.
+
+        Args:
+            config (SimConfig): the configuration to run.
+        """
         self.teleport(config)
         self.wait_for_landing()
 
@@ -212,16 +267,27 @@ class AirSimControl:
         print(f'{config.base_name}: New heading: {config.orientation}, altitude: {config.center.z_val:.02f}m')
 
     def get_base_dir(self, config: SimConfig) -> str:
+        """Returns the base directory of the given configuration."""
         return f'{self.root_data_dir}/{config}'
 
     def write_frame(self, image_path: str, response: airsim.ImageResponse) -> None:
+        """Writes an image response to disk
+
+        Args:
+            image_path (str): the output path
+            response (airsim.ImageResponse): the image response containing the image
+        """
         if response.pixels_as_float:
             airsim.write_pfm(os.path.normpath(image_path), airsim.get_pfm_array(response))
         else:
             airsim.write_file(os.path.normpath(image_path), response.image_data_uint8)
 
     def capture(self) -> bool:
-        # Capture frames.
+        """Capture frames
+
+        Returns:
+            bool: Whether the simulation run is finished.
+        """
         responses = self.client.simGetImages([
             airsim.ImageRequest("segment", airsim.ImageType.Segmentation),
             airsim.ImageRequest("high_res", airsim.ImageType.Scene),
@@ -266,6 +332,11 @@ class AirSimControl:
         return True
 
     def fly_orbit(self, config: SimConfig) -> None:
+        """Let the target drone fly an orbit.
+
+        Args:
+            config (SimConfig): the configuration of the orbit
+        """
         print(f'Starting orbit with radius of {config.radius:0.2f}m')
 
         self.start_angle: Optional[float] = None
@@ -311,10 +382,15 @@ class AirSimControl:
             running = self.capture()
             self.iteration += 1
 
-    def get_magnitude(self, vector: np.ndarray) -> float:
-        return float(np.sqrt(vector.x_val ** 2.0 + vector.y_val ** 2.0 + vector.z_val ** 2.0))
-
     def get_time_formatted(self, time: datetime = None) -> str:
+        """Get a formatted string of a given time
+
+        Args:
+            time (datetime, optional): the time to process. Defaults to None.
+
+        Returns:
+            str: the timestamp in ns.
+        """
         if time is None:
             time = self.get_time()
 
@@ -324,6 +400,7 @@ class AirSimControl:
         return datetime.now()
 
     def write_states(self) -> None:
+        """Write states of the vehicles to disk."""
         result: Dict[str, Any] = {}
 
         for vehicle_name in [self.observing_drone, self.target_drone]:
@@ -337,6 +414,7 @@ class AirSimControl:
             f.write(json.dumps(result, indent=4, sort_keys=True))
 
     def clean(self) -> None:
+        """Clean results of previous runs."""
         print('Removing previous results of states...')
         max_attempts = 10
         i = 0
@@ -350,6 +428,11 @@ class AirSimControl:
             break
 
     def land(self, config: SimConfig) -> None:
+        """Land both drones.
+
+        Args:
+            config (SimConfig): the configuration specifying the ground height and land location
+        """
         print('Landing...')
         f1 = self.move_to_position(config, self.observing_drone, z=config.ground_height - 1.0)
         f2 = self.move_to_position(config, self.target_drone, z=config.ground_height - 1.0)
@@ -362,6 +445,7 @@ class AirSimControl:
         f2.join()
 
     def finish_sequence(self) -> None:
+        """Finish a sequence and write timestamps to disk."""
         self.timestamps_str = {}
 
         if self.timestamps is not None:
@@ -413,15 +497,11 @@ class AirSimControl:
                     result['thread_difference'] = int(diffs[selected_input])
                     f_out.write(json.dumps(result, indent=4, sort_keys=True))
 
-    def create_if_not_exists(self, dir: str) -> None:
-        if not os.path.exists(dir):
-            os.makedirs(dir)
-
     def prepare_sequence(self) -> None:
-        self.create_if_not_exists(f'{self.base_dir}/images')
-        self.create_if_not_exists(f'{self.base_dir}/segmentations')
-        self.create_if_not_exists(f'{self.base_dir}/depths')
-        self.create_if_not_exists(f'{self.base_dir}/states')
+        utils.create_if_not_exists(f'{self.base_dir}/images')
+        utils.create_if_not_exists(f'{self.base_dir}/segmentations')
+        utils.create_if_not_exists(f'{self.base_dir}/depths')
+        utils.create_if_not_exists(f'{self.base_dir}/states')
 
     def run(self) -> None:
         self.init()

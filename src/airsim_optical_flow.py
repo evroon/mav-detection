@@ -108,7 +108,7 @@ def calculate_flow(
     screen_pos1 = world_to_screen(view_proj1, screen_res, world_pos)
     return screen_pos1 - screen_pos2
 
-def get_flow(seq_path: str) -> np.ndarray:
+def write_flow(seq_path: str) -> np.ndarray:
     states_dir = f'{seq_path}/states'
     depths_dir = f'{seq_path}/depths'
     segmentations_dir = f'{seq_path}/segmentations'

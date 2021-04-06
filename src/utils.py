@@ -181,6 +181,14 @@ def line_angle(diff1: float, diff2: float) -> float:
     return float(np.arccos(np.dot(diff1, diff2) / (np.linalg.norm(diff1) * np.linalg.norm(diff2))))
 
 def read_flow(filename: str) -> np.ndarray:
+    """Read flow from .flo file
+
+    Args:
+        filename (str): path to the .flo file
+
+    Returns:
+        np.ndarray: resulting flow field
+    """
     TAG_FLOAT = 202021.25
 
     with open(filename, 'rb') as f:
@@ -214,17 +222,17 @@ def write_flow(filename: str, uv: np.ndarray, v: np.ndarray=None) -> None:
 
     assert(u.shape == v.shape)
     height,width = u.shape
-    f = open(filename,'wb')
-    # write the header
-    f.write(TAG_CHAR)
-    np.array(width).astype(np.int32).tofile(f)
-    np.array(height).astype(np.int32).tofile(f)
-    # arrange into matrix form
-    tmp = np.zeros((height, width*nBands))
-    tmp[:,np.arange(width)*2] = u
-    tmp[:,np.arange(width)*2 + 1] = v
-    tmp.astype(np.float32).tofile(f)
-    f.close()
+
+    with open(filename, 'wb') as f:
+        # write the header
+        f.write(TAG_CHAR)
+        np.array(width).astype(np.int32).tofile(f)
+        np.array(height).astype(np.int32).tofile(f)
+        # arrange into matrix form
+        tmp = np.zeros((height, width*nBands))
+        tmp[:,np.arange(width)*2] = u
+        tmp[:,np.arange(width)*2 + 1] = v
+        tmp.astype(np.float32).tofile(f)
 
 def blockshaped(arr: np.ndarray, nrows: int, ncols: int) -> np.ndarray:
     """
@@ -244,6 +252,13 @@ def blockshaped(arr: np.ndarray, nrows: int, ncols: int) -> np.ndarray:
                .reshape(-1, nrows, ncols))
 
 def img_to_video(input: str, output: str, framerate: int = 30) -> None:
+    """Convert images to a video
+
+    Args:
+        input (str): input images path
+        output (str): output video path
+        framerate (int, optional): the frame rate of the video. Defaults to 30.
+    """
     if not os.path.exists(output):
         images = os.listdir(os.path.dirname(input))
         images = [f for f in images if 'image_' in os.path.basename(f)]
@@ -252,18 +267,33 @@ def img_to_video(input: str, output: str, framerate: int = 30) -> None:
         command = f'ffmpeg -start_number {start_number} -r {framerate} -i {input} -c:v libx264 -vf fps={framerate} -pix_fmt yuv420p {output} -y'
         subprocess.call(command.split(' '))
 
-# Checks if a matrix is a valid rotation matrix.
 def is_rotation_matrix(R: np.ndarray) -> bool:
+    """Checks if a matrix is a valid rotation matrix.
+
+    Args:
+        R (np.ndarray): the matrix to check
+
+    Returns:
+        bool: Whether the matrix is a rotation matrix
+    """
     Rt = np.transpose(R)
     shouldBeIdentity = np.dot(Rt, R)
     I = np.identity(3, dtype = R.dtype)
     n = np.linalg.norm(I - shouldBeIdentity)
     return cast(bool, n < 1e-6)
 
-# Calculates rotation matrix to euler angles
-# The result is the same as MATLAB except the order
-# of the euler angles ( x and z are swapped ).
 def rotation_matrix_to_euler(R: np.ndarray) -> np.ndarray:
+    """
+    Calculates rotation matrix to euler angles
+    The result is the same as MATLAB except the order
+    of the euler angles ( x and z are swapped ).
+
+    Args:
+        R (np.ndarray): the rotation matrix to process
+
+    Returns:
+        np.ndarray: the euler angles in degrees
+    """
     assert(is_rotation_matrix(R))
 
     sy = np.sqrt(R[0,0] * R[0,0] +  R[1,0] * R[1,0])
@@ -293,3 +323,14 @@ def get_json(obj: Dict[str, Any]) -> Dict[str, Any]:
     return cast(Dict[str, Any], json.loads(
         json.dumps(obj, default=lambda o: getattr(o, '__dict__', str(o)))
     ))
+
+
+def create_if_not_exists(dir: str) -> None:
+    """Creates a directory if it does not already exist."""
+    if not os.path.exists(dir):
+        os.makedirs(dir)
+
+
+def get_magnitude(vector: np.ndarray) -> float:
+    """Return the magnitude of a vector."""
+    return float(np.sqrt(vector.x_val ** 2.0 + vector.y_val ** 2.0 + vector.z_val ** 2.0))

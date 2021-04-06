@@ -9,7 +9,7 @@ from typing import Optional, Tuple, cast
 
 import utils
 from datasets.dataset import Dataset
-from airsim_optical_flow import get_flow
+from airsim_optical_flow import write_flow
 
 class SimData(Dataset):
     '''Helper functions for the AirSim synthetic dataset.'''
@@ -72,9 +72,12 @@ class SimData(Dataset):
         FoE = self.get_state(i)['ue4']['Drone1']['FoE']
         return (FoE['X'] * 800, FoE['Y'] * 600)
 
+    def get_gt_of(self, i:int) -> Optional[np.ndarray]:
+        return utils.read_flow(f'{self.gt_of_path}/image_{i:05d}.flo')
+
     def create_ground_truth_optical_flow(self) -> None:
         os.makedirs(self.gt_of_path)
-        get_flow(self.seq_path)
+        write_flow(self.gt_of_path)
         pass
 
     def create_annotations(self) -> None:
