@@ -4,6 +4,8 @@ import os
 import numpy as np
 import subprocess
 import json
+
+from datetime import datetime
 from typing import Tuple, List, Optional, TypeVar, cast, Dict, Any
 
 
@@ -334,3 +336,7 @@ def create_if_not_exists(dir: str) -> None:
 def get_magnitude(vector: np.ndarray) -> float:
     """Return the magnitude of a vector."""
     return float(np.sqrt(vector.x_val ** 2.0 + vector.y_val ** 2.0 + vector.z_val ** 2.0))
+
+
+def get_time() -> datetime:
+    return datetime.now()
