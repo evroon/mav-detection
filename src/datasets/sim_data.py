@@ -57,19 +57,19 @@ class SimData(Dataset):
             return json.load(f)
 
     def get_angular_velocity(self, i:int) -> np.ndarray:
-        angular_velocity = self.get_state(i)['imu']['angular_velocity']
+        angular_velocity = self.get_state(i)['Drone1']['imu']['angular_velocity']
         return np.array([angular_velocity['x_val'], angular_velocity['y_val'], angular_velocity['z_val']])
 
     def get_delta_time(self, i:int) -> float:
         if i < 1:
             return cast(float, np.nan)
 
-        time_stamp1 = self.get_state(i-1)['imu']['time_stamp']
-        time_stamp2 = self.get_state(i)['imu']['time_stamp']
+        time_stamp1 = self.get_state(i-1)['Drone1']['imu']['time_stamp']
+        time_stamp2 = self.get_state(i)['Drone1']['imu']['time_stamp']
         return float(time_stamp2 - time_stamp1) / 1e9
 
     def get_gt_foe(self, i:int) -> Optional[Tuple[float, float]]:
-        FoE = self.get_state(i)['ue4']['Drone1']['FoE']
+        FoE = self.get_state(i)['Drone1']['ue4']['FoE']
         return (FoE['X'] * self.capture_size[0], FoE['Y'] * self.capture_size[1])
 
     def get_gt_of(self, i:int) -> Optional[np.ndarray]:
