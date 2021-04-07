@@ -68,6 +68,15 @@ class Detector:
         return utils.rotation_matrix_to_euler(R1), utils.rotation_matrix_to_euler(R2), t
 
     def derotate(self, i:int,  flow_uv: np.ndarray) -> np.ndarray:
+        """Derotate flow field according to IMU data
+
+        Args:
+            i (int): frame index
+            flow_uv (np.ndarray): (rotated) input flow field
+
+        Returns:
+            np.ndarray: derotated flow field
+        """
         if i < 1:
             return flow_uv
 

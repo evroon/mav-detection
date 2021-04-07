@@ -30,6 +30,14 @@ class FocusOfExpansion:
         self.y_coords = np.tile(np.arange(flow_height), (flow_width, 1)).T
 
     def ransac(self, estimates: np.ndarray) -> Tuple[float, float]:
+        """Simple RANSAC scheme to calculate the FoE position
+
+        Args:
+            estimates (np.ndarray): estimate FoE positions/intersections
+
+        Returns:
+            Tuple[float, float]: FoE location estimation
+        """
         optimum = 0
         optimal_foe = (0.0, 0.0)
 
@@ -47,6 +55,14 @@ class FocusOfExpansion:
         return optimal_foe
 
     def get_FOE_dense(self, flow_uv: np.ndarray) -> Tuple[float, float]:
+        """Get FoE location using dense optical flow.
+
+        Args:
+            flow_uv (np.ndarray): current frame
+
+        Returns:
+            Tuple[float, float]: FoE estimation location
+        """
         N = 10000
         intersections = np.zeros((N, 2))
 
@@ -71,6 +87,15 @@ class FocusOfExpansion:
         return self.ransac(intersections)
 
     def get_FOE_sparse(self, old_frame: np.ndarray, new_frame: np.ndarray) -> Tuple[float, float]:
+        """Get FoE location using sparse optical flow.
+
+        Args:
+            old_frame (np.ndarray): previous frame
+            new_frame (np.ndarray): current frame
+
+        Returns:
+            Tuple[float, float]: FoE estimation location
+        """
         if np.sum(old_frame) < 1:
             return (np.nan, np.nan)
 
@@ -153,11 +178,31 @@ class FocusOfExpansion:
         return im_helpers.to_rgb(angle_diff)
 
     def draw_FoE(self, frame: np.ndarray, FoE: Tuple[float, float], color: List[int]=[0, 42, 255]) -> np.ndarray:
+        """Draw Focus of Expansion circle in an image
+
+        Args:
+            frame (np.ndarray): the image to draw on
+            FoE (Tuple[float, float]): Location of the FoE
+            color (List[int], optional): color of the circle in BGR space. Defaults to [0, 42, 255].
+
+        Returns:
+            np.ndarray: resulting image
+        """
         if FoE[0] is np.nan or FoE[1] is np.nan:
             return frame
+
         return cv2.circle(frame, (int(FoE[0]), int(FoE[1])), 10, color, -1)
 
     def draw(self, frame: np.ndarray, FoE: Tuple[float, float]) -> np.ndarray:
+        """Draw FoE algorithm visualization
+
+        Args:
+            frame (np.ndarray): current frame
+            FoE (Tuple[float, float]): estimated FoE location
+
+        Returns:
+            np.ndarray: angle difference between vector towards FoE and flow vector
+        """
         if FoE[0] is np.nan:
             return
 

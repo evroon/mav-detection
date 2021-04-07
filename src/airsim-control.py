@@ -23,6 +23,15 @@ class AirSimControl:
         self.target_drone = 'Drone2'
         self.root_data_dir = 'data'
         self.collection_name = collection_name
+        self.configs = []
+        self.speed = 3.0
+        self.iteration: int = 0
+        self.timestamps: Dict[int, datetime] = {}
+        self.direction = 1
+        self.drone_in_frame_previous = False
+        self.minimum_segmentation_sum = 1e12
+        self.yaw_rate = 15 # deg/s
+        self.max_yaw = np.deg2rad(30)
 
         collection = RunConfig.get_settings()['collections'][self.collection_name]
 
@@ -34,8 +43,6 @@ class AirSimControl:
         radii = collection['radii']
 
         orientations = [SimConfig.get_orientation(x) for x in orientations_str]
-        self.configs = []
-        self.largest_radius = radii[-1]
 
         for sequence_name, center in locations.items():
             for orbit_speed in orbit_speeds:
@@ -61,20 +68,6 @@ class AirSimControl:
 
         print(f'Number of locations: {len(locations)}')
         print(f'Number of configurations: {len(self.configs)}')
-
-        self.base_velocity: Tuple[float, float] = (0, 0)
-        self.speed = 3.0
-        self.snapshot_index = 0
-        self.did_takeoff = False
-        self.drones_offset_x = 5
-        self.iteration: int = 0
-        self.timestamps: Dict[int, datetime] = {}
-        self.begin_time: datetime = datetime.now()
-        self.direction = 1
-        self.drone_in_frame_previous = False
-        self.minimum_segmentation_sum = 1e12
-        self.yaw_rate = 15 # deg/s
-        self.max_yaw = np.deg2rad(30)
 
         if not os.path.exists(self.root_data_dir + '/states'):
             os.makedirs(self.root_data_dir + '/states')
@@ -107,7 +100,7 @@ class AirSimControl:
         self.client.armDisarm(True, self.target_drone)
 
         self.clean()
-        self.prev_time = self.get_time()
+        self.prev_time = utils.get_time()
 
     def get_position(self, vehicle_name: str = None) -> airsim.Vector3r:
         """Get the position of an MAV.
@@ -294,7 +287,7 @@ class AirSimControl:
             airsim.ImageRequest("depth", airsim.ImageType.DepthPerspective, True),
         ], vehicle_name=self.observing_drone)
 
-        time = self.get_time()
+        time = utils.get_time()
         print(time - self.prev_time)
         self.prev_time = time
 
@@ -324,7 +317,7 @@ class AirSimControl:
                 self.drone_in_frame_previous = drone_in_frame
             elif self.drone_in_frame_previous:
                 self.write_frame(image_path, response)
-                self.timestamps[self.iteration] = self.get_time()
+                self.timestamps[self.iteration] = utils.get_time()
 
         if self.drone_in_frame_previous:
             self.write_states()
@@ -392,12 +385,9 @@ class AirSimControl:
             str: the timestamp in ns.
         """
         if time is None:
-            time = self.get_time()
+            time = utils.get_time()
 
         return f'{time.timestamp() * 1000:.0f}'
-
-    def get_time(self) -> datetime:
-        return datetime.now()
 
     def write_states(self) -> None:
         """Write states of the vehicles to disk."""
