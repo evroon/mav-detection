@@ -288,6 +288,7 @@ class Processor:
             else:
                 self.detection_results[self.frame_index] = FrameResult()
                 self.flow_uv = self.dataset.get_flow_uv(self.frame_index)
+                self.flow_uv = self.dataset.get_gt_of(self.frame_index)
 
                 self.detector.get_transformation_matrix(orig_frame, self.flow_uv)
 

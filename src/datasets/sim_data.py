@@ -73,7 +73,12 @@ class SimData(Dataset):
         return (FoE['X'] * 800, FoE['Y'] * 600)
 
     def get_gt_of(self, i:int) -> Optional[np.ndarray]:
-        return utils.read_flow(f'{self.gt_of_path}/image_{i:05d}.flo')
+        flow_uv = utils.read_flow(f'{self.gt_of_path}/image_{i:05d}.flo').swapaxes(0, 1)
+
+        if self.capture_size != self.flow_size:
+            flow_uv = cv2.resize(flow_uv, self.capture_size)
+
+        return flow_uv
 
     def create_ground_truth_optical_flow(self) -> None:
         os.makedirs(self.gt_of_path)

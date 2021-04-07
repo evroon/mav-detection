@@ -2,7 +2,7 @@ import utils
 import cv2
 import os
 import numpy as np
-import flow_vis
+
 import glob
 import shutil
 import logging
@@ -68,7 +68,7 @@ class Dataset:
             self.logger.error(f'Input counts: (images, flow fields): {utils.get_frame_count(self.orig_capture)}, {self.N}')
             self.run_flownet2()
 
-        print('Dataset loaded.')
+        self.logger.info('Dataset loaded.')
 
     def run_flownet2(self) -> None:
         """Runs FlowNet2 on the current sequence."""
