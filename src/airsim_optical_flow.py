@@ -81,7 +81,7 @@ def get_state(filepath: str) -> Dict[str, Any]:
         return cast(Dict[str, Any], json.load(f))
 
 def get_view_proj_mat(state: dict) -> np.ndarray:
-    view_proj_str = state['ue4']['Drone1']['viewProjectionMatrix']
+    view_proj_str = state['Drone1']['ue4']['viewProjectionMatrix']
     view_proj = view_proj_str.replace('[', '').replace(']', '').strip().split(' ')
     view_proj = [float(x) for x in view_proj]
     return np.array(view_proj).reshape((4, 4)).T
@@ -109,6 +109,7 @@ def calculate_flow(
     return screen_pos1 - screen_pos2
 
 def write_flow(seq_path: str) -> np.ndarray:
+    print('Calculating ground truth optical flow...')
     states_dir = f'{seq_path}/states'
     depths_dir = f'{seq_path}/depths'
     segmentations_dir = f'{seq_path}/segmentations'
@@ -129,7 +130,7 @@ def write_flow(seq_path: str) -> np.ndarray:
         view_proj1 = get_view_proj_mat(state1)
         view_proj2 = get_view_proj_mat(state2)
 
-        drone_velocity = state1['ue4']['Drone2']['linearVelocity']
+        drone_velocity = state1['Drone2']['ue4']['linearVelocity']
 
         img_path = f'{depths_dir}/image_{i:05d}.pfm'
         depth_img = np.array(airsim.read_pfm(img_path)[0]).T

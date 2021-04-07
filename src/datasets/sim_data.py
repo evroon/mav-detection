@@ -82,7 +82,7 @@ class SimData(Dataset):
 
     def create_ground_truth_optical_flow(self) -> None:
         os.makedirs(self.gt_of_path)
-        write_flow(self.gt_of_path)
+        write_flow(self.seq_path)
         pass
 
     def create_annotations(self) -> None:
