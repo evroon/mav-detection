@@ -6,3 +6,4 @@ mypy
 airsim
 flow_vis
 scipy
+torch
