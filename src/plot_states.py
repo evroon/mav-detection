@@ -11,7 +11,7 @@ import matplotlib.pyplot as plt
 #     print(d, len(glob.glob(f'data/citypark/{d}/images/*')))
 
 def plot_states(observable: str) -> np.ndarray:
-    dir = 'data/mountains-stationary/lake-north-low-2.5-10-default/states'
+    dir = '/mnt/c/Users/Daniel/Documents/uni/thesis/optical-flow-mav-detection/data/citypark-stationary/soccerfield-north-low-2.5-10-default/states'
     states = glob.glob(f'{dir}/*.json')
     states = [x for x in states if 'timestamp' not in x]
     states.sort()
@@ -34,7 +34,7 @@ def plot_states(observable: str) -> np.ndarray:
 
     for i, state in enumerate(states):
         with open(f'{state}', 'r') as f:
-            state_dict = json.load(f)
+            state_dict = json.load(f)['Drone2']
 
             data = state_dict['imu'][observable]
 

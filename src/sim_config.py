@@ -77,5 +77,5 @@ class SimConfig:
         if is_observer:
             return self.center
 
-        heading = self.orientation.get_heading() / 180.0 * np.pi
-        return self.center + airsim.Vector3r(-np.cos(heading) * self.radius, -np.sin(heading) * self.radius, 0.0)
+        heading = np.deg2rad(self.orientation.get_heading() + 90)
+        return self.center + airsim.Vector3r(np.cos(heading) * self.radius, np.sin(heading) * self.radius, 0.0)
