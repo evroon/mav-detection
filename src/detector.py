@@ -80,13 +80,18 @@ class Detector:
         if i < 1:
             return flow_uv
 
-        result = flow_uv.copy()
         ang_vel = self.dataset.get_angular_velocity(i)
         delta_time = self.dataset.get_delta_time(i)
         pix_per_angle = self.dataset.capture_size[0] / np.deg2rad(self.fov)
         derotation_pixels = pix_per_angle * ang_vel * delta_time
-        result[[2, 1]] -= derotation_pixels[[2, 1]]
-        return result
+
+        # X displacement corresponds to yaw (Z-axis) and Y displacement corresponds to pitch (Y-axis)
+        derotation_pixels = derotation_pixels[[2, 1]] / 10
+        # print(derotation_pixels)
+
+        displacement = np.tile(derotation_pixels, (flow_uv.shape[0], flow_uv.shape[1], 1))
+        print(np.average(flow_uv[..., 0]), np.average(flow_uv[..., 1]), derotation_pixels)
+        return flow_uv - displacement
 
     def get_transformation_matrix(self, orig_frame: np.ndarray, flow_uv: np.ndarray) -> None:
         """Calculates the affine or homography matrix.

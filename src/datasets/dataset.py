@@ -175,7 +175,7 @@ class Dataset:
             i (int): Frame index
 
         Returns:
-            np.ndarray: the angular velocity Euler rates in body frame
+            np.ndarray: the angular velocity Euler rates in body frame (rad/s)
         """
         pass
 

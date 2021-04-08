@@ -73,7 +73,7 @@ class SimData(Dataset):
         return (FoE['X'] * self.capture_size[0], FoE['Y'] * self.capture_size[1])
 
     def get_gt_of(self, i:int) -> Optional[np.ndarray]:
-        flow_uv = utils.read_flow(f'{self.gt_of_path}/image_{i:05d}.flo').swapaxes(0, 1)
+        flow_uv = utils.read_flow(f'{self.gt_of_path}/image_{i:05d}.flo').swapaxes(0, 1)[..., [1, 0]]
 
         if self.capture_size != self.flow_size:
             flow_uv = cv2.resize(flow_uv, self.capture_size)
@@ -91,4 +91,4 @@ class SimData(Dataset):
             self.write_yolo_annotation(image_path)
 
     def get_default_sequence(self) -> str:
-        return 'citypark-moving/soccerfield-north-medium-5.0-10-default'
+        return 'citypark-stationary/soccerfield-north-low-2.5-10-default'
