@@ -271,7 +271,8 @@ class AirSimControl:
             response (airsim.ImageResponse): the image response containing the image
         """
         if response.pixels_as_float:
-            airsim.write_pfm(os.path.normpath(image_path), airsim.get_pfm_array(response))
+            pfm_array = airsim.get_pfm_array(response)
+            airsim.write_pfm(os.path.normpath(image_path), pfm_array)
         else:
             airsim.write_file(os.path.normpath(image_path), response.image_data_uint8)
 
@@ -287,9 +288,7 @@ class AirSimControl:
             airsim.ImageRequest("depth", airsim.ImageType.DepthPerspective, True),
         ], vehicle_name=self.observing_drone)
 
-        time = utils.get_time()
-        print(time - self.prev_time)
-        self.prev_time = time
+        self.prev_time = utils.get_time()
 
         # Save images.
         for response in responses:
@@ -300,11 +299,12 @@ class AirSimControl:
             }[response.image_type]
             extension = 'pfm' if response.pixels_as_float else 'png'
             image_path: str = f'{self.base_dir}/{image_type}/image_{self.iteration:05d}.{extension}'
-            seg_1d = np.frombuffer(response.image_data_uint8, dtype=np.uint8)
 
             if response.image_type == airsim.ImageType.Segmentation:
                 # Determine the sum of seg_1d for a complete black mask.
+                seg_1d = np.frombuffer(response.image_data_uint8, dtype=np.uint8)
                 seg_sum = np.sum(seg_1d)
+
                 if self.minimum_segmentation_sum > seg_sum:
                     self.minimum_segmentation_sum = seg_sum
 
