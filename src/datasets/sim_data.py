@@ -57,27 +57,32 @@ class SimData(Dataset):
             return json.load(f)
 
     def get_angular_velocity(self, i:int) -> np.ndarray:
-        angular_velocity = self.get_state(i)['imu']['angular_velocity']
+        angular_velocity = self.get_state(i)['Drone1']['imu']['angular_velocity']
         return np.array([angular_velocity['x_val'], angular_velocity['y_val'], angular_velocity['z_val']])
 
     def get_delta_time(self, i:int) -> float:
         if i < 1:
             return cast(float, np.nan)
 
-        time_stamp1 = self.get_state(i-1)['imu']['time_stamp']
-        time_stamp2 = self.get_state(i)['imu']['time_stamp']
+        time_stamp1 = self.get_state(i-1)['Drone1']['imu']['time_stamp']
+        time_stamp2 = self.get_state(i)['Drone1']['imu']['time_stamp']
         return float(time_stamp2 - time_stamp1) / 1e9
 
     def get_gt_foe(self, i:int) -> Optional[Tuple[float, float]]:
-        FoE = self.get_state(i)['ue4']['Drone1']['FoE']
+        FoE = self.get_state(i)['Drone1']['ue4']['FoE']
         return (FoE['X'] * self.capture_size[0], FoE['Y'] * self.capture_size[1])
 
     def get_gt_of(self, i:int) -> Optional[np.ndarray]:
-        return utils.read_flow(f'{self.gt_of_path}/image_{i:05d}.flo')
+        flow_uv = utils.read_flow(f'{self.gt_of_path}/image_{i:05d}.flo').swapaxes(0, 1)[..., [1, 0]]
+
+        if self.capture_size != self.flow_size:
+            flow_uv = cv2.resize(flow_uv, self.capture_size)
+
+        return flow_uv
 
     def create_ground_truth_optical_flow(self) -> None:
         os.makedirs(self.gt_of_path)
-        write_flow(self.gt_of_path)
+        write_flow(self.seq_path)
         pass
 
     def create_annotations(self) -> None:
@@ -86,4 +91,4 @@ class SimData(Dataset):
             self.write_yolo_annotation(image_path)
 
     def get_default_sequence(self) -> str:
-        return 'citypark-moving/soccerfield-north-medium-5.0-10-default'
+        return 'citypark-stationary/soccerfield-north-low-2.5-10-default'
