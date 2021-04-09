@@ -5,8 +5,10 @@ import cv2
 import re
 import os
 import json
+import airsim
 from typing import Optional, Tuple, cast
 
+import im_helpers
 import utils
 from datasets.dataset import Dataset
 from airsim_optical_flow import write_flow
@@ -83,7 +85,18 @@ class SimData(Dataset):
     def create_ground_truth_optical_flow(self) -> None:
         os.makedirs(self.gt_of_path)
         write_flow(self.seq_path)
-        pass
+
+    def create_depth_visualisation(self) -> None:
+        print('Writing depth visualisations...')
+        os.makedirs(self.depth_vis_path)
+        sky_distance_factor = 5
+
+        for i, img_path in enumerate(glob.glob(f'{self.depth_path}/image_*.pfm')):
+            pfm_array = np.array(airsim.read_pfm(img_path)[0])
+            depth_img = (pfm_array / np.max(pfm_array) * 255) * sky_distance_factor
+            depth_img_int = np.clip(0, 255, depth_img).astype(np.uint8)
+            depth_img_int = cv2.applyColorMap(depth_img_int, cv2.COLORMAP_JET)
+            cv2.imwrite(f'{self.depth_vis_path}/image_{i:05d}.png', depth_img_int)
 
     def create_annotations(self) -> None:
         print('Creating YOLOv4 annotations...')

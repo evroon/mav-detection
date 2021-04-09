@@ -26,6 +26,7 @@ class Dataset:
         self.img_path = f'{self.seq_path}{img_dir}'
         self.seg_path = f'{self.seq_path}/segmentations'
         self.depth_path = f'{self.seq_path}/depths'
+        self.depth_vis_path = f'{self.seq_path}/depth_vis'
         self.gt_of_path = f'{self.seq_path}/optical-flow'
         self.ann_path = f'{self.seq_path}/annotation'
         self.results_path = f'{self.seq_path}/results'
@@ -61,6 +62,9 @@ class Dataset:
         if not os.path.exists(self.gt_of_path):
             self.create_ground_truth_optical_flow()
 
+        if not os.path.exists(self.depth_vis_path):
+            self.create_depth_visualisation()
+
         if self.capture_size != self.flow_size:
             self.logger.warning(f'original capture with size {self.capture_size} does not match flow, which has size {self.flow_size}')
 
@@ -89,6 +93,10 @@ class Dataset:
 
     def create_ground_truth_optical_flow(self) -> None:
         """Creates ground truth optical flow if possible."""
+        pass
+
+    def create_depth_visualisation(self) -> None:
+        """Creates depth visualisation images if possible."""
         pass
 
     def create_annotations(self) -> None:
