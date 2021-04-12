@@ -115,9 +115,8 @@ def write_flow(seq_path: str) -> np.ndarray:
     segmentations_dir = f'{seq_path}/segmentations'
     screen_res = (1920, 1080)
 
-    states = glob.glob(f'{states_dir}/*.json')
+    states = utils.sorted_glob(f'{states_dir}/*.json')
     states = [x for x in states if 'timestamp' not in x]
-    states.sort()
 
     x_coords = np.tile(np.arange(screen_res[0]), (screen_res[1], 1))
     y_coords = np.tile(np.arange(screen_res[1]), (screen_res[0], 1)).T

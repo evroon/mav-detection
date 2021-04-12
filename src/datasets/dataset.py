@@ -169,8 +169,7 @@ class Dataset:
 
     def reorder_pngs(self, base_path: str) -> None:
         """Lets the image indices start at 0."""
-        pngs = glob.glob(base_path + '/image_*')
-        pngs.sort()
+        pngs = utils.sorted_glob(base_path + '/image_*')
 
         for i, png in enumerate(pngs):
             extension = os.path.splitext(png)[-1]

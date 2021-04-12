@@ -5,6 +5,8 @@ import numpy as np
 from scipy.spatial.transform import Rotation
 import matplotlib.pyplot as plt
 
+import utils
+
 # for d in os.listdir('data/citypark'):
 #     img_count = len(glob.glob(f'data/citypark/{d}/images/*'))
 #     # if img_count < 25:
@@ -12,9 +14,8 @@ import matplotlib.pyplot as plt
 
 def plot_states(observable: str) -> np.ndarray:
     dir = 'data/mountains-stationary/lake-north-low-2.5-10-default/states'
-    states = glob.glob(f'{dir}/*.json')
+    states = utils.sorted_glob(f'{dir}/*.json')
     states = [x for x in states if 'timestamp' not in x]
-    states.sort()
     start = 0
     clockspeed = 1
 

@@ -4,6 +4,7 @@ import os
 import numpy as np
 import subprocess
 import json
+import glob
 
 from datetime import datetime
 from typing import Tuple, List, Optional, TypeVar, cast, Dict, Any
@@ -363,3 +364,16 @@ def get_magnitude(vector: np.ndarray) -> float:
 
 def get_time() -> datetime:
     return datetime.now()
+
+def sorted_glob(path: str) -> List[str]:
+    """Returns a sorted list of glob paths
+
+    Args:
+        path (str): the input path with a glob pattern
+
+    Returns:
+        List[str]: the paths matching the glob in alphabetical order
+    """
+    result = glob.glob(path)
+    result.sort()
+    return result

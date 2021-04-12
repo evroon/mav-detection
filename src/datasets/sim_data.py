@@ -20,8 +20,7 @@ class SimData(Dataset):
         simdata_path = os.environ['SIMDATA_PATH']
         super().__init__(simdata_path, logger, sequence)
         self.state_path = f'{self.seq_path}/states'
-        self.states = glob.glob(f'{self.state_path}/*.json')
-        self.states.sort()
+        self.states = utils.sorted_glob(f'{self.state_path}/*.json')
 
     def write_yolo_annotation(self, image_path: str) -> None:
         filename = os.path.basename(image_path)
@@ -91,7 +90,7 @@ class SimData(Dataset):
         os.makedirs(self.depth_vis_path)
         sky_distance_factor = 5
 
-        for i, img_path in enumerate(glob.glob(f'{self.depth_path}/image_*.pfm')):
+        for i, img_path in enumerate(utils.sorted_glob(f'{self.depth_path}/image_*.pfm')):
             pfm_array = np.array(airsim.read_pfm(img_path)[0])
             depth_img = (pfm_array / np.max(pfm_array) * 255) * sky_distance_factor
             depth_img_int = np.clip(0, 255, depth_img).astype(np.uint8)
@@ -100,7 +99,7 @@ class SimData(Dataset):
 
     def create_annotations(self) -> None:
         print('Creating YOLOv4 annotations...')
-        for image_path in glob.glob(f'{self.seg_path}/image_*.png'):
+        for image_path in utils.sorted_glob(f'{self.seg_path}/image_*.png'):
             self.write_yolo_annotation(image_path)
 
     def get_default_sequence(self) -> str:
