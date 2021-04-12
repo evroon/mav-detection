@@ -367,13 +367,13 @@ class Detector:
         """
         self.flow_uv_history[self.history_index, ...] = flow_uv
 
-        k = (self.history_index + 2) % (self.history_length - 1)
+        k = (self.history_index + 1) % (self.history_length - 1)
         orig_map = np.zeros_like(flow_uv, dtype=np.float64)
         orig_map[..., 0] = self.y_coords
         orig_map[..., 1] = self.x_coords
         lookup_map = np.copy(orig_map)
 
-        while k != (self.history_index + 1) % (self.history_length - 1):
+        while k != (self.history_index) % (self.history_length - 1):
             warped = lookup_map.astype(np.float32)
             lookup_map += cv2.remap(self.flow_uv_history[k, ...], warped[..., 1], warped[..., 0], cv2.INTER_LINEAR)
             k = (k + 1) % self.history_length
