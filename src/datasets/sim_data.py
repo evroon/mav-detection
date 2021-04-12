@@ -17,8 +17,6 @@ class SimData(Dataset):
     def __init__(self, logger: logging.Logger, sequence: str) -> None:
         simdata_path = os.environ['SIMDATA_PATH']
         super().__init__(simdata_path, logger, sequence)
-        self.state_path = f'{self.seq_path}/states'
-        self.states = utils.sorted_glob(f'{self.state_path}/*.json')
 
     def write_yolo_annotation(self, image_path: str) -> None:
         filename = os.path.basename(image_path)
@@ -82,7 +80,7 @@ class SimData(Dataset):
     def create_ground_truth_optical_flow(self) -> None:
         utils.create_if_not_exists(self.gt_of_path)
         utils.create_if_not_exists(self.gt_of_vis_path)
-        write_flow(self.seq_path)
+        write_flow(self)
 
     def create_depth_visualisation(self) -> None:
         print('Writing depth visualisations...')

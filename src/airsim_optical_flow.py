@@ -1,9 +1,11 @@
 import json
+from airsim.types import Vector3r
 import numpy as np
 import airsim
 import cv2
 from typing import List, Tuple, Dict, Any, cast
 
+from datasets.dataset import Dataset
 import utils
 from im_helpers import get_flow_vis
 
@@ -88,7 +90,7 @@ def calculate_flow(
         screen_res: np.ndarray,
         screen_pos2: np.ndarray,
         depth_img: np.ndarray,
-        drone_velocity: Dict[str, float],
+        drone_displacement: Vector3r,
         segmentation: np.ndarray) -> np.ndarray:
 
     view_proj2_inv = np.linalg.inv(view_proj2)
@@ -97,22 +99,17 @@ def calculate_flow(
 
     # Subtract the drone velocity for all pixels in the mask in 3D world (unit: meters) frame.
     drone_mask = segmentation > 0
-    world_pos[drone_mask, 0] -= drone_velocity['X']
-    world_pos[drone_mask, 1] -= drone_velocity['Y']
-    world_pos[drone_mask, 2] -= drone_velocity['Z']
+    world_pos[drone_mask, 0] -= drone_displacement.x_val
+    world_pos[drone_mask, 1] -= drone_displacement.y_val
+    world_pos[drone_mask, 2] -= drone_displacement.z_val
 
     screen_pos1 = world_to_screen(view_proj1, screen_res, world_pos)
     return screen_pos1 - screen_pos2
 
-def write_flow(seq_path: str) -> np.ndarray:
+def write_flow(dataset: Dataset) -> np.ndarray:
     print('Calculating ground truth optical flow...')
-    states_dir = f'{seq_path}/states'
-    depths_dir = f'{seq_path}/depths'
-    segmentations_dir = f'{seq_path}/segmentations'
-    screen_res = (1920, 1080)
-
-    states = utils.sorted_glob(f'{states_dir}/*.json')
-    states = [x for x in states if 'timestamp' not in x]
+    screen_res = dataset.capture_size
+    states = [x for x in dataset.states if 'timestamp' not in x]
 
     x_coords = np.tile(np.arange(screen_res[0]), (screen_res[1], 1))
     y_coords = np.tile(np.arange(screen_res[1]), (screen_res[0], 1)).T
@@ -125,21 +122,25 @@ def write_flow(seq_path: str) -> np.ndarray:
         view_proj1 = get_view_proj_mat(state1)
         view_proj2 = get_view_proj_mat(state2)
 
+        delta_time = dataset.get_delta_time(i)
         drone_velocity = state1['Drone2']['ue4']['linearVelocity']
+        drone_displacement = Vector3r(drone_velocity['X'], drone_velocity['Y'], drone_velocity['Z']) * delta_time * 100
+        if np.isnan(drone_displacement.x_val):
+            drone_displacement = Vector3r()
 
-        img_path = f'{depths_dir}/image_{i:05d}.pfm'
+        img_path = f'{dataset.depth_path}/image_{i:05d}.pfm'
         depth_img = np.array(airsim.read_pfm(img_path)[0]).T
 
-        segmentation_img = cv2.imread(f'{segmentations_dir}/image_{i:05d}.png', 0).T
+        segmentation_img = cv2.imread(f'{dataset.seg_path}/image_{i:05d}.png', 0).T
 
-        result = calculate_flow(view_proj1, view_proj2, screen_res, coords, depth_img, drone_velocity, segmentation_img)
+        result = calculate_flow(view_proj1, view_proj2, screen_res, coords, depth_img, drone_displacement, segmentation_img)
 
         # Transpose image, transpose and mirror flow vectors.
         result = -result[..., [0, 1]].swapaxes(0, 1)
 
         utils.write_flow(
-            f'{seq_path}/optical-flow/image_{i:05d}.flo',
+            f'{dataset.gt_of_path}/image_{i:05d}.flo',
             result
         )
 
-        cv2.imwrite(f'{seq_path}/optical-flow-vis/image_{i:05d}.png', get_flow_vis(result))
+        cv2.imwrite(f'{dataset.gt_of_vis_path}/image_{i:05d}.png', get_flow_vis(result))

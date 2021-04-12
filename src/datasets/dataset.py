@@ -32,6 +32,7 @@ class Dataset:
         self.results_path = f'{self.seq_path}/results'
         self.img_pngs = f'{self.img_path}/{img_format}'
         self.vid_path = f'{self.seq_path}/recording.mp4'
+        self.state_path = f'{self.seq_path}/states'
 
         self.jpg_to_png()
         self.reorder_pngs(self.img_path)
@@ -41,6 +42,7 @@ class Dataset:
         if not os.path.exists(self.vid_path):
             utils.img_to_video(self.img_pngs, self.vid_path)
 
+        self.states = utils.sorted_glob(f'{self.state_path}/*.json')
         self.orig_capture = cv2.VideoCapture(self.img_pngs)
         self.flow_capture = cv2.VideoCapture(f'{self.img_path}/output/flownet2.mp4')
         self.capture_size = utils.get_capture_size(self.orig_capture)
