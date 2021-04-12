@@ -3,7 +3,6 @@ import cv2
 import os
 import numpy as np
 
-import glob
 import shutil
 import logging
 import subprocess
@@ -26,11 +25,14 @@ class Dataset:
         self.img_path = f'{self.seq_path}{img_dir}'
         self.seg_path = f'{self.seq_path}/segmentations'
         self.depth_path = f'{self.seq_path}/depths'
+        self.depth_vis_path = f'{self.seq_path}/depth-vis'
         self.gt_of_path = f'{self.seq_path}/optical-flow'
+        self.gt_of_vis_path = f'{self.seq_path}/optical-flow-vis'
         self.ann_path = f'{self.seq_path}/annotation'
         self.results_path = f'{self.seq_path}/results'
         self.img_pngs = f'{self.img_path}/{img_format}'
         self.vid_path = f'{self.seq_path}/recording.mp4'
+        self.state_path = f'{self.seq_path}/states'
 
         self.jpg_to_png()
         self.reorder_pngs(self.img_path)
@@ -40,6 +42,7 @@ class Dataset:
         if not os.path.exists(self.vid_path):
             utils.img_to_video(self.img_pngs, self.vid_path)
 
+        self.states = utils.sorted_glob(f'{self.state_path}/*.json')
         self.orig_capture = cv2.VideoCapture(self.img_pngs)
         self.flow_capture = cv2.VideoCapture(f'{self.img_path}/output/flownet2.mp4')
         self.capture_size = utils.get_capture_size(self.orig_capture)
@@ -58,8 +61,11 @@ class Dataset:
         if len(os.listdir(self.ann_path)) < 1:
             self.create_annotations()
 
-        if not os.path.exists(self.gt_of_path):
+        if not os.path.exists(self.gt_of_path) or not os.path.exists(self.gt_of_vis_path):
             self.create_ground_truth_optical_flow()
+
+        if not os.path.exists(self.depth_vis_path):
+            self.create_depth_visualisation()
 
         if self.capture_size != self.flow_size:
             self.logger.warning(f'original capture with size {self.capture_size} does not match flow, which has size {self.flow_size}')
@@ -89,6 +95,10 @@ class Dataset:
 
     def create_ground_truth_optical_flow(self) -> None:
         """Creates ground truth optical flow if possible."""
+        pass
+
+    def create_depth_visualisation(self) -> None:
+        """Creates depth visualisation images if possible."""
         pass
 
     def create_annotations(self) -> None:
@@ -161,8 +171,7 @@ class Dataset:
 
     def reorder_pngs(self, base_path: str) -> None:
         """Lets the image indices start at 0."""
-        pngs = glob.glob(base_path + '/image_*')
-        pngs.sort()
+        pngs = utils.sorted_glob(base_path + '/image_*')
 
         for i, png in enumerate(pngs):
             extension = os.path.splitext(png)[-1]
