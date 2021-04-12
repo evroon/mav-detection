@@ -63,7 +63,7 @@ class FocusOfExpansion:
         Returns:
             Tuple[float, float]: FoE estimation location
         """
-        N = 10000
+        N = 1000
         intersections = np.zeros((N, 2))
 
         # rand1 has shape (2*N, (y, x)).
@@ -174,7 +174,7 @@ class FocusOfExpansion:
         angle_diff = np.arccos((diff1[..., 0] * diff2[..., 0] + diff1[..., 1] * diff2[..., 1]) / norm)
         angle_diff[np.isnan(angle_diff)] = 0
 
-        self.max_flow = np.max(angle_diff) * 180.0 / np.pi
+        self.max_flow = np.rad2deg(np.max(angle_diff))
         return im_helpers.to_rgb(angle_diff)
 
     def draw_FoE(self, frame: np.ndarray, FoE: Tuple[float, float], color: List[int]=[0, 42, 255]) -> np.ndarray:
