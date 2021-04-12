@@ -145,11 +145,9 @@ class Processor:
         if len(cal_glob) > 0:
             self.cal_path = cal_glob[0]
 
-        images = glob.glob(f'{self.img_path}/image_*.png')
+        images = utils.sorted_glob(f'{self.img_path}/image_*.png')
         ann_extension = 'txt' if with_yolo_ann else 'csv'
-        annotations = glob.glob(f'{self.ann_path}/*.{ann_extension}')
-        images.sort()
-        annotations.sort()
+        annotations = utils.sorted_glob(f'{self.ann_path}/*.{ann_extension}')
         return images, annotations
 
     def annotations_to_yolo(self) -> None:

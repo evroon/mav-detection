@@ -1,12 +1,7 @@
-import os
-import glob
 import json
 import numpy as np
-import matplotlib.pyplot as plt
 import airsim
 import cv2
-from im_helpers import get_flow_vis
-from scipy.spatial.transform import Rotation
 from typing import List, Tuple, Dict, Any, cast
 
 import utils
