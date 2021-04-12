@@ -25,8 +25,9 @@ class Dataset:
         self.img_path = f'{self.seq_path}{img_dir}'
         self.seg_path = f'{self.seq_path}/segmentations'
         self.depth_path = f'{self.seq_path}/depths'
-        self.depth_vis_path = f'{self.seq_path}/depth_vis'
+        self.depth_vis_path = f'{self.seq_path}/depth-vis'
         self.gt_of_path = f'{self.seq_path}/optical-flow'
+        self.gt_of_vis_path = f'{self.seq_path}/optical-flow-vis'
         self.ann_path = f'{self.seq_path}/annotation'
         self.results_path = f'{self.seq_path}/results'
         self.img_pngs = f'{self.img_path}/{img_format}'
@@ -58,7 +59,7 @@ class Dataset:
         if len(os.listdir(self.ann_path)) < 1:
             self.create_annotations()
 
-        if not os.path.exists(self.gt_of_path):
+        if not os.path.exists(self.gt_of_path) or not os.path.exists(self.gt_of_vis_path):
             self.create_ground_truth_optical_flow()
 
         if not os.path.exists(self.depth_vis_path):

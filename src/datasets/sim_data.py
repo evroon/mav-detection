@@ -72,7 +72,7 @@ class SimData(Dataset):
         return (FoE['X'] * self.capture_size[0], FoE['Y'] * self.capture_size[1])
 
     def get_gt_of(self, i:int) -> Optional[np.ndarray]:
-        flow_uv = utils.read_flow(f'{self.gt_of_path}/image_{i:05d}.flo').swapaxes(0, 1)[..., [1, 0]]
+        flow_uv = utils.read_flow(f'{self.gt_of_path}/image_{i:05d}.flo')
 
         if self.capture_size != self.flow_size:
             flow_uv = cv2.resize(flow_uv, self.capture_size)
@@ -80,7 +80,8 @@ class SimData(Dataset):
         return flow_uv
 
     def create_ground_truth_optical_flow(self) -> None:
-        os.makedirs(self.gt_of_path)
+        utils.create_if_not_exists(self.gt_of_path)
+        utils.create_if_not_exists(self.gt_of_vis_path)
         write_flow(self.seq_path)
 
     def create_depth_visualisation(self) -> None:
