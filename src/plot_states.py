@@ -35,7 +35,7 @@ def plot_states(observable: str) -> np.ndarray:
 
     for i, state in enumerate(states):
         with open(f'{state}', 'r') as f:
-            state_dict = json.load(f)
+            state_dict = json.load(f)['Drone2']
 
             data = state_dict['imu'][observable]
 

@@ -30,8 +30,9 @@ class AirSimControl:
         self.direction = 1
         self.drone_in_frame_previous = False
         self.minimum_segmentation_sum = 1e12
-        self.yaw_rate = 15 # deg/s
+        self.yaw_rate = 0 # deg/s
         self.max_yaw = np.deg2rad(30)
+        self.delta_time = 0.033
 
         collection = RunConfig.get_settings()['collections'][self.collection_name]
 
@@ -311,13 +312,20 @@ class AirSimControl:
                 drone_in_frame = seg_sum > self.minimum_segmentation_sum and self.iteration > 10
                 if drone_in_frame:
                     self.write_frame(image_path, response)
-                elif self.drone_in_frame_previous and self.iteration > 20:
+                elif self.drone_in_frame_previous and self.iteration > 10:
                     return False
 
                 self.drone_in_frame_previous = drone_in_frame
             elif self.drone_in_frame_previous:
                 self.write_frame(image_path, response)
                 self.timestamps[self.iteration] = utils.get_time()
+
+                if response.image_type == airsim.ImageType.DepthPerspective and self.iteration > 10:
+                    depth_img = np.frombuffer(response.image_data_uint8, dtype=np.uint8)
+                    depth_std = np.std(depth_img)
+
+                    if depth_std < 10:
+                        raise ValueError(f'Depth perspective buffer probably incorrect, std of {depth_std} too small.')
 
         if self.drone_in_frame_previous:
             self.write_states()
@@ -367,6 +375,10 @@ class AirSimControl:
             self.client.moveByVelocityZAsync(config.global_speed.x_val, config.global_speed.y_val, config.center.z_val,
                 10, airsim.DrivetrainType.MaxDegreeOfFreedom, yaw_mode, vehicle_name=self.observing_drone)
 
+            # Continue for one timestap (1 second in real time, 1 second * clockspeed in simulation time).
+            self.client.simContinueForTime(1)
+            self.client.simPause(True)
+
             base_heading = np.deg2rad(config.orientation.get_heading())
             angle_diff = self.get_yaw(self.observing_drone) - base_heading
             if abs(angle_diff) > self.max_yaw:
@@ -374,6 +386,7 @@ class AirSimControl:
 
             running = self.capture()
             self.iteration += 1
+
 
     def get_time_formatted(self, time: datetime = None) -> str:
         """Get a formatted string of a given time
@@ -436,6 +449,7 @@ class AirSimControl:
 
     def finish_sequence(self) -> None:
         """Finish a sequence and write timestamps to disk."""
+        print('Finishing sequence...')
         self.timestamps_str = {}
 
         if self.timestamps is not None:
@@ -495,7 +509,11 @@ class AirSimControl:
 
     def run(self) -> None:
         self.init()
-        self.fly()
+
+        try:
+            self.fly()
+        finally:
+            self.client.simPause(False)
 
 
 if __name__ == '__main__':

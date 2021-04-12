@@ -51,8 +51,11 @@
     },
     "DefaultSensors": {
         "Imu": {
-             "SensorType": 2,
-             "Enabled" : true
+            "SensorType": 2,
+            "Enabled" : true,
+            "GyroAngleRandomWalk": 0,
+            "GyroBiasStability": 0,
+            "AccelerometerVelocityRandomWalk": 0
         }
     }
 }
