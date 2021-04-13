@@ -67,7 +67,7 @@ class SimData(Dataset):
 
     def get_gt_foe(self, i:int) -> Optional[Tuple[float, float]]:
         FoE = self.get_state(i)['Drone1']['ue4']['FoE']
-        return (FoE['X'] * self.capture_size[0], (1 - FoE['Y']) * self.capture_size[1])
+        return (FoE['X'] * self.capture_size[0], FoE['Y'] * self.capture_size[1])
 
     def get_gt_of(self, i:int) -> Optional[np.ndarray]:
         flow_uv = utils.read_flow(f'{self.gt_of_path}/image_{i:05d}.flo')

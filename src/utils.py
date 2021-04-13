@@ -9,6 +9,8 @@ import glob
 from datetime import datetime
 from typing import Tuple, List, Optional, TypeVar, cast, Dict, Any
 
+from im_helpers import get_flow_vis
+
 
 class Rectangle:
     def __init__(self, topleft: Tuple[float, float], size: Tuple[float, float]) -> None:

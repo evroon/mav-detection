@@ -262,6 +262,9 @@ class Processor:
 
     def run_detection(self) -> Dict[int, FrameResult]:
         """Runs the detection."""
+
+        im_helpers.get_colorwheel()
+
         while self.is_active():
             orig_frame = self.dataset.get_frame()
 
