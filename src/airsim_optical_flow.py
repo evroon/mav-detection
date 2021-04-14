@@ -129,7 +129,7 @@ def write_flow(dataset: Dataset) -> np.ndarray:
             drone_displacement = Vector3r()
 
         img_path = f'{dataset.depth_path}/image_{i:05d}.pfm'
-        depth_img = np.array(airsim.read_pfm(img_path)[0]).T
+        depth_img = np.array(airsim.read_pfm(img_path)[0]).T * 100
 
         segmentation_img = cv2.imread(f'{dataset.seg_path}/image_{i:05d}.png', 0).T
 
