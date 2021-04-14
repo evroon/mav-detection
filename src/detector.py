@@ -67,7 +67,7 @@ class Detector:
         R1, R2, t = cv2.decomposeEssentialMat(self.essential)
         return utils.rotation_matrix_to_euler(R1), utils.rotation_matrix_to_euler(R2), t
 
-    def derotate(self, i:int,  flow_uv: np.ndarray) -> np.ndarray:
+    def derotate(self, i:int, flow_uv: np.ndarray) -> np.ndarray:
         """Derotate flow field according to IMU data
 
         Args:
@@ -86,12 +86,11 @@ class Detector:
         derotation_pixels = pix_per_angle * ang_vel * delta_time
 
         # X displacement corresponds to yaw (Z-axis) and Y displacement corresponds to pitch (Y-axis)
-        derotation_pixels = derotation_pixels[[2, 1]] / 10
-        # print(derotation_pixels)
+        derotation_pixels = derotation_pixels[[2, 1]]
 
         displacement = np.tile(derotation_pixels, (flow_uv.shape[0], flow_uv.shape[1], 1))
         print(np.average(flow_uv[..., 0]), np.average(flow_uv[..., 1]), derotation_pixels)
-        return flow_uv - displacement
+        return flow_uv + displacement
 
     def get_transformation_matrix(self, orig_frame: np.ndarray, flow_uv: np.ndarray) -> None:
         """Calculates the affine or homography matrix.
