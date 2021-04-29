@@ -1,6 +1,5 @@
 import argparse
 import logging
-import torch
 from typing import List
 
 from processor import Processor
@@ -90,9 +89,6 @@ if __name__ == '__main__':
     args = parser.parse_args()
 
     logger = get_logger()
-
-    if torch.cuda.device_count() < 1:
-        raise SystemError('There are no active GPUs.')
 
     if args.run_all:
         run_all(logger, args)

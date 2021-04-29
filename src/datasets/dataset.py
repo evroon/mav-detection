@@ -2,6 +2,7 @@ import utils
 import cv2
 import os
 import numpy as np
+import torch
 
 import shutil
 import logging
@@ -78,6 +79,9 @@ class Dataset:
 
     def run_flownet2(self) -> None:
         """Runs FlowNet2 on the current sequence."""
+        if torch.cuda.device_count() < 1:
+            raise SystemError('There are no active GPUs.')
+
         self.logger.info('Running FlowNet2...')
         flownet2 = os.environ['FLOWNET2']
         subprocess.call([f'{flownet2}/launch_docker.sh', '--run', '--dataset',  f'{self.img_path}'])
