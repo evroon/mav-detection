@@ -85,7 +85,7 @@ def get_magnitude(img: np.ndarray) -> np.ndarray:
     Returns:
         np.ndarray: (h, w) array of magnitudes
     """
-    return np.sqrt(np.sum(img ** 2.0, axis=-1))
+    return np.linalg.norm(img, axis=-1)
 
 def to_rgb(img: np.ndarray)-> np.ndarray:
     """Converts grayscale to RGB.

@@ -29,9 +29,9 @@ def execute(config: RunConfig) -> None:
             else:
                 detection_results = processor.run_detection()
 
-            if config.validate and not config.uses_nn_for_detection():
-                validator = Validator(config)
-                validator.run_validation(detection_results)
+            # if True and not config.uses_nn_for_detection():
+            validator = Validator(config)
+            validator.run_validation(detection_results)
 
         finally:
             processor.release()

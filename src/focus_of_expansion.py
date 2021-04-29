@@ -43,7 +43,7 @@ class FocusOfExpansion:
 
         for i in range(estimates.shape[0]):
             chosen_sample = estimates[i]
-            count = np.linalg.norm(estimates - chosen_sample, axis=1)
+            count = im_helpers.get_magnitude(estimates - chosen_sample)
             inliers = count[count < self.ransac_threshold]
             score = inliers.shape[0] - 1
 
@@ -76,7 +76,7 @@ class FocusOfExpansion:
             coord1, coord2 = rand1[i, :], rand1[i+N, :]
             flow1, flow2 = flow_uv[coord1[0], coord1[1], :], flow_uv[coord2[0], coord2[1], :]
 
-            if np.linalg.norm(flow2) < self.magnitude_threshold:
+            if im_helpers.get_magnitude(flow2) < self.magnitude_threshold:
                 continue
 
             coord1 = coord1[::-1]
@@ -148,11 +148,12 @@ class FocusOfExpansion:
         intersections = intersections[intersections[:, 0] != 0.0, :]
         return self.ransac(intersections)
 
-    def check_flow(self, flow_uv: np.ndarray, FoE: Tuple[float, float]) -> np.ndarray:
-        """Checks which parts of a flow field are parallel with the FoE.
+    def check_flow(self, flow_uv: np.ndarray, derotated_flow_uv: np.ndarray, FoE: Tuple[float, float]) -> np.ndarray:
+        """Checks which pixels of a flow field are parallel with the FoE.
 
         Args:
-            flow_uv (np.ndarray): the flow field
+            flow_uv (np.ndarray): the input flow field
+            derotated_flow_uv (np.ndarray): the derotated flow field
             FoE (Tuple[float, float]): the Focus of Expansion
 
         Returns:
@@ -162,28 +163,34 @@ class FocusOfExpansion:
             return
 
         # Calculate angle between line from FoE and feature with the flow vector of the feature.
-        diff1 = flow_uv
-        diff2 = np.zeros_like(flow_uv)
+        diff1 = derotated_flow_uv
+        diff2 = np.zeros_like(derotated_flow_uv)
         diff2[..., 0] = self.x_coords - FoE[0]
         diff2[..., 1] = self.y_coords - FoE[1]
 
-        flow_magnitude = np.linalg.norm(diff1, axis=2)
-        img_distance = np.linalg.norm(diff2, axis=2)
+        flow_magnitude = im_helpers.get_magnitude(diff1)
+        img_distance = im_helpers.get_magnitude(diff2)
         norm = np.maximum(np.ones_like(flow_magnitude) * 1e-6, flow_magnitude * img_distance)
 
         angle_diff = np.arccos((diff1[..., 0] * diff2[..., 0] + diff1[..., 1] * diff2[..., 1]) / norm)
         angle_diff[np.isnan(angle_diff)] = 0
 
         self.max_flow = np.rad2deg(np.max(angle_diff))
-        return im_helpers.to_rgb(angle_diff)
+        result = im_helpers.to_rgb(angle_diff)
 
-    def draw_FoE(self, frame: np.ndarray, FoE: Tuple[float, float], color: List[int]=[0, 42, 255]) -> np.ndarray:
+        mask = im_helpers.get_magnitude(flow_uv) < self.magnitude_threshold
+        # result[mask, :] = 0
+
+        return result
+
+    def draw_FoE(self, frame: np.ndarray, FoE: Tuple[float, float], color: List[int]=[0, 42, 255], radius: float = 10) -> np.ndarray:
         """Draw Focus of Expansion circle in an image
 
         Args:
             frame (np.ndarray): the image to draw on
             FoE (Tuple[float, float]): Location of the FoE
             color (List[int], optional): color of the circle in BGR space. Defaults to [0, 42, 255].
+            radius (float): Radius of the circle to draw
 
         Returns:
             np.ndarray: resulting image
@@ -191,7 +198,7 @@ class FocusOfExpansion:
         if FoE[0] is np.nan or FoE[1] is np.nan:
             return frame
 
-        return cv2.circle(frame, (int(FoE[0]), int(FoE[1])), 10, color, -1)
+        return cv2.circle(frame, (int(FoE[0]), int(FoE[1])), radius, color, -1)
 
     def draw(self, frame: np.ndarray, FoE: Tuple[float, float]) -> np.ndarray:
         """Draw FoE algorithm visualization
@@ -214,8 +221,8 @@ class FocusOfExpansion:
             diff1 = np.asarray(line[0]) - np.asarray(line[1])
             diff2 = np.asarray(line[0]) - np.asarray(FoE)
 
-            flow_magnitude = np.linalg.norm(diff1)
-            img_distance = np.linalg.norm(diff2)
+            flow_magnitude = im_helpers.get_magnitude(diff1)
+            img_distance = im_helpers.get_magnitude(diff2)
             flow_angle = np.arctan2(diff1[1], diff1[0]) * 180.0 / np.pi
             img_angle = np.arctan2(diff2[1], diff2[0]) * 180.0 / np.pi
 

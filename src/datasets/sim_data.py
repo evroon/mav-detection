@@ -59,7 +59,7 @@ class SimData(Dataset):
 
     def get_delta_time(self, i:int) -> float:
         if i < 1:
-            return cast(float, np.nan)
+            return 0.0
 
         time_stamp1 = self.get_state(i-1)['Drone1']['imu']['time_stamp']
         time_stamp2 = self.get_state(i)['Drone1']['imu']['time_stamp']

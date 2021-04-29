@@ -124,7 +124,7 @@ def write_flow(dataset: Dataset) -> np.ndarray:
 
         delta_time = dataset.get_delta_time(i)
         drone_velocity = state1['Drone2']['ue4']['linearVelocity']
-        drone_displacement = Vector3r(drone_velocity['X'], drone_velocity['Y'], drone_velocity['Z']) * delta_time * 100
+        drone_displacement = Vector3r(drone_velocity['X'], drone_velocity['Y'], drone_velocity['Z']) * delta_time
         if np.isnan(drone_displacement.x_val):
             drone_displacement = Vector3r()
 
