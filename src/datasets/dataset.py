@@ -181,6 +181,17 @@ class Dataset:
             extension = os.path.splitext(png)[-1]
             shutil.move(png, f'{base_path}/image_{i:05d}{extension}')
 
+    def get_orientation(self, i:int) -> np.ndarray:
+        """Returns the orientation from the IMU if known.
+
+        Args:
+            i (int): Frame index
+
+        Returns:
+            np.ndarray: the euler angles in inertial frame (rad)
+        """
+        pass
+
     def get_angular_velocity(self, i:int) -> np.ndarray:
         """Returns the angular velocity of the IMU if known.
 
