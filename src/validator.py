@@ -202,6 +202,7 @@ class Validator:
 
             # Save histogram of IoU values.
             ious = np.array(ious)
+            utils.create_if_not_exists('media/output')
             plt.hist(ious, np.linspace(0.0, 1.0, 20))
             plt.grid()
             plt.xlabel('IoU')
