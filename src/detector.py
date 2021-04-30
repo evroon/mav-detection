@@ -81,16 +81,36 @@ class Detector:
             return flow_uv
 
         ang_vel = self.dataset.get_angular_velocity(i)
-        delta_time = self.dataset.get_delta_time(i)
-        pix_per_angle = self.dataset.capture_size[0] / np.deg2rad(self.fov)
-        derotation_pixels = pix_per_angle * ang_vel * delta_time
+        dt = self.dataset.get_delta_time(i)
+        w = self.dataset.capture_size[0]
+        h = self.dataset.capture_size[1]
 
         # X displacement corresponds to yaw (Z-axis) and Y displacement corresponds to pitch (Y-axis)
-        derotation_pixels = derotation_pixels[[2, 1]]
+        omega = ang_vel[[1, 2, 0]]
 
-        displacement = np.tile(derotation_pixels, (flow_uv.shape[0], flow_uv.shape[1], 1))
-        print(np.average(flow_uv[..., 0]), np.average(flow_uv[..., 1]), derotation_pixels)
-        return flow_uv + displacement
+        x_coords = -(self.x_coords / w - 0.5) * 2.0
+        y_coords = -(self.y_coords / h - 0.5) * 2.0
+
+        derotation = np.array(
+            [
+                +omega[0] * x_coords * y_coords - omega[1] * x_coords ** 2 - omega[1] + omega[2] * y_coords,
+                0 * (-omega[2] * x_coords + omega[0] + omega[0] * y_coords ** 2 - omega[1] * x_coords * y_coords)
+            ]
+        ).swapaxes(0, 1).swapaxes(1, 2)
+
+        derotation[..., 0] *= w * dt / 2
+        derotation[..., 1] *= h * dt / 2
+
+        idx = 0
+        print('center', np.average(derotation[1080//2, 1920//2, idx]) - np.average(flow_uv[1080//2, 1920//2, idx]))
+        print('topleft', np.average(derotation[0, 0, idx]) - np.average(flow_uv[0, 0, idx]))
+        print('bottomleft', np.average(derotation[-1, 0, idx]) - np.average(flow_uv[-1, 0, idx]))
+        print('bottomright', np.average(derotation[-1, -1, idx]) - np.average(flow_uv[-1, -1, idx]))
+        print('topright', np.average(derotation[0, -1, idx]) - np.average(flow_uv[0, -1, idx]))
+        print(np.average(im_helpers.get_magnitude(flow_uv - derotation)), np.average(im_helpers.get_magnitude(flow_uv)), np.average(im_helpers.get_magnitude(flow_uv)) / np.average(im_helpers.get_magnitude(flow_uv - derotation)))
+        print()
+
+        return flow_uv - derotation
 
     def get_transformation_matrix(self, orig_frame: np.ndarray, flow_uv: np.ndarray) -> None:
         """Calculates the affine or homography matrix.
