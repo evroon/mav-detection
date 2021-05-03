@@ -26,6 +26,7 @@ class Processor:
         self.detector = Detector(self.dataset)
         self.detection_results: Dict[int, FrameResult] = dict()
         self.output: Optional[cv2.VideoWriter] = None
+        self.use_gt_of = True
 
         self.frame_index, self.start_frame = 0, 100
         self.is_exiting = False
@@ -287,39 +288,45 @@ class Processor:
                 else:
                     self.write(cluster_vis)
             else:
-                self.detection_results[self.frame_index] = FrameResult()
-                # self.flow_uv = self.dataset.get_flow_uv(self.frame_index)
-                self.flow_uv: np.ndarray = self.dataset.get_gt_of(self.frame_index)
-                self.flow_uv = self.flow_uv
+                if self.use_gt_of:
+                    self.flow_uv = self.dataset.get_gt_of(self.frame_index)
+                else:
+                    self.flow_uv = self.dataset.get_flow_uv(self.frame_index)
+
                 self.flow_vis = im_helpers.get_flow_vis(self.flow_uv)
-
                 self.flow_uv_derotated = self.detector.derotate(self.frame_index, self.flow_uv)
+                self.detection_results[self.frame_index] = FrameResult()
 
-                FoE_sparse = self.focus_of_expansion.get_FOE_sparse(self.old_frame, orig_frame)
+                # FoE_sparse = self.focus_of_expansion.get_FOE_sparse(self.old_frame, orig_frame)
                 FoE_dense  = self.focus_of_expansion.get_FOE_dense(self.flow_uv_derotated)
                 FoE_gt = self.dataset.get_gt_foe(self.frame_index)
-                FoE: Tuple[float, float] = utils.assert_type(FoE_gt)
+                FoE: Tuple[float, float] = utils.assert_type(FoE_dense)
 
-                result_img = self.focus_of_expansion.check_flow(self.flow_uv, self.flow_uv_derotated, FoE)
-                if result_img is not None:
-                    result_img = cv2.applyColorMap(result_img, cv2.COLORMAP_JET)
+                phi_angle = self.focus_of_expansion.check_flow(self.flow_uv, self.flow_uv_derotated, FoE)
+                result_img = cv2.applyColorMap(phi_angle, cv2.COLORMAP_JET)
 
                 self.old_frame = orig_frame
-                self.config.results = {
-                    'foe_sparse': FoE_sparse,
+                self.detection_results[self.frame_index].data = {
+                    # 'foe_sparse': FoE_sparse,
                     'foe_dense': FoE_dense,
                     'foe_gt': FoE_gt,
                 }
 
                 for img in [orig_frame, result_img]:
-                    img = self.focus_of_expansion.draw_FoE(img, FoE_sparse, [0, 0, 255])
+                    # img = self.focus_of_expansion.draw_FoE(img, FoE_sparse, [0, 0, 255])
                     img = self.focus_of_expansion.draw_FoE(img, FoE_dense,  [0, 255, 0])
 
                     if FoE_gt is not None:
                         img = self.focus_of_expansion.draw_FoE(img, FoE_gt, [255, 255, 255])
 
                 if result_img is not None and np.sum(result_img) > 0:
-                    self.write(np.hstack((self.flow_vis, result_img)))
+                    self.write(np.hstack((
+                        self.flow_vis,
+                        # im_helpers.get_flow_vis(self.flow_uv_derotated),
+                        # im_helpers.apply_colormap(im_helpers.to_rgb(im_helpers.get_rho(self.flow_uv))),
+                        # im_helpers.to_rgb(im_helpers.get_magnitude(self.flow_uv_derotated)),
+                        result_img
+                    )))
                 else:
                     print('An error occured while processing frames.')
 

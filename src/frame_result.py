@@ -4,6 +4,7 @@ import utils
 class FrameResult:
     def __init__(self) -> None:
         self.boxes: List[Tuple[str, float, utils.Rectangle]] = []
+        self.data: Dict[str, Any] = {}
 
     def __iter__(self) -> Iterator[Any]:
         return iter(self.boxes)
