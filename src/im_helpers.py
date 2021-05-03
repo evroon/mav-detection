@@ -64,7 +64,8 @@ def get_flow_radial(frame: np.ndarray) -> np.ndarray:
     flow_hsv[..., 2] = 255
     return cv2.cvtColor(flow_hsv, cv2.COLOR_HSV2BGR)
 
-def get_flow_vis(frame: np.ndarray) -> np.ndarray:
+
+def get_flow_vis(frame: np.ndarray, magnitude_factor: float = 1.0) -> np.ndarray:
     """Visualize a flow field array
 
     Args:
@@ -73,7 +74,23 @@ def get_flow_vis(frame: np.ndarray) -> np.ndarray:
     Returns:
         np.ndarray: BGR flow field visualized in HSV space
     """
-    return flow_vis.flow_to_color(frame, convert_to_bgr=True)
+    return flow_vis.flow_to_color(frame, convert_to_bgr=True, magnitude_factor=magnitude_factor)
+
+
+def apply_colormap(img: np.ndarray) -> np.ndarray:
+    return cv2.applyColorMap(img, cv2.COLORMAP_JET)
+
+
+def get_rho(img: np.ndarray) -> np.ndarray:
+    """Calculates the angle of the vectors in the last dimension of img.
+
+    Args:
+        img (np.ndarray): the input vector field
+
+    Returns:
+        np.ndarray: (h, w) array of angles (radians)
+    """
+    return np.arctan2(img[:, :, 1], img[:, :, 0])
 
 
 def get_magnitude(img: np.ndarray) -> np.ndarray:
@@ -87,6 +104,7 @@ def get_magnitude(img: np.ndarray) -> np.ndarray:
     """
     return np.linalg.norm(img, axis=-1)
 
+
 def to_rgb(img: np.ndarray)-> np.ndarray:
     """Converts grayscale to RGB.
 
@@ -96,8 +114,8 @@ def to_rgb(img: np.ndarray)-> np.ndarray:
     Returns:
         np.ndarray: output RGB image
     """
-
     return cv2.cvtColor(to_int(img, np.uint8, True), cv2.COLOR_GRAY2RGB)
+
 
 def to_int(img: np.ndarray, type: type=np.uint8, normalize: bool=False) -> np.ndarray:
     img_normalized = img

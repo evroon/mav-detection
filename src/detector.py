@@ -97,7 +97,7 @@ class Detector:
         derotation = np.array(
             [
                 +omega[0] * x_coords * y_coords - omega[1] * x_coords ** 2 - omega[1] + omega[2] * y_coords,
-                0 * (-omega[2] * x_coords + omega[0] + omega[0] * y_coords ** 2 - omega[1] * x_coords * y_coords)
+                -omega[2] * x_coords + omega[0] + omega[0] * y_coords ** 2 - omega[1] * x_coords * y_coords
             ]
         ).swapaxes(0, 1).swapaxes(1, 2)
 
