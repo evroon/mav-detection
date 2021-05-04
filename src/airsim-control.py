@@ -30,7 +30,7 @@ class AirSimControl:
         self.direction = 1
         self.drone_in_frame_previous = False
         self.minimum_segmentation_sum = 1e12
-        self.yaw_rate = 0 # deg/s
+        self.yaw_rate = 15 # deg/s
         self.max_yaw = np.deg2rad(30)
         self.delta_time = 0.033
 
@@ -310,9 +310,8 @@ class AirSimControl:
                     self.minimum_segmentation_sum = seg_sum
 
                 drone_in_frame = seg_sum > self.minimum_segmentation_sum and self.iteration > 10
-                if drone_in_frame:
-                    self.write_frame(image_path, response)
-                elif self.drone_in_frame_previous and self.iteration > 10:
+                self.write_frame(image_path, response)
+                if self.drone_in_frame_previous and self.iteration > 10:
                     return False
 
                 self.drone_in_frame_previous = drone_in_frame
@@ -357,7 +356,7 @@ class AirSimControl:
             dx = pos_target_drone.x_val - pos_observer_drone.x_val
             dy = pos_target_drone.y_val - pos_observer_drone.y_val
             angle_to_center = math.atan2(dy, dx)
-            camera_heading = (angle_to_center - math.pi) * 180 / math.pi
+            camera_heading = np.rad2deg(angle_to_center - math.pi)
 
             # compute lookahead
             lookahead_x = pos_observer_drone.x_val + config.radius * math.cos(angle_to_center + lookahead_angle)
@@ -384,7 +383,9 @@ class AirSimControl:
             if abs(angle_diff) > self.max_yaw:
                 yaw_rate_direction = -angle_diff / abs(angle_diff)
 
-            running = self.capture()
+            self.capture()
+            angle_diff = np.rad2deg(angle_to_center - base_heading)
+            running = angle_diff > -50
             self.iteration += 1
 
 
