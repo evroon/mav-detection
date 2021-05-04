@@ -10,9 +10,8 @@ import utils
 #     # if img_count < 25:
 #     print(d, len(glob.glob(f'data/citypark/{d}/images/*')))
 
-def plot_states(observable: str) -> np.ndarray:
-    dir = 'data/mountains-stationary/lake-north-low-2.5-10-default/states'
-    states = utils.sorted_glob(f'{dir}/*.json')
+def plot_states(states_dir: str, observable: str) -> np.ndarray:
+    states = utils.sorted_glob(f'{states_dir}/*.json')
     states = [x for x in states if 'timestamp' not in x]
     start = 0
     clockspeed = 1
@@ -72,13 +71,15 @@ def plot_states(observable: str) -> np.ndarray:
     return t
 
 
-plot_states('linear_acceleration')
-plot_states('orientation')
-t = plot_states('angular_velocity')
+if __name__ == '__main__':
+    states_dir = 'data/mountains-moving/lake-north-medium-5.0-10-default/states'
+    plot_states(states_dir, 'linear_acceleration')
+    plot_states(states_dir, 'orientation')
+    t = plot_states(states_dir, 'angular_velocity')
 
-# plot_states('position')
-# plot_states('linear_velocity')
-# plot_states('angular_acceleration')
+    # plot_states('position')
+    # plot_states('linear_velocity')
+    # plot_states('angular_acceleration')
 
-deltas = np.diff(t)
-print(f'average delta time: {np.average(deltas):.03f}s ({1/np.average(deltas):.02f}Hz) std: {np.std(deltas):.03f}s')
+    deltas = np.diff(t)
+    print(f'average delta time: {np.average(deltas):.03f}s ({1/np.average(deltas):.02f}Hz) std: {np.std(deltas):.03f}s')

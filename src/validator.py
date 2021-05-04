@@ -202,11 +202,34 @@ class Validator:
 
             # Save histogram of IoU values.
             ious = np.array(ious)
+            utils.create_if_not_exists('media/output')
             plt.hist(ious, np.linspace(0.0, 1.0, 20))
             plt.grid()
             plt.xlabel('IoU')
-            plt.ylabel('Frequency (frames)')
+            plt.ylabel('Frequency [frames]')
             plt.savefig('media/output/ious.png', bbox_inches='tight')
+
+            # Plot histogram of FoE errors.
+            foe_dense = np.array([x[1].data['foe_dense'] for x in frames.items()])
+            foe_gt = np.array([x[1].data['foe_gt'] for x in frames.items()])
+            foe_error = foe_dense - foe_gt
+
+            outlier_threshold = 30.0
+            outlier_count = 0
+
+            for i in range(foe_error.shape[0]):
+                if foe_error[i, 0] > outlier_threshold or foe_error[i, 1] > outlier_threshold:
+                    outlier_count += 1
+
+            print(f'foe outliers: {outlier_count}, average error: {np.average(foe_error):.3f}, std: {np.std(foe_error):.3f}')
+
+            plt.hist(foe_error[..., 0], np.linspace(-outlier_threshold, outlier_threshold, 20), histtype=u'step', label='x', color='b')
+            plt.hist(foe_error[..., 1], np.linspace(-outlier_threshold, outlier_threshold, 20), histtype=u'step', label='y', color='m')
+            plt.xlabel('FoE error [pixels]')
+            plt.ylabel('Frequency [frames]')
+            plt.legend()
+            plt.savefig('media/output/foe-error.png', bbox_inches='tight')
+
 
             if self.true_positives > 0:
                 self.config.logger.info(f'TP: {self.true_positives}, FP: {self.false_positives}, FN: {self.false_negatives}')

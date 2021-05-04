@@ -2,6 +2,7 @@ import utils
 import cv2
 import os
 import numpy as np
+import torch
 
 import shutil
 import logging
@@ -78,6 +79,9 @@ class Dataset:
 
     def run_flownet2(self) -> None:
         """Runs FlowNet2 on the current sequence."""
+        if torch.cuda.device_count() < 1:
+            raise SystemError('There are no active GPUs.')
+
         self.logger.info('Running FlowNet2...')
         flownet2 = os.environ['FLOWNET2']
         subprocess.call([f'{flownet2}/launch_docker.sh', '--run', '--dataset',  f'{self.img_path}'])
@@ -176,6 +180,17 @@ class Dataset:
         for i, png in enumerate(pngs):
             extension = os.path.splitext(png)[-1]
             shutil.move(png, f'{base_path}/image_{i:05d}{extension}')
+
+    def get_orientation(self, i:int) -> np.ndarray:
+        """Returns the orientation from the IMU if known.
+
+        Args:
+            i (int): Frame index
+
+        Returns:
+            np.ndarray: the euler angles in inertial frame (rad)
+        """
+        pass
 
     def get_angular_velocity(self, i:int) -> np.ndarray:
         """Returns the angular velocity of the IMU if known.

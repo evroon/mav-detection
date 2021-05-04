@@ -1,6 +1,5 @@
 import argparse
 import logging
-import torch
 from typing import List
 
 from processor import Processor
@@ -29,9 +28,9 @@ def execute(config: RunConfig) -> None:
             else:
                 detection_results = processor.run_detection()
 
-            if config.validate and not config.uses_nn_for_detection():
-                validator = Validator(config)
-                validator.run_validation(detection_results)
+            # if True and not config.uses_nn_for_detection():
+            validator = Validator(config)
+            validator.run_validation(detection_results)
 
         finally:
             processor.release()
@@ -90,9 +89,6 @@ if __name__ == '__main__':
     args = parser.parse_args()
 
     logger = get_logger()
-
-    if torch.cuda.device_count() < 1:
-        raise SystemError('There are no active GPUs.')
 
     if args.run_all:
         run_all(logger, args)

@@ -67,7 +67,7 @@ class Detector:
         R1, R2, t = cv2.decomposeEssentialMat(self.essential)
         return utils.rotation_matrix_to_euler(R1), utils.rotation_matrix_to_euler(R2), t
 
-    def derotate(self, i:int,  flow_uv: np.ndarray) -> np.ndarray:
+    def derotate(self, i:int, flow_uv: np.ndarray) -> np.ndarray:
         """Derotate flow field according to IMU data
 
         Args:
@@ -80,18 +80,45 @@ class Detector:
         if i < 1:
             return flow_uv
 
-        ang_vel = self.dataset.get_angular_velocity(i)
-        delta_time = self.dataset.get_delta_time(i)
-        pix_per_angle = self.dataset.capture_size[0] / np.deg2rad(self.fov)
-        derotation_pixels = pix_per_angle * ang_vel * delta_time
+        orientation1 = self.dataset.get_orientation(i-1)
+        orientation2 = self.dataset.get_orientation(i)
+        dt = self.dataset.get_delta_time(i)
+        w = self.dataset.capture_size[0]
+        h = self.dataset.capture_size[1]
 
         # X displacement corresponds to yaw (Z-axis) and Y displacement corresponds to pitch (Y-axis)
-        derotation_pixels = derotation_pixels[[2, 1]] / 10
-        # print(derotation_pixels)
+        omega = orientation2 - orientation1
+        omega = omega[[1, 2, 0]] / dt
+        omega[2] = -omega[2]
 
-        displacement = np.tile(derotation_pixels, (flow_uv.shape[0], flow_uv.shape[1], 1))
-        print(np.average(flow_uv[..., 0]), np.average(flow_uv[..., 1]), derotation_pixels)
-        return flow_uv - displacement
+        x_coords = -(self.x_coords / w - 0.5) * 2.0
+        y_coords = -(self.y_coords / h - 0.5) * 2.0
+
+        derotation = np.array(
+            [
+                +omega[0] * x_coords * y_coords - omega[1] * x_coords ** 2 - omega[1] + omega[2] * y_coords,
+                -omega[2] * x_coords + omega[0] + omega[0] * y_coords ** 2 - omega[1] * x_coords * y_coords
+            ]
+        ).swapaxes(0, 1).swapaxes(1, 2)
+
+        derotation[..., 0] *= w * dt / 2
+        derotation[..., 1] *= h * dt / 2
+
+        # idx = 0
+        # print('center', np.average(derotation[1080//2, 1920//2, idx]) - np.average(flow_uv[1080//2, 1920//2, idx]))
+        # print('topleft', np.average(derotation[0, 0, idx]) - np.average(flow_uv[0, 0, idx]))
+        # print('bottomleft', np.average(derotation[-1, 0, idx]) - np.average(flow_uv[-1, 0, idx]))
+        # print('bottomright', np.average(derotation[-1, -1, idx]) - np.average(flow_uv[-1, -1, idx]))
+        # print('topright', np.average(derotation[0, -1, idx]) - np.average(flow_uv[0, -1, idx]))
+        # print(
+        #     np.average(im_helpers.get_magnitude(flow_uv - derotation)),
+        #     np.std(im_helpers.get_magnitude(flow_uv - derotation)),
+        #     np.average(im_helpers.get_magnitude(flow_uv)),
+        #     np.average(im_helpers.get_magnitude(flow_uv)) / np.average(im_helpers.get_magnitude(flow_uv - derotation))
+        # )
+        # print()
+
+        return flow_uv - derotation
 
     def get_transformation_matrix(self, orig_frame: np.ndarray, flow_uv: np.ndarray) -> None:
         """Calculates the affine or homography matrix.
@@ -367,13 +394,13 @@ class Detector:
         """
         self.flow_uv_history[self.history_index, ...] = flow_uv
 
-        k = (self.history_index + 2) % (self.history_length - 1)
+        k = (self.history_index + 1) % (self.history_length - 1)
         orig_map = np.zeros_like(flow_uv, dtype=np.float64)
         orig_map[..., 0] = self.y_coords
         orig_map[..., 1] = self.x_coords
         lookup_map = np.copy(orig_map)
 
-        while k != (self.history_index + 1) % (self.history_length - 1):
+        while k != (self.history_index) % (self.history_length - 1):
             warped = lookup_map.astype(np.float32)
             lookup_map += cv2.remap(self.flow_uv_history[k, ...], warped[..., 1], warped[..., 0], cv2.INTER_LINEAR)
             k = (k + 1) % self.history_length

@@ -9,6 +9,8 @@ import glob
 from datetime import datetime
 from typing import Tuple, List, Optional, TypeVar, cast, Dict, Any
 
+from im_helpers import get_flow_vis
+
 
 class Rectangle:
     def __init__(self, topleft: Tuple[float, float], size: Tuple[float, float]) -> None:
@@ -123,7 +125,7 @@ def get_output(filename: str, capture: cv2.VideoCapture = None, capture_size: Tu
     if capture_size is None:
         capture_size = get_capture_size(capture)
 
-    return cv2.VideoWriter(filename, fourcc, 15.0, capture_size, not is_grey)
+    return cv2.VideoWriter(filename, fourcc, 30.0, capture_size, not is_grey)
 
 
 def get_sequence_length(path: str) -> int:

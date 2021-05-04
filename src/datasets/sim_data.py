@@ -6,6 +6,7 @@ import os
 import json
 import airsim
 from typing import Optional, Tuple, cast
+from scipy.spatial.transform import Rotation
 
 import utils
 from datasets.dataset import Dataset
@@ -53,13 +54,18 @@ class SimData(Dataset):
         with open(self.states[i], 'r') as f:
             return json.load(f)
 
+    def get_orientation(self, i:int) -> np.ndarray:
+        orientatation = self.get_state(i)['Drone1']['imu']['orientation']
+        euler = Rotation.from_quat([orientatation['x_val'], orientatation['y_val'], orientatation['z_val'], orientatation['w_val']]).as_euler('xyz', degrees=False)
+        return euler
+
     def get_angular_velocity(self, i:int) -> np.ndarray:
         angular_velocity = self.get_state(i)['Drone1']['imu']['angular_velocity']
         return np.array([angular_velocity['x_val'], angular_velocity['y_val'], angular_velocity['z_val']])
 
     def get_delta_time(self, i:int) -> float:
         if i < 1:
-            return cast(float, np.nan)
+            return 0.0
 
         time_stamp1 = self.get_state(i-1)['Drone1']['imu']['time_stamp']
         time_stamp2 = self.get_state(i)['Drone1']['imu']['time_stamp']

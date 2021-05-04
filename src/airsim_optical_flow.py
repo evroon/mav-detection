@@ -124,12 +124,12 @@ def write_flow(dataset: Dataset) -> np.ndarray:
 
         delta_time = dataset.get_delta_time(i)
         drone_velocity = state1['Drone2']['ue4']['linearVelocity']
-        drone_displacement = Vector3r(drone_velocity['X'], drone_velocity['Y'], drone_velocity['Z']) * delta_time * 100
+        drone_displacement = Vector3r(drone_velocity['X'], drone_velocity['Y'], drone_velocity['Z']) * delta_time
         if np.isnan(drone_displacement.x_val):
             drone_displacement = Vector3r()
 
         img_path = f'{dataset.depth_path}/image_{i:05d}.pfm'
-        depth_img = np.array(airsim.read_pfm(img_path)[0]).T
+        depth_img = np.array(airsim.read_pfm(img_path)[0]).T * 100
 
         segmentation_img = cv2.imread(f'{dataset.seg_path}/image_{i:05d}.png', 0).T
 
