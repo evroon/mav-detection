@@ -19,7 +19,7 @@ class FocusOfExpansion:
         self.enable_plots = False
         self.max_flow = 0.0 # maximum flow in the image (degrees).
         self.radial_threshold = np.cos(np.deg2rad(15))
-        self.magnitude_threshold = 0.1
+        self.magnitude_threshold = 0
         self.ransac_threshold = 30.0 # pixels
         self.color = np.random.randint(0, 255, (self.lucas_kanade.total_num_corners, 3))
         self.trace = np.zeros((self.lucas_kanade.total_num_corners, 2000), dtype=np.int)
@@ -195,7 +195,7 @@ class FocusOfExpansion:
         Returns:
             np.ndarray: resulting image
         """
-        if FoE[0] is np.nan or FoE[1] is np.nan:
+        if FoE[0] is np.nan or FoE[1] is np.nan or np.abs(FoE[0]) > 1e9 or np.abs(FoE[1]) > 1e9:
             return frame
 
         return cv2.circle(frame, (int(FoE[0]), int(FoE[1])), radius, color, -1)

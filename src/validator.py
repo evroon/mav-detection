@@ -9,6 +9,7 @@ from typing import Dict, Tuple, List, Optional, cast, Any
 from matplotlib import pyplot as plt
 
 import utils
+import im_helpers
 from run_config import RunConfig
 from frame_result import FrameResult
 from datasets.dataset import Dataset
@@ -213,18 +214,20 @@ class Validator:
             foe_dense = np.array([x[1].data['foe_dense'] for x in frames.items()])
             foe_gt = np.array([x[1].data['foe_gt'] for x in frames.items()])
             foe_error = foe_dense - foe_gt
+            foe_error_mag = im_helpers.get_magnitude(foe_error)
 
             outlier_threshold = 30.0
-            outlier_count = 0
+            inliers = []
 
             for i in range(foe_error.shape[0]):
-                if foe_error[i, 0] > outlier_threshold or foe_error[i, 1] > outlier_threshold:
-                    outlier_count += 1
+                if np.abs(foe_error[i, 0]) < outlier_threshold and np.abs(foe_error[i, 1]) < outlier_threshold:
+                    inliers.append(i)
 
-            print(f'foe outliers: {outlier_count}, average error: {np.average(foe_error):.3f}, std: {np.std(foe_error):.3f}')
+            inliers = np.array(inliers)
+            print(f'foe outliers: {foe_error.shape[0] - inliers.shape[0]}, average error: {np.average(foe_error_mag[inliers]):.3f}, std: {np.std(foe_error_mag[inliers]):.3f}')
 
-            plt.hist(foe_error[..., 0], np.linspace(-outlier_threshold, outlier_threshold, 20), histtype=u'step', label='x', color='b')
-            plt.hist(foe_error[..., 1], np.linspace(-outlier_threshold, outlier_threshold, 20), histtype=u'step', label='y', color='m')
+            plt.hist(foe_error[..., 0], np.linspace(-outlier_threshold, outlier_threshold, 40), histtype=u'step', label='x', color='b')
+            plt.hist(foe_error[..., 1], np.linspace(-outlier_threshold, outlier_threshold, 40), histtype=u'step', label='y', color='m')
             plt.xlabel('FoE error [pixels]')
             plt.ylabel('Frequency [frames]')
             plt.legend()

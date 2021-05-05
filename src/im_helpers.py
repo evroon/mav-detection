@@ -74,7 +74,7 @@ def get_flow_vis(frame: np.ndarray, magnitude_factor: float = 1.0) -> np.ndarray
     Returns:
         np.ndarray: BGR flow field visualized in HSV space
     """
-    return flow_vis.flow_to_color(frame, convert_to_bgr=True, magnitude_factor=magnitude_factor)
+    return flow_vis.flow_to_color(frame, convert_to_bgr=True)
 
 
 def apply_colormap(img: np.ndarray) -> np.ndarray:
