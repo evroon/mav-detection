@@ -9,6 +9,7 @@ from typing import Optional, Tuple, cast
 from scipy.spatial.transform import Rotation
 
 import utils
+import im_helpers
 from datasets.dataset import Dataset
 from airsim_optical_flow import write_flow
 
@@ -27,25 +28,8 @@ class SimData(Dataset):
         img = cv2.imread(image_path)
         height, width = img.shape[:2]
         img_size = np.array([width, height])
-        start_x, start_y = -1, -1
-        end_x, end_y = -1, -1
-        threshold = 0.0
 
-        for y in range(height):
-            if np.average(img[y, :, :]) > threshold:
-                end_y = y
-
-                if start_y == -1:
-                    start_y = y
-
-        for x in range(width):
-            if np.average(img[:, x, :]) > threshold:
-                end_x = x
-
-                if start_x == -1:
-                    start_x = x
-
-        rect = utils.Rectangle.from_points((start_x, start_y), (end_x, end_y))
+        rect = im_helpers.get_simple_bounding_box(img)
 
         with open(f'{self.ann_path}/image_{index}.txt', 'w') as f:
             f.write(rect.to_yolo(img_size))

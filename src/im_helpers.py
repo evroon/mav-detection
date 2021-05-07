@@ -5,6 +5,8 @@ from   typing import Iterator, Tuple
 import flow_vis
 import os
 
+import utils
+
 # Based on: https://www.pyimagesearch.com/2015/03/23/sliding-windows-for-object-detection-with-python-and-opencv/
 
 def pyramid(image: np.ndarray, scale: float = 1.5, minSize: Tuple[int, int] = (30, 30)) -> Iterator[np.ndarray]:
@@ -48,6 +50,38 @@ def sliding_window(image: np.ndarray, stepSize: int, windowSize: Tuple[int, int]
         for x in range(0, image.shape[1], stepSize):
             # yield the current window
             yield (x, y, image[y:y + windowSize[1], x:x + windowSize[0]])
+
+
+def get_simple_bounding_box(img: np.ndarray) -> utils.Rectangle:
+    """Fits a bounding box around all pixels with intensity higher than threshold.
+
+    Args:
+        image (np.ndarray): the input image
+
+    Returns:
+        utils.Rectangle: the resulting bounding box
+    """
+    height, width = img.shape[:2]
+    start_x, start_y = -1, -1
+    end_x, end_y = -1, -1
+    threshold = np.max(img) / 2
+    mask = img > threshold
+
+    for y in range(height):
+        if np.sum(mask[y, ...]) > 0:
+            end_y = y
+
+            if start_y == -1:
+                start_y = y
+
+    for x in range(width):
+        if np.sum(mask[:, x, ...]) > 0:
+            end_x = x
+
+            if start_x == -1:
+                start_x = x
+
+    return utils.Rectangle.from_points((start_x, start_y), (end_x, end_y))
 
 
 def get_flow_radial(frame: np.ndarray) -> np.ndarray:

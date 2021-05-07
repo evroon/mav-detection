@@ -9,8 +9,6 @@ import glob
 from datetime import datetime
 from typing import Tuple, List, Optional, TypeVar, cast, Dict, Any
 
-from im_helpers import get_flow_vis
-
 
 class Rectangle:
     def __init__(self, topleft: Tuple[float, float], size: Tuple[float, float]) -> None:
@@ -78,7 +76,7 @@ class Rectangle:
         return self.topleft[1] + self.size[1]
 
     def get_area(self) -> float:
-        return self.size[0] * self.size[1]
+        return max(1.0, self.size[0] * self.size[1])
 
     def to_yolo(self, img_size: np.ndarray, obj_id: int = 0) -> str:
         img_size = img_size.astype(np.float)

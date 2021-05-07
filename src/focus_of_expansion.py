@@ -148,11 +148,10 @@ class FocusOfExpansion:
         intersections = intersections[intersections[:, 0] != 0.0, :]
         return self.ransac(intersections)
 
-    def check_flow(self, flow_uv: np.ndarray, derotated_flow_uv: np.ndarray, FoE: Tuple[float, float]) -> np.ndarray:
+    def check_flow(self, derotated_flow_uv: np.ndarray, FoE: Tuple[float, float]) -> np.ndarray:
         """Checks which pixels of a flow field are parallel with the FoE.
 
         Args:
-            flow_uv (np.ndarray): the input flow field
             derotated_flow_uv (np.ndarray): the derotated flow field
             FoE (Tuple[float, float]): the Focus of Expansion
 
@@ -176,12 +175,11 @@ class FocusOfExpansion:
         angle_diff[np.isnan(angle_diff)] = 0
 
         self.max_flow = np.rad2deg(np.max(angle_diff))
-        result = im_helpers.to_rgb(angle_diff)
 
         mask = im_helpers.get_magnitude(derotated_flow_uv) < self.magnitude_threshold
-        result[mask, :] = 0
+        angle_diff[mask] = 0
 
-        return result
+        return angle_diff
 
     def draw_FoE(self, frame: np.ndarray, FoE: Tuple[float, float], color: List[int]=[0, 42, 255], radius: float = 10) -> np.ndarray:
         """Draw Focus of Expansion circle in an image

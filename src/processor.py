@@ -304,15 +304,19 @@ class Processor:
                 FoE_gt = self.dataset.get_gt_foe(self.frame_index)
                 FoE: Tuple[float, float] = utils.assert_type(FoE_dense)
 
-                phi_angle = self.focus_of_expansion.check_flow(self.flow_uv, self.flow_uv_derotated, FoE)
-                result_img = cv2.applyColorMap(phi_angle, cv2.COLORMAP_JET)
+                phi_angle = self.focus_of_expansion.check_flow(self.flow_uv_derotated, FoE)
+                phi_angle_rgb = im_helpers.to_rgb(phi_angle)
+                result_img = cv2.applyColorMap(phi_angle_rgb, cv2.COLORMAP_JET)
 
-                analysis: Tuple[float, utils.Rectangle, np.ndarray, float] = self.detector.analyze_pyramid(phi_angle)
-                window_optimized = self.detector.optimize_window(phi_angle, analysis[1])[1]
+                # analysis: Tuple[float, utils.Rectangle, np.ndarray, float] = self.detector.analyze_pyramid(phi_angle)
+                # window_optimized = self.detector.optimize_window(phi_angle, analysis[1])[1]
+                bounding_box = im_helpers.get_simple_bounding_box(phi_angle)
+                score = 0 #analysis[0]
+                print(np.median(phi_angle), bounding_box.get_area())
 
                 self.old_frame = orig_frame
-                confidence = analysis[0] / (window_optimized.get_area() * 255)
-                self.detection_results[self.frame_index].add_box('MAV', confidence, window_optimized)
+                confidence = score / (bounding_box.get_area() * 255)
+                self.detection_results[self.frame_index].add_box('MAV', confidence, bounding_box)
                 self.detection_results[self.frame_index].data = {
                     # 'foe_sparse': FoE_sparse,
                     'foe_dense': FoE_dense,
