@@ -162,7 +162,7 @@ class Validator:
             )
             img = cv2.putText(
                 img,
-                f'{box[0]}: {box[1]:02f}%, {max_iou:.02f}',
+                f'{box[0]}: {box[1]:.02f}%, {max_iou:.02f}',
                 rect.get_topleft_int_offset(),
                 cv2.FONT_HERSHEY_SIMPLEX,
                 0.4,
@@ -216,14 +216,14 @@ class Validator:
             foe_error = foe_dense - foe_gt
             foe_error_mag = im_helpers.get_magnitude(foe_error)
 
-            outlier_threshold = 30.0
-            inliers = []
+            outlier_threshold = 50.0
+            inliers_list = []
 
             for i in range(foe_error.shape[0]):
                 if np.abs(foe_error[i, 0]) < outlier_threshold and np.abs(foe_error[i, 1]) < outlier_threshold:
-                    inliers.append(i)
+                    inliers_list.append(i)
 
-            inliers = np.array(inliers)
+            inliers = np.array(inliers_list)
             print(f'foe outliers: {foe_error.shape[0] - inliers.shape[0]}, average error: {np.average(foe_error_mag[inliers]):.3f}, std: {np.std(foe_error_mag[inliers]):.3f}')
 
             plt.hist(foe_error[..., 0], np.linspace(-outlier_threshold, outlier_threshold, 40), histtype=u'step', label='x', color='b')

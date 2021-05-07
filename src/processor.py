@@ -293,6 +293,8 @@ class Processor:
                 else:
                     self.flow_uv = self.dataset.get_flow_uv(self.frame_index)
 
+                # print(self.flow_uv[10, self.flow_uv.shape[1]//2-5], self.flow_uv[10, self.flow_uv.shape[1]//2+5])
+
                 self.flow_vis = im_helpers.get_flow_vis(self.flow_uv)
                 self.flow_uv_derotated = self.detector.derotate(self.frame_index, self.flow_uv)
                 self.detection_results[self.frame_index] = FrameResult()
@@ -306,10 +308,11 @@ class Processor:
                 result_img = cv2.applyColorMap(phi_angle, cv2.COLORMAP_JET)
 
                 analysis: Tuple[float, utils.Rectangle, np.ndarray, float] = self.detector.analyze_pyramid(phi_angle)
+                window_optimized = self.detector.optimize_window(phi_angle, analysis[1])[1]
 
                 self.old_frame = orig_frame
-                confidence = analysis[0] / (analysis[1].get_area() * 255)
-                self.detection_results[self.frame_index].add_box('FoE', confidence, analysis[1])
+                confidence = analysis[0] / (window_optimized.get_area() * 255)
+                self.detection_results[self.frame_index].add_box('MAV', confidence, window_optimized)
                 self.detection_results[self.frame_index].data = {
                     # 'foe_sparse': FoE_sparse,
                     'foe_dense': FoE_dense,
@@ -326,7 +329,7 @@ class Processor:
                 if result_img is not None and np.sum(result_img) > 0:
                     self.write(np.hstack((
                         self.flow_vis,
-                        # im_helpers.get_flow_vis(self.flow_uv_derotated),
+                        im_helpers.get_flow_vis(self.flow_uv_derotated),
                         # im_helpers.apply_colormap(im_helpers.to_rgb(im_helpers.get_rho(self.flow_uv))),
                         # im_helpers.to_rgb(im_helpers.get_magnitude(self.flow_uv_derotated)),
                         result_img

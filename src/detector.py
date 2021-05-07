@@ -284,6 +284,8 @@ class Detector:
     def analyze_pyramid(self, img: np.ndarray) -> Tuple[float, utils.Rectangle, np.ndarray, float]:
         """Analyze a frame using pyramid scales.
 
+        Determines which window has heighest score (magnitude).
+
         Args:
             img (np.ndarray): the image to analyze
 
@@ -358,25 +360,6 @@ class Detector:
             c += 1
 
         return result
-
-    # def get_histogram(self):
-    #     magnitude, gradient = dataset.get_gradient_and_magnitude(flow_uv)
-
-    #     mag_hist, mag_edges = np.histogram(magnitude, 10)
-    #     gra_hist, gra_edges = np.histogram(gradient,  10)
-    #     mag_max_id = np.argmax(mag_hist)
-    #     gra_max_id = np.argmax(gra_hist)
-    #     mag_range = mag_edges[mag_max_id], mag_edges[mag_max_id + 1]
-    #     gra_range = gra_edges[gra_max_id], gra_edges[gra_max_id + 1]
-    #     ones = np.ones_like(magnitude)
-
-    #     feature_pos_int = feature_pos.astype(np.uint32).tolist()
-    #     feature_pos += flow_uv[feature_pos_int[0], feature_pos_int[1], :]
-    #     feature_pos_clipped = np.clip(feature_pos, min_coords, max_coords)
-
-    #     if feature_pos[0] != feature_pos_clipped[0] or feature_pos[1] != feature_pos_clipped[1]:
-    #         feature_pos = np.array(ground_truth.get_center())
-    #         feature_pos = np.clip(feature_pos, min_coords, max_coords)
 
     def clip(self, img: np.ndarray) -> np.ndarray:
         img[..., 0] = np.clip(img[..., 0], 0, img.shape[1] - 1)

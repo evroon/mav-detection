@@ -19,7 +19,7 @@ class FocusOfExpansion:
         self.enable_plots = False
         self.max_flow = 0.0 # maximum flow in the image (degrees).
         self.radial_threshold = np.cos(np.deg2rad(15))
-        self.magnitude_threshold = 0
+        self.magnitude_threshold = 1
         self.ransac_threshold = 30.0 # pixels
         self.color = np.random.randint(0, 255, (self.lucas_kanade.total_num_corners, 3))
         self.trace = np.zeros((self.lucas_kanade.total_num_corners, 2000), dtype=np.int)
@@ -58,7 +58,7 @@ class FocusOfExpansion:
         """Get FoE location using dense optical flow.
 
         Args:
-            flow_uv (np.ndarray): current frame
+            flow_uv (np.ndarray): current optical flow field
 
         Returns:
             Tuple[float, float]: FoE estimation location

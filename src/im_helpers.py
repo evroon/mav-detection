@@ -32,6 +32,7 @@ def pyramid(image: np.ndarray, scale: float = 1.5, minSize: Tuple[int, int] = (3
         # yield the next image in the pyramid
         yield image
 
+
 def sliding_window(image: np.ndarray, stepSize: int, windowSize: Tuple[int, int]) -> Iterator[np.ndarray]:
     """Slides a window across the image
 
