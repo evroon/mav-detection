@@ -305,7 +305,11 @@ class Processor:
                 phi_angle = self.focus_of_expansion.check_flow(self.flow_uv, self.flow_uv_derotated, FoE)
                 result_img = cv2.applyColorMap(phi_angle, cv2.COLORMAP_JET)
 
+                analysis: Tuple[float, utils.Rectangle, np.ndarray, float] = self.detector.analyze_pyramid(phi_angle)
+
                 self.old_frame = orig_frame
+                confidence = analysis[0] / (analysis[1].get_area() * 255)
+                self.detection_results[self.frame_index].add_box('FoE', confidence, analysis[1])
                 self.detection_results[self.frame_index].data = {
                     # 'foe_sparse': FoE_sparse,
                     'foe_dense': FoE_dense,
