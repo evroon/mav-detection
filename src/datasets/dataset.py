@@ -9,7 +9,6 @@ import logging
 import subprocess
 from typing import Optional, Tuple, cast, List
 
-
 class Dataset:
     '''Desscribes a dataset with images, annotations and flow fields.'''
 
@@ -32,9 +31,11 @@ class Dataset:
         self.ann_path = f'{self.seq_path}/annotation'
         self.results_path = f'{self.seq_path}/results'
         self.img_pngs = f'{self.img_path}/{img_format}'
+        self.img_pngs_ffmpeg = f'{self.img_path}/image_%5d.png'
         self.vid_path = f'{self.seq_path}/recording.mp4'
         self.state_path = f'{self.seq_path}/states'
 
+        self.mp4_to_png()
         self.jpg_to_png()
         self.reorder_pngs(self.img_path)
         self.reorder_pngs(self.seg_path)
@@ -51,7 +52,7 @@ class Dataset:
         self.resolution: np.ndarray = np.array(self.capture_shape)[:2][::-1]
         self.flow_size = utils.get_capture_size(self.flow_capture)
         self.N = utils.get_frame_count(self.flow_capture)
-        self.start_frame = 100
+        self.start_frame = 250
 
         if not os.path.exists(self.ann_path):
             os.makedirs(self.ann_path)
@@ -162,6 +163,14 @@ class Dataset:
         """
         _, orig_frame = self.orig_capture.read()
         return orig_frame
+
+    def mp4_to_png(self) -> None:
+        """Converts MP4 into the correct PNG format (if they do not already exist)."""
+        utils.create_if_not_exists(self.img_path)
+        
+        if len(os.listdir(self.img_path)) < 1:
+            print('Converting mp4 to pngs.')
+            utils.video_to_img(self.vid_path, self.img_pngs_ffmpeg)
 
     def jpg_to_png(self) -> None:
         """Converts JPGs (if they exist) into the correct PNG format."""

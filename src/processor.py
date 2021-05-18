@@ -305,14 +305,14 @@ class Processor:
                 FoE: Tuple[float, float] = utils.assert_type(FoE_dense)
 
                 phi_angle = self.focus_of_expansion.check_flow(self.flow_uv_derotated, FoE)
-                phi_angle_rgb = im_helpers.to_rgb(phi_angle)
-                result_img = cv2.applyColorMap(phi_angle_rgb, cv2.COLORMAP_JET)
+                phi_angle_rgb = im_helpers.to_rgb(phi_angle, max_value=180.0)
+                result_img = im_helpers.apply_colormap(phi_angle_rgb) #, max_value=180.0
 
                 # analysis: Tuple[float, utils.Rectangle, np.ndarray, float] = self.detector.analyze_pyramid(phi_angle)
                 # window_optimized = self.detector.optimize_window(phi_angle, analysis[1])[1]
                 bounding_box = im_helpers.get_simple_bounding_box(phi_angle)
                 score = 0 #analysis[0]
-                print(np.median(phi_angle), bounding_box.get_area())
+                # print(np.median(phi_angle), bounding_box.get_area())
 
                 self.old_frame = orig_frame
                 confidence = score / (bounding_box.get_area() * 255)
@@ -330,12 +330,12 @@ class Processor:
                     if FoE_gt is not None:
                         img = self.focus_of_expansion.draw_FoE(img, FoE_gt, [255, 255, 255])
 
+                self.config.results[self.frame_index] = self.detection_results[self.frame_index]
+
                 if result_img is not None and np.sum(result_img) > 0:
                     self.write(np.hstack((
                         self.flow_vis,
                         im_helpers.get_flow_vis(self.flow_uv_derotated),
-                        # im_helpers.apply_colormap(im_helpers.to_rgb(im_helpers.get_rho(self.flow_uv))),
-                        # im_helpers.to_rgb(im_helpers.get_magnitude(self.flow_uv_derotated)),
                         result_img
                     )))
                 else:

@@ -81,7 +81,7 @@ class SimData(Dataset):
             pfm_array = np.array(airsim.read_pfm(img_path)[0])
             depth_img = (pfm_array / np.max(pfm_array) * 255) * sky_distance_factor
             depth_img_int = np.clip(0, 255, depth_img).astype(np.uint8)
-            depth_img_int = cv2.applyColorMap(depth_img_int, cv2.COLORMAP_JET)
+            depth_img_int = im_helpers.apply_colormap(depth_img_int)
             cv2.imwrite(f'{self.depth_vis_path}/image_{i:05d}.png', depth_img_int)
 
     def create_annotations(self) -> None:

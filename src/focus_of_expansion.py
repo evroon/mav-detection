@@ -2,7 +2,7 @@ import numpy as np
 import cv2
 import utils
 import matplotlib.pyplot as plt
-from typing import Tuple, Optional, List
+from typing import Tuple, List, cast
 
 from lucas_kanade import LucasKanade
 import im_helpers
@@ -19,7 +19,7 @@ class FocusOfExpansion:
         self.enable_plots = False
         self.max_flow = 0.0 # maximum flow in the image (degrees).
         self.radial_threshold = np.cos(np.deg2rad(15))
-        self.magnitude_threshold = 1
+        self.magnitude_threshold = 2.5
         self.ransac_threshold = 30.0 # pixels
         self.color = np.random.randint(0, 255, (self.lucas_kanade.total_num_corners, 3))
         self.trace = np.zeros((self.lucas_kanade.total_num_corners, 2000), dtype=np.int)
@@ -49,8 +49,7 @@ class FocusOfExpansion:
 
             if score > optimum:
                 optimum = score
-                optimal_foe = chosen_sample
-
+                optimal_foe = cast(Tuple[float, float], tuple(chosen_sample))
 
         return optimal_foe
 
