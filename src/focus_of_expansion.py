@@ -50,7 +50,7 @@ class FocusOfExpansion:
             if score > optimum:
                 optimum = score
                 optimal_foe = cast(Tuple[float, float], tuple(chosen_sample))
-
+                
         return optimal_foe
 
     def get_FOE_dense(self, flow_uv: np.ndarray) -> Tuple[float, float]:
@@ -172,13 +172,12 @@ class FocusOfExpansion:
 
         angle_diff = np.arccos((diff1[..., 0] * diff2[..., 0] + diff1[..., 1] * diff2[..., 1]) / norm)
         angle_diff[np.isnan(angle_diff)] = 0
+        phi_angle_deg = np.rad2deg(angle_diff)
+        self.max_flow = np.max(phi_angle_deg)
 
-        self.max_flow = np.rad2deg(np.max(angle_diff))
+        # mask = im_helpers.get_magnitude(derotated_flow_uv) < self.magnitude_threshold
 
-        mask = im_helpers.get_magnitude(derotated_flow_uv) < self.magnitude_threshold
-        angle_diff[mask] = 0
-
-        return angle_diff
+        return phi_angle_deg
 
     def draw_FoE(self, frame: np.ndarray, FoE: Tuple[float, float], color: List[int]=[0, 42, 255], radius: float = 10) -> np.ndarray:
         """Draw Focus of Expansion circle in an image

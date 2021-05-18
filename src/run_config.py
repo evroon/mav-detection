@@ -4,6 +4,7 @@ from typing import Iterator, Any, Dict, List, cast
 from enum import Enum
 
 from datasets.dataset import Dataset
+from datasets.experiment import Experiment
 from datasets.midgard import Midgard
 from datasets.sim_data import SimData
 from datasets.vis_drone import VisDrone
@@ -112,14 +113,17 @@ class RunConfig:
 
     def get_dataset(self) -> Dataset:
         data_type = self.get_dataset_type(self.dataset)
+        
         if data_type == RunConfig.DatasetType.MIDGARD:
             dataset: Dataset = Midgard(self.logger, self.sequence)
         elif data_type == RunConfig.DatasetType.SIMULATION:
             dataset = SimData(self.logger, self.sequence)
         elif data_type == RunConfig.DatasetType.VIS_DRONE:
             dataset = VisDrone(self.logger, self.sequence)
+        elif data_type == RunConfig.DatasetType.EXPERIMENT:
+            dataset = Experiment(self.logger, self.sequence)
         else:
-            dataset = Dataset('', self.logger, self.sequence)
+            raise ValueError(f'Invalid dataset type: {data_type}.')
 
         self.sequence = dataset.sequence
         return dataset

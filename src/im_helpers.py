@@ -112,8 +112,15 @@ def get_flow_vis(frame: np.ndarray, magnitude_factor: float = 1.0) -> np.ndarray
     return flow_vis.flow_to_color(frame, convert_to_bgr=True)
 
 
-def apply_colormap(img: np.ndarray) -> np.ndarray:
-    return cv2.applyColorMap(img, cv2.COLORMAP_JET)
+def apply_colormap(img: np.ndarray, max_value: float = None) -> np.ndarray:
+    if max_value is None:
+        return cv2.applyColorMap(img, cv2.COLORMAP_JET)
+
+    old_value = img[0, 0, 0]
+    img[0, 0, ...] = max_value
+    result = cv2.applyColorMap(img, cv2.COLORMAP_JET)
+    result[0, 0, ...] = cv2.applyColorMap(np.ones((1, 1, 3), dtype=np.uint8) * old_value, cv2.COLORMAP_JET)
+    return result
 
 
 def get_rho(img: np.ndarray) -> np.ndarray:
@@ -140,7 +147,7 @@ def get_magnitude(img: np.ndarray) -> np.ndarray:
     return np.linalg.norm(img, axis=-1)
 
 
-def to_rgb(img: np.ndarray)-> np.ndarray:
+def to_rgb(img: np.ndarray, max_value: float = None)-> np.ndarray:
     """Converts grayscale to RGB.
 
     Args:
@@ -149,18 +156,19 @@ def to_rgb(img: np.ndarray)-> np.ndarray:
     Returns:
         np.ndarray: output RGB image
     """
-    return cv2.cvtColor(to_int(img, np.uint8, True), cv2.COLOR_GRAY2RGB)
+    return cv2.cvtColor(to_int(img, np.uint8, True, max_value=max_value), cv2.COLOR_GRAY2RGB)
 
 
-def to_int(img: np.ndarray, type: type=np.uint8, normalize: bool=False) -> np.ndarray:
+def to_int(img: np.ndarray, type: type=np.uint8, normalize: bool=False, max_value: float = None) -> np.ndarray:
     img_normalized = img
 
     if normalize:
-        max_intensity = np.max(img)
-        if max_intensity == 0.0:
-            max_intensity = 1.0
+        if max_value is None:
+            max_value = np.max(img)
+        elif max_value <= 0.0:
+            max_value = 1.0
 
-        img_normalized = np.abs(img_normalized) * 255 / max_intensity
+        img_normalized = np.abs(img_normalized) * 255 / max_value
 
     return np.around(img_normalized).astype(type)
 

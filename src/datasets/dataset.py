@@ -44,7 +44,6 @@ class Dataset:
         if not os.path.exists(self.vid_path):
             utils.img_to_video(self.img_pngs, self.vid_path)
 
-        self.states = utils.sorted_glob(f'{self.state_path}/*.json')
         self.orig_capture = cv2.VideoCapture(self.img_pngs)
         self.flow_capture = cv2.VideoCapture(f'{self.img_path}/output/flownet2.mp4')
         self.capture_size = utils.get_capture_size(self.orig_capture)
@@ -201,14 +200,15 @@ class Dataset:
         """
         pass
 
-    def get_angular_velocity(self, i:int) -> np.ndarray:
-        """Returns the angular velocity of the IMU if known.
+    def get_angular_difference(self, first:int, second:int) -> np.ndarray:
+        """Returns the difference in orientations of the IMU between two frames if known.
 
         Args:
-            i (int): Frame index
+            first (int): Frame index 1
+            second (int): Frame index 2
 
         Returns:
-            np.ndarray: the angular velocity Euler rates in body frame (rad/s)
+            np.ndarray: the angular Euler rates in body frame (rad/dt)
         """
         pass
 

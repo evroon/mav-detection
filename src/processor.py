@@ -26,7 +26,7 @@ class Processor:
         self.detector = Detector(self.dataset)
         self.detection_results: Dict[int, FrameResult] = dict()
         self.output: Optional[cv2.VideoWriter] = None
-        self.use_gt_of = True
+        self.use_gt_of = False
 
         self.frame_index, self.start_frame = 0, 100
         self.is_exiting = False
@@ -78,10 +78,10 @@ class Processor:
             if k == 27:
                 self.is_exiting = True
 
-        self.frame_index += 1
-
         with open(f'{self.dataset.results_path}/image_{self.frame_index:05d}.json', 'w') as f:
-            f.write(json.dumps(utils.get_json(self.config.results), indent=4, sort_keys=True))
+            f.write(json.dumps(utils.get_json(self.config.results[self.frame_index]), indent=4, sort_keys=True))
+
+        self.frame_index += 1
 
         if self.frame_index % int(self.dataset.N / 10) == 0:
             self.logger.info(f'{self.frame_index / self.dataset.N * 100:.2f}% {self.frame_index} / {self.dataset.N}')

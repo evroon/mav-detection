@@ -80,14 +80,12 @@ class Detector:
         if i < 1:
             return flow_uv
 
-        orientation1 = self.dataset.get_orientation(i-1)
-        orientation2 = self.dataset.get_orientation(i)
         dt = self.dataset.get_delta_time(i)
         w = self.dataset.capture_size[0]
         h = self.dataset.capture_size[1]
 
         # X displacement corresponds to yaw (Z-axis) and Y displacement corresponds to pitch (Y-axis)
-        omega = orientation2 - orientation1
+        omega = self.dataset.get_angular_difference(i-1, i)
         omega = omega[[1, 2, 0]] / dt
         omega[2] = -omega[2]
 

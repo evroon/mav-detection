@@ -132,7 +132,7 @@ class Validator:
         true_positives_in_frame = 0
 
         # Plot estimates.
-        for box in boxes:
+        for box in boxes.boxes:
             max_iou = 0.0
             rect = box[2]
 
@@ -174,65 +174,38 @@ class Validator:
         return ious
 
     def run_validation(self, estimates: Optional[Dict[int, FrameResult]] = None) -> None:
-        dataset = self.config.get_dataset()
-        output = utils.get_output(f'{dataset.seq_path}/evaluation.mp4', dataset.orig_capture)
+        self.dataset = self.config.get_dataset()
+        output = utils.get_output(f'{self.dataset.seq_path}/evaluation.mp4', self.dataset.orig_capture)
         self.positives = 0
         self.true_positives = 0
         self.false_positives = 0
         self.false_negatives = 0
+        self.frames: Dict[int, FrameResult] = dict()
 
         try:
-            video_annotated_path = dataset.seq_path + '/video-annotated.mp4'
+            video_annotated_path = self.dataset.seq_path + '/video-annotated.mp4'
 
             if estimates is None:
-                frames_raw = self.get_inference(dataset.vid_path, video_annotated_path, False)
-                frames = self.parse_frames(frames_raw)
+                # frames_raw = self.get_inference(dataset.vid_path, video_annotated_path, False)
+                # frames = self.parse_frames(frames_raw)
+                self.load_results()
             else:
-                frames = utils.assert_type(estimates)
+                self.frames = utils.assert_type(estimates)
 
             ious: List[float] = []
 
-            for i in range(dataset.N):
-                frame = dataset.get_frame()
-                ground_truth = dataset.get_annotation(i)
-                if i in frames:
-                    ious_frame = self.annotate(frame, frames[i], ground_truth)
+            for i in range(self.dataset.N):
+                frame = self.dataset.get_frame()
+                ground_truth = self.dataset.get_annotation(i)
+                if i in self.frames:
+                    ious_frame = self.annotate(frame, self.frames[i], ground_truth)
                     for x in ious_frame:
                         ious.append(x)
                     output.write(frame)
 
             # Save histogram of IoU values.
-            ious = np.array(ious)
-            utils.create_if_not_exists('media/output')
-            plt.hist(ious, np.linspace(0.0, 1.0, 20))
-            plt.grid()
-            plt.xlabel('IoU')
-            plt.ylabel('Frequency [frames]')
-            plt.savefig('media/output/ious.png', bbox_inches='tight')
-
-            # Plot histogram of FoE errors.
-            foe_dense = np.array([x[1].data['foe_dense'] for x in frames.items()])
-            foe_gt = np.array([x[1].data['foe_gt'] for x in frames.items()])
-            foe_error = foe_dense - foe_gt
-            foe_error_mag = im_helpers.get_magnitude(foe_error)
-
-            outlier_threshold = 50.0
-            inliers_list = []
-
-            for i in range(foe_error.shape[0]):
-                if np.abs(foe_error[i, 0]) < outlier_threshold and np.abs(foe_error[i, 1]) < outlier_threshold:
-                    inliers_list.append(i)
-
-            inliers = np.array(inliers_list)
-            print(f'foe outliers: {foe_error.shape[0] - inliers.shape[0]}, average error: {np.average(foe_error_mag[inliers]):.3f}, std: {np.std(foe_error_mag[inliers]):.3f}')
-
-            plt.hist(foe_error[..., 0], np.linspace(-outlier_threshold, outlier_threshold, 40), histtype=u'step', label='x', color='b')
-            plt.hist(foe_error[..., 1], np.linspace(-outlier_threshold, outlier_threshold, 40), histtype=u'step', label='y', color='m')
-            plt.xlabel('FoE error [pixels]')
-            plt.ylabel('Frequency [frames]')
-            plt.legend()
-            plt.savefig('media/output/foe-error.png', bbox_inches='tight')
-
+            self.ious = np.array(ious)
+            self.plot()
 
             if self.true_positives > 0:
                 self.config.logger.info(f'TP: {self.true_positives}, FP: {self.false_positives}, FN: {self.false_negatives}')
@@ -241,12 +214,15 @@ class Validator:
         finally:
             output.release()
             self.write_results()
+            self.plot_roc()
 
     def write_results(self) -> None:
         self.negatives = 0
         self.true_negatives = 0
 
         self.results = {
+            'ious': self.ious.tolist(),
+            'foe_error': self.foe_error.tolist(),
             'true_positives': self.true_positives,
             'false_positives': self.false_positives,
             'false_negatives': self.false_negatives,
@@ -257,20 +233,73 @@ class Validator:
             'recall': self.true_positives / max(1.0, self.true_positives + self.false_negatives),
             'precision': self.true_positives / max(1.0, self.true_positives + self.false_positives),
         }
-        self.config.logger.info(self.results)
+        # self.config.logger.info(self.results)
 
         output_file = f'results/{self.config}.json'
-        if not os.path.exists(output_file):
-            os.makedirs(os.path.dirname(output_file))
+        utils.create_if_not_exists(os.path.dirname(output_file))
+
         with open(output_file, 'w') as f:
             json.dump(self.results, f, indent=4)
 
         with open('main.csv', 'a') as csv_file:
             csv_file.write(','.join([str(x) for x in self.config]))
-            csv_file.write(','.join([f'{self.results[x]:.06f}' for x in self.results]))
+            csv_file.write(','.join([f'{self.results[x]:.06f}' for x in self.results if x not in ['ious', 'foe_error']]))
             csv_file.write('\n')
 
-        self.plot_roc()
+
+    def load_results(self) -> None:
+        print('Loading detection results...')
+        for i in range(self.dataset.N - 1):
+            filename = f'{self.dataset.results_path}/image_{i:05d}.json'
+
+            with open(filename, 'r') as f:
+                json_result = json.load(f)
+                
+                self.frames[i] = FrameResult()
+                self.frames[i].data = json_result['data']
+
+                for j, item in enumerate(json_result['boxes']):
+                    self.frames[i].add_box(
+                        item[0],
+                        item[1],
+                        utils.Rectangle(
+                            item[2]['topleft'],
+                            item[2]['size']
+                        )
+                    )
+
+    def plot(self) -> None:
+        utils.create_if_not_exists('media/output')
+        plt.hist(self.ious, np.linspace(0.0, 1.0, 20))
+        plt.grid()
+        plt.xlabel('IoU')
+        plt.ylabel('Frequency [frames]')
+        plt.savefig('media/output/ious.png', bbox_inches='tight')
+
+        # Plot histogram of FoE errors.
+        # print(self.frames.items())
+        foe_dense = np.array([x[1].data['foe_dense'] for x in self.frames.items()])
+        foe_gt = np.array([x[1].data['foe_gt'] for x in self.frames.items()])
+        # print(foe_dense.dtype)
+        self.foe_error = foe_dense - foe_gt
+        foe_error_mag = im_helpers.get_magnitude(self.foe_error)
+
+        outlier_threshold = 50.0
+        inliers_list = []
+
+        for i in range(self.foe_error.shape[0]):
+            if np.abs(self.foe_error[i, 0]) < outlier_threshold and np.abs(self.foe_error[i, 1]) < outlier_threshold:
+                inliers_list.append(i)
+
+        inliers = np.array(inliers_list)
+        print(f'foe outliers: {self.foe_error.shape[0] - inliers.shape[0]}, average error: {np.average(foe_error_mag[inliers]):.3f}, std: {np.std(foe_error_mag[inliers]):.3f}')
+
+        plt.hist(self.foe_error[..., 0], np.linspace(-outlier_threshold, outlier_threshold, 40), histtype=u'step', label='x', color='b')
+        plt.hist(self.foe_error[..., 1], np.linspace(-outlier_threshold, outlier_threshold, 40), histtype=u'step', label='y', color='m')
+        plt.xlabel('FoE error [pixels]')
+        plt.ylabel('Frequency [frames]')
+        plt.legend()
+        plt.savefig('media/output/foe-error.png', bbox_inches='tight')
 
     def plot_roc(self) -> None:
         ''' Plots the ROC curve for different thresholds. '''
@@ -289,7 +318,7 @@ class Validator:
         # Cluster/window the data into bins to make plot more readble.
         bins = np.zeros(22)
         bins[:4] = np.linspace(0, 0.01, 4)
-        bins[4:] = np.linspace(0.02, np.max(x[x <= 1.0]), 18)
+        bins[4:] = np.linspace(0.02, 1.0, 18) #np.max(x[x <= 1.0])
         avg_std = np.zeros((len(bins), 4))
 
         for i in range(1, len(bins)):

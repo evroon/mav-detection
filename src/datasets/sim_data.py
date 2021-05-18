@@ -18,6 +18,7 @@ class SimData(Dataset):
 
     def __init__(self, logger: logging.Logger, sequence: str) -> None:
         simdata_path = os.environ['SIMDATA_PATH']
+        self.states = utils.sorted_glob(f'{self.state_path}/*.json')
         super().__init__(simdata_path, logger, sequence)
 
     def write_yolo_annotation(self, image_path: str) -> None:
@@ -43,9 +44,8 @@ class SimData(Dataset):
         euler = Rotation.from_quat([orientatation['x_val'], orientatation['y_val'], orientatation['z_val'], orientatation['w_val']]).as_euler('xyz', degrees=False)
         return euler
 
-    def get_angular_velocity(self, i:int) -> np.ndarray:
-        angular_velocity = self.get_state(i)['Drone1']['imu']['angular_velocity']
-        return np.array([angular_velocity['x_val'], angular_velocity['y_val'], angular_velocity['z_val']])
+    def get_angular_difference(self, first:int, second:int) -> np.ndarray:
+        return self.get_orientation(second) - self.get_orientation(first)
 
     def get_delta_time(self, i:int) -> float:
         if i < 1:

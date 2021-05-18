@@ -291,6 +291,16 @@ def img_to_video(input: str, output: str, framerate: int = 30) -> None:
         command = f'ffmpeg -start_number {start_number} -r {framerate} -i {input} -c:v libx264 -vf fps={framerate} -pix_fmt yuv420p {output} -y'
         subprocess.call(command.split(' '))
 
+def video_to_img(input: str, output: str) -> None:
+    """Convert video to images
+
+    Args:
+        input (str): input video path
+        output (str): output images path
+    """
+    if not os.path.exists(output):
+        command = f'ffmpeg -i {input} {output}'
+        subprocess.call(command.split(' '))
 
 def is_rotation_matrix(R: np.ndarray) -> bool:
     """Checks if a matrix is a valid rotation matrix.
