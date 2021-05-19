@@ -37,6 +37,7 @@ class Dataset:
 
         self.mp4_to_png()
         self.jpg_to_png()
+        self.reorder_anns(self.ann_path)
         self.reorder_pngs(self.img_path)
         self.reorder_pngs(self.seg_path)
         self.reorder_pngs(self.depth_path)
@@ -188,6 +189,14 @@ class Dataset:
         for i, png in enumerate(pngs):
             extension = os.path.splitext(png)[-1]
             shutil.move(png, f'{base_path}/image_{i:05d}{extension}')
+
+    def reorder_anns(self, base_path: str) -> None:
+        """Lets the annotation indices start at 0."""
+        anns = utils.sorted_glob(base_path + '/image_*')
+
+        for i, annotation in enumerate(anns):
+            extension = os.path.splitext(annotation)[-1]
+            shutil.move(annotation, f'{base_path}/image_{i:05d}{extension}')
 
     def get_orientation(self, i:int) -> np.ndarray:
         """Returns the orientation from the IMU if known.
