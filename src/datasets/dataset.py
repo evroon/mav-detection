@@ -98,6 +98,14 @@ class Dataset:
         """
         raise ValueError('Not implemented.')
 
+    def get_state_filenames(self) -> List[str]:
+        """Get the filenames of the state data.
+
+        Returns:
+            List[str]: filenames of json files containing state data
+        """
+        return []
+
     def create_ground_truth_optical_flow(self) -> None:
         """Creates ground truth optical flow if possible."""
         pass
@@ -167,7 +175,7 @@ class Dataset:
     def mp4_to_png(self) -> None:
         """Converts MP4 into the correct PNG format (if they do not already exist)."""
         utils.create_if_not_exists(self.img_path)
-        
+
         if len(os.listdir(self.img_path)) < 1:
             print('Converting mp4 to pngs.')
             utils.video_to_img(self.vid_path, self.img_pngs_ffmpeg)
@@ -217,7 +225,7 @@ class Dataset:
             second (int): Frame index 2
 
         Returns:
-            np.ndarray: the angular Euler rates in body frame (rad/dt)
+            np.ndarray: the angular Euler rates (pitch, yaw, roll) in body frame (rad/dt)
         """
         pass
 

@@ -67,7 +67,7 @@ class Detector:
         R1, R2, t = cv2.decomposeEssentialMat(self.essential)
         return utils.rotation_matrix_to_euler(R1), utils.rotation_matrix_to_euler(R2), t
 
-    def derotate(self, i:int, flow_uv: np.ndarray) -> np.ndarray:
+    def derotate(self, previous_frame_index:int, current_frame_index:int, flow_uv: np.ndarray) -> np.ndarray:
         """Derotate flow field according to IMU data
 
         Args:
@@ -77,17 +77,15 @@ class Detector:
         Returns:
             np.ndarray: derotated flow field
         """
-        if i < 1:
+        if current_frame_index < 1:
             return flow_uv
 
-        dt = self.dataset.get_delta_time(i)
+        dt = self.dataset.get_delta_time(current_frame_index)
         w = self.dataset.capture_size[0]
         h = self.dataset.capture_size[1]
 
         # X displacement corresponds to yaw (Z-axis) and Y displacement corresponds to pitch (Y-axis)
-        omega = self.dataset.get_angular_difference(i-1, i)
-        omega = omega[[1, 2, 0]] / dt
-        omega[2] = -omega[2]
+        omega = self.dataset.get_angular_difference(previous_frame_index, current_frame_index) / dt
 
         x_coords = -(self.x_coords / w - 0.5) * 2.0
         y_coords = -(self.y_coords / h - 0.5) * 2.0

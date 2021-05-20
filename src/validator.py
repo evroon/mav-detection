@@ -19,6 +19,8 @@ class Validator:
     def __init__(self, config: RunConfig) -> None:
         self.host: str = 'http://192.168.178.235:8099'
         self.config = config
+        self.ious = np.zeros(1)
+        self.foe_error = np.zeros((1, 2))
 
     def start_yolo_inference(self) -> None:
         run: str = self.config.settings['yolo_train_weights'][str(self.config.mode)]
@@ -254,7 +256,7 @@ class Validator:
 
             with open(filename, 'r') as f:
                 json_result = json.load(f)
-                
+
                 self.frames[i] = FrameResult()
                 self.frames[i].data = json_result['data']
 
@@ -277,9 +279,12 @@ class Validator:
         plt.savefig('media/output/ious.png', bbox_inches='tight')
 
         # Plot histogram of FoE errors.
-        # print(self.frames.items())
         foe_dense = np.array([x[1].data['foe_dense'] for x in self.frames.items()])
         foe_gt = np.array([x[1].data['foe_gt'] for x in self.frames.items()])
+
+        if foe_gt[0] is None:
+            return
+
         # print(foe_dense.dtype)
         self.foe_error = foe_dense - foe_gt
         foe_error_mag = im_helpers.get_magnitude(self.foe_error)

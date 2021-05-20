@@ -5,7 +5,7 @@ import re
 import os
 import json
 import airsim
-from typing import Optional, Tuple, cast
+from typing import Optional, Tuple, cast, List
 from scipy.spatial.transform import Rotation
 
 import utils
@@ -18,7 +18,6 @@ class SimData(Dataset):
 
     def __init__(self, logger: logging.Logger, sequence: str) -> None:
         simdata_path = os.environ['SIMDATA_PATH']
-        self.states = utils.sorted_glob(f'{self.state_path}/*.json')
         super().__init__(simdata_path, logger, sequence)
 
     def write_yolo_annotation(self, image_path: str) -> None:
@@ -35,8 +34,11 @@ class SimData(Dataset):
         with open(f'{self.ann_path}/image_{index}.txt', 'w') as f:
             f.write(rect.to_yolo(img_size))
 
+    def get_state_filenames(self) -> List[str]:
+        return utils.sorted_glob(f'{self.state_path}/*.json')
+
     def get_state(self, i:int) -> np.ndarray:
-        with open(self.states[i], 'r') as f:
+        with open(self.get_state_filenames()[i], 'r') as f:
             return json.load(f)
 
     def get_orientation(self, i:int) -> np.ndarray:
@@ -45,7 +47,10 @@ class SimData(Dataset):
         return euler
 
     def get_angular_difference(self, first:int, second:int) -> np.ndarray:
-        return self.get_orientation(second) - self.get_orientation(first)
+        omega = self.get_orientation(second) - self.get_orientation(first)
+        omega = omega[[1, 2, 0]]
+        omega[2] = -omega[2]
+        return omega
 
     def get_delta_time(self, i:int) -> float:
         if i < 1:

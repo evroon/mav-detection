@@ -15,12 +15,12 @@ class Experiment(Dataset):
         self.gps_states_csv = np.genfromtxt(f'{self.state_path}/vn_gps_log.csv', delimiter=',', skip_header=1)
         self.imu_states_csv = np.genfromtxt(f'{self.state_path}/vn_imu_log.csv', delimiter=',', skip_header=1)
 
-        self.gps_first_timestamp = self.gps_states_csv[0, 0]
+        self.gps_first_timestamp = self.gps_states_csv[0, 2]
 
         self.cropped_start_frame = 4 * 60 + 54
         self.duration = 15
 
-        self.fps = ((self.N+1) / self.duration)
+        self.fps = (self.N+1) / self.duration
         self.cropped_end_frame = self.cropped_start_frame + self.duration
 
         self.start_gps_line = self.gps_first_timestamp + self.cropped_start_frame
@@ -32,8 +32,8 @@ class Experiment(Dataset):
         self.video_imu_indices = np.zeros_like(video_timestamps, dtype=np.uint16)
 
         for i, v in enumerate(video_timestamps):
-            time_diff_gps = self.gps_states_csv[:, 0] - v
-            time_diff_imu = self.imu_states_csv[:, 0] - v
+            time_diff_gps = np.abs(self.gps_states_csv[:, 2] - v - self.gps_states_csv[0, 2] - self.cropped_start_frame)
+            time_diff_imu = np.abs(self.imu_states_csv[:, 2] - v - self.imu_states_csv[0, 2] - self.cropped_start_frame)
 
             self.video_gps_indices[i] = np.argmin(time_diff_gps)
             self.video_imu_indices[i] = np.argmin(time_diff_imu)
@@ -55,6 +55,9 @@ class Experiment(Dataset):
             dt = self.imu_states_csv[i, 2] - self.imu_states_csv[i-1, 2]
             acc_diff += self.imu_states_csv[i, 6:] * dt
 
+        acc_diff = acc_diff[[1, 2, 0]]
+        acc_diff[0] = -acc_diff[0]
+        acc_diff[1] = -acc_diff[1]
         return acc_diff
 
     def get_delta_time(self, i:int) -> float:

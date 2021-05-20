@@ -109,7 +109,7 @@ def calculate_flow(
 def write_flow(dataset: Dataset) -> np.ndarray:
     print('Calculating ground truth optical flow...')
     screen_res = dataset.capture_size
-    states = [x for x in dataset.states if 'timestamp' not in x]
+    states = [x for x in dataset.get_state_filenames() if 'timestamp' not in x]
 
     x_coords = np.tile(np.arange(screen_res[0]), (screen_res[1], 1))
     y_coords = np.tile(np.arange(screen_res[1]), (screen_res[0], 1)).T

@@ -27,6 +27,7 @@ class Processor:
         self.detection_results: Dict[int, FrameResult] = dict()
         self.output: Optional[cv2.VideoWriter] = None
         self.use_gt_of = False
+        self.frame_step_size = 1
 
         self.frame_index, self.start_frame = 0, 100
         self.is_exiting = False
@@ -81,7 +82,7 @@ class Processor:
         with open(f'{self.dataset.results_path}/image_{self.frame_index:05d}.json', 'w') as f:
             f.write(json.dumps(utils.get_json(self.config.results[self.frame_index]), indent=4, sort_keys=True))
 
-        self.frame_index += 1
+        self.frame_index += self.frame_step_size
 
         if self.frame_index % int(self.dataset.N / 10) == 0:
             self.logger.info(f'{self.frame_index / self.dataset.N * 100:.2f}% {self.frame_index} / {self.dataset.N}')
@@ -288,15 +289,19 @@ class Processor:
                 else:
                     self.write(cluster_vis)
             else:
+                prev_frame_index = self.frame_index - self.frame_step_size
                 if self.use_gt_of:
                     self.flow_uv = self.dataset.get_gt_of(self.frame_index)
                 else:
                     self.flow_uv = self.dataset.get_flow_uv(self.frame_index)
 
+                if self.flow_uv is None:
+                    raise ValueError('Could not load flow field.')
+
                 # print(self.flow_uv[10, self.flow_uv.shape[1]//2-5], self.flow_uv[10, self.flow_uv.shape[1]//2+5])
 
                 self.flow_vis = im_helpers.get_flow_vis(self.flow_uv)
-                self.flow_uv_derotated = self.detector.derotate(self.frame_index, self.flow_uv)
+                self.flow_uv_derotated = self.detector.derotate(self.frame_index - self.frame_step_size, self.frame_index, self.flow_uv)
                 self.detection_results[self.frame_index] = FrameResult()
 
                 # FoE_sparse = self.focus_of_expansion.get_FOE_sparse(self.old_frame, orig_frame)
