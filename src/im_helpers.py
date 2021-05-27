@@ -1,7 +1,7 @@
 import imutils
 import numpy as np
 import cv2
-from   typing import Iterator, Tuple
+from   typing import Iterator, Tuple, cast
 import flow_vis
 import os
 
@@ -64,7 +64,7 @@ def get_simple_bounding_box(img: np.ndarray) -> utils.Rectangle:
     height, width = img.shape[:2]
     start_x, start_y = -1, -1
     end_x, end_y = -1, -1
-    threshold = np.max(img) / 2
+    threshold = 0.1 * np.max(img)
     mask = img > threshold
 
     for y in range(height):
@@ -113,6 +113,15 @@ def get_flow_vis(frame: np.ndarray, magnitude_factor: float = 1.0) -> np.ndarray
 
 
 def apply_colormap(img: np.ndarray, max_value: float = None) -> np.ndarray:
+    """Applies the jet colormap to the input image.
+
+    Args:
+        img (np.ndarray): the image to apply the colormap to
+        max_value (float, optional): scaling variable which sets the input image's range to [0, max_value]. Defaults to None.
+
+    Returns:
+        np.ndarray: [description]
+    """
     if max_value is None:
         return cv2.applyColorMap(img, cv2.COLORMAP_JET)
 
@@ -160,6 +169,17 @@ def to_rgb(img: np.ndarray, max_value: float = None)-> np.ndarray:
 
 
 def to_int(img: np.ndarray, type: type=np.uint8, normalize: bool=False, max_value: float = None) -> np.ndarray:
+    """Transform img of floating-point type to integers.
+
+    Args:
+        img (np.ndarray): input image
+        type (type, optional): output image type. Defaults to np.uint8.
+        normalize (bool, optional): whether to normalize the input image to [0, 255]. Defaults to False.
+        max_value (float, optional): scaling variable used for the normalization. Defaults to None.
+
+    Returns:
+        np.ndarray: [description]
+    """
     img_normalized = img
 
     if normalize:
@@ -213,3 +233,8 @@ def get_colorwheel(path: str = 'media/colorwheel.png') -> np.ndarray:
     img = get_flow_vis(img)
     cv2.imwrite(path, img)
     return img
+
+def calculate_iou(gt_img: np.ndarray, img: np.ndarray) -> float:
+    aou = gt_img or img
+    aoo = gt_img and img
+    return cast(float, aoo / aou)

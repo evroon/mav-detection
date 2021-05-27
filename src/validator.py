@@ -117,7 +117,7 @@ class Validator:
 
         return result
 
-    def annotate(self, img: np.ndarray, boxes: FrameResult, ground_truth: List[utils.Rectangle]) -> List[float]:
+    def annotate(self, img: np.ndarray, boxes: FrameResult, ground_truth: np.ndarray) -> float:
         # Plot ground truth.
         for gt in ground_truth:
             self.positives += 1
@@ -129,51 +129,11 @@ class Validator:
                 3
             )
 
-        ious: List[float] = []
         threshold: float = 0.5
         true_positives_in_frame = 0
 
-        # Plot estimates.
-        for box in boxes.boxes:
-            max_iou = 0.0
-            rect = box[2]
-
-            # Determine detection quality.
-            if rect.get_area() < 10:
-                continue
-
-            for gt in ground_truth:
-                iou = utils.Rectangle.calculate_iou(gt, rect)
-                if iou > max_iou:
-                    max_iou = iou
-
-            ious.append(max_iou)
-
-            if max_iou > threshold:
-                self.true_positives += 1
-                true_positives_in_frame += 1
-            else:
-                self.false_positives += 1
-
-            img = cv2.rectangle(
-                img,
-                rect.get_topleft_int(),
-                rect.get_bottomright_int(),
-                (0, 128, 255),
-                3
-            )
-            img = cv2.putText(
-                img,
-                f'{box[0]}: {box[1]:.02f}%, {max_iou:.02f}',
-                rect.get_topleft_int_offset(),
-                cv2.FONT_HERSHEY_SIMPLEX,
-                0.4,
-                (0, 128, 255),
-                2
-            )
-
-        self.false_negatives += len(ground_truth) - true_positives_in_frame
-        return ious
+        iou = im_helpers.calculate_iou(ground_truth, img)
+        return iou
 
     def run_validation(self, estimates: Optional[Dict[int, FrameResult]] = None) -> None:
         self.dataset = self.config.get_dataset()
@@ -198,11 +158,10 @@ class Validator:
 
             for i in range(self.dataset.N):
                 frame = self.dataset.get_frame()
-                ground_truth = self.dataset.get_annotation(i)
+                ground_truth = self.dataset.get_segmentation(i)
                 if i in self.frames:
-                    ious_frame = self.annotate(frame, self.frames[i], ground_truth)
-                    for x in ious_frame:
-                        ious.append(x)
+                    iou_frame = self.annotate(frame, self.frames[i], ground_truth)
+                    ious.append(iou_frame)
                     output.write(frame)
 
             # Save histogram of IoU values.

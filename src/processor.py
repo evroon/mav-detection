@@ -26,7 +26,7 @@ class Processor:
         self.detector = Detector(self.dataset)
         self.detection_results: Dict[int, FrameResult] = dict()
         self.output: Optional[cv2.VideoWriter] = None
-        self.use_gt_of = False
+        self.use_gt_of = True
         self.frame_step_size = 1
 
         self.frame_index, self.start_frame = 0, 100
@@ -304,6 +304,8 @@ class Processor:
                 self.flow_uv_derotated = self.detector.derotate(self.frame_index - self.frame_step_size, self.frame_index, self.flow_uv)
                 self.detection_results[self.frame_index] = FrameResult()
 
+                # print(np.max(im_helpers.get_magnitude(self.flow_uv_derotated)))
+
                 # FoE_sparse = self.focus_of_expansion.get_FOE_sparse(self.old_frame, orig_frame)
                 FoE_dense  = self.focus_of_expansion.get_FOE_dense(self.flow_uv_derotated)
                 FoE_gt = self.dataset.get_gt_foe(self.frame_index)
@@ -319,9 +321,11 @@ class Processor:
                 score = 0 #analysis[0]
                 # print(np.median(phi_angle), bounding_box.get_area())
 
-                self.old_frame = orig_frame
-                confidence = score / (bounding_box.get_area() * 255)
-                self.detection_results[self.frame_index].add_box('MAV', confidence, bounding_box)
+                if bounding_box.size[0] < self.dataset.capture_size[0] * 3 / 4:
+                    self.old_frame = orig_frame
+                    confidence = score / (bounding_box.get_area() * 255)
+                    self.detection_results[self.frame_index].add_box('MAV', confidence, bounding_box)
+
                 self.detection_results[self.frame_index].data = {
                     # 'foe_sparse': FoE_sparse,
                     'foe_dense': FoE_dense,

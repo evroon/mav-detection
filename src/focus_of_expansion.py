@@ -50,7 +50,7 @@ class FocusOfExpansion:
             if score > optimum:
                 optimum = score
                 optimal_foe = cast(Tuple[float, float], tuple(chosen_sample))
-                
+
         return optimal_foe
 
     def get_FOE_dense(self, flow_uv: np.ndarray) -> Tuple[float, float]:
@@ -169,7 +169,7 @@ class FocusOfExpansion:
         flow_magnitude = im_helpers.get_magnitude(diff1)
         img_distance = im_helpers.get_magnitude(diff2)
         norm = np.maximum(np.ones_like(flow_magnitude) * 1e-6, flow_magnitude * img_distance)
-        
+
         arccos_arg = (diff1[..., 0] * diff2[..., 0] + diff1[..., 1] * diff2[..., 1]) / norm
         arccos_arg = np.clip(arccos_arg, -1, 1)
         angle_diff = np.arccos(arccos_arg)
@@ -179,6 +179,7 @@ class FocusOfExpansion:
         self.max_flow = np.max(phi_angle_deg)
 
         # mask = im_helpers.get_magnitude(derotated_flow_uv) < self.magnitude_threshold
+        # phi_angle_deg[mask] = 0
 
         return phi_angle_deg
 

@@ -114,6 +114,17 @@ class Dataset:
         """Creates depth visualisation images if possible."""
         pass
 
+    def get_segmentation(self, i: int) -> np.ndarray:
+        """Returns the segmentation mask image.
+
+        Args:
+            i (int): the current frame index
+
+        Returns:
+            np.ndarray: the segmentation mask
+        """
+        return cv2.imread(f'{self.seg_path}/image_{i:05d}.png')
+
     def create_annotations(self) -> None:
         """Creates annotations in YOLOv4 format if possible."""
         pass
@@ -135,7 +146,9 @@ class Dataset:
         with open(ann_path, 'r') as f:
             for line in f.readlines():
                 values = [float(x) for x in line.split(' ')]
-                result.append(utils.Rectangle.from_yolo_input(values, self.resolution))
+                rect = utils.Rectangle.from_yolo_input(values, self.resolution)
+                if rect.get_area() > 1:
+                    result.append(rect)
 
         self.ground_truth = result
         return result
