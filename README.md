@@ -69,11 +69,11 @@ mypy
 
 ## Related projects
 ### [YOLOv4](https://github.com/evroon/yolov4)
-[![docker-build](https://github.com/evroon/yolov4/actions/workflows/main.yml/badge.svg)](https://github.com/evroon/yolov4)
+[![docker-build](https://github.com/evroon/yolov4/actions/workflows/main.yml/badge.svg)](https://github.com/evroon/yolov4/actions/workflows/main.yml)
 
 ### [flownet2-pytorch](https://github.com/evroon/flownet2-pytorch)
 
-[![docker-build](https://github.com/evroon/flownet2-pytorch/actions/workflows/main.yml/badge.svg)](https://github.com/evroon/flownet2-pytorch)
+[![docker-build](https://github.com/evroon/flownet2-pytorch/actions/workflows/main.yml/badge.svg)](https://github.com/evroon/flownet2-pytorch/actions/workflows/main.yml)
 
 ## Other repositories created for this project
 
