@@ -34,6 +34,7 @@ class Dataset:
         self.img_pngs_ffmpeg = f'{self.img_path}/image_%5d.png'
         self.vid_path = f'{self.seq_path}/recording.mp4'
         self.state_path = f'{self.seq_path}/states'
+        self.hrnet_out = f'{self.img_path}/hrnet'
 
         self.mp4_to_png()
         self.jpg_to_png()
@@ -76,7 +77,19 @@ class Dataset:
             self.logger.error(f'Input counts: (images, flow fields): {utils.get_frame_count(self.orig_capture)}, {self.N}')
             self.run_flownet2()
 
+        if not os.path.exists(self.hrnet_out):
+            self.run_hrnet()
+
         self.logger.info('Dataset loaded.')
+
+    def run_hrnet(self) -> None:
+        """Runs HRNet-OCR on the current sequence."""
+        if torch.cuda.device_count() < 1:
+            raise SystemError('There are no active GPUs.')
+
+        self.logger.info('Running HRNet-OCR...')
+        hrnet = os.environ['HRNET_PATH']
+        subprocess.call([f'{hrnet}/launch_docker.sh', '--run', '--dataset',  f'{self.img_path}'])
 
     def run_flownet2(self) -> None:
         """Runs FlowNet2 on the current sequence."""
