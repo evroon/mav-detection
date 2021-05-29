@@ -1,7 +1,6 @@
 import airsim
 import os
 import subprocess
-import msgpackrpc
 import json
 import numpy as np
 import math
@@ -9,12 +8,14 @@ import time
 import argparse
 from dotenv import load_dotenv
 
+from msgpackrpc.error import TransportError
+from msgpackrpc.future import Future
 from datetime import datetime
 from scipy.spatial.transform import Rotation
 from typing import Dict, List, Any, Optional, Tuple, cast
 
 import utils
-from sim_config import SimConfig
+from sim_config import Mode, SimConfig
 from run_config import RunConfig
 
 
@@ -31,7 +32,7 @@ class AirSimControl:
         self.direction = 1
         self.drone_in_frame_previous = False
         self.minimum_segmentation_sum = 1e12
-        self.yaw_rate = 15 # deg/s
+        self.yaw_rate = 0 # deg/s
         self.max_yaw = np.deg2rad(30)
         self.delta_time = 0.033
 
@@ -43,8 +44,11 @@ class AirSimControl:
         global_speeds = collection['global_speed']
         heights = collection['heights']
         radii = collection['radii']
+        modes_str = collection['modes']
+        collision_angles = collection['collision_angles']
 
         orientations = [SimConfig.get_orientation(x) for x in orientations_str]
+        modes = [SimConfig.get_mode(x) for x in modes_str]
 
         for sequence_name, center in locations.items():
             for orbit_speed in orbit_speeds:
@@ -52,21 +56,25 @@ class AirSimControl:
                     for height_name, height in heights.items():
                         for orientation in orientations:
                             for radius in radii:
-                                config = SimConfig(
-                                    sequence_name,
-                                    height_name,
-                                    airsim.Vector3r(center['x'], center['y'], center['z'] - height),
-                                    orientation,
-                                    radius,
-                                    center['z'],
-                                    orbit_speed,
-                                    airsim.Vector3r(global_speed['lin_x'], global_speed['sin_y'], global_speed['sin_z']),
-                                    global_speed_key
-                                )
-                                if not os.path.exists(self.get_base_dir(config)):
-                                    self.configs.append(config)
-                                else:
-                                    print(f'Skipping {config.full_name()}')
+                                for mode in modes:
+                                    for collision_angle in collision_angles:
+                                        config = SimConfig(
+                                            sequence_name,
+                                            height_name,
+                                            airsim.Vector3r(center['x'], center['y'], center['z'] - height),
+                                            orientation,
+                                            radius,
+                                            center['z'],
+                                            orbit_speed,
+                                            airsim.Vector3r(global_speed['lin_x'], global_speed['sin_y'], global_speed['sin_z']),
+                                            global_speed_key,
+                                            mode,
+                                            collision_angle
+                                        )
+                                        if not os.path.exists(self.get_base_dir(config)):
+                                            self.configs.append(config)
+                                        else:
+                                            print(f'Skipping {config.full_name()}')
 
         print(f'Number of locations: {len(locations)}')
         print(f'Number of configurations: {len(self.configs)}')
@@ -133,14 +141,14 @@ class AirSimControl:
         """Whether an MAV has landed."""
         return cast(bool, self.client.getMultirotorState(vehicle_name=vehicle_name).landed_state == airsim.LandedState.Landed)
 
-    def takeoff(self, vehicle_name: Optional[str] = None) -> Optional[msgpackrpc.future.Future]:
+    def takeoff(self, vehicle_name: Optional[str] = None) -> Optional[Future]:
         """Performs a takeoff for an MAV.
 
         Args:
             vehicle_name (Optional[str], optional): the name of the vehicle that will takeoff. Defaults to None.
 
         Returns:
-            Optional[msgpackrpc.future.Future]: the async future result
+            Optional[Future]: the async future result
         """
         if vehicle_name is None:
             print('Takeoff...')
@@ -165,7 +173,7 @@ class AirSimControl:
         align1.join()
         align2.join()
 
-    def move_to_position(self, config: SimConfig, vehicle_name: str, z: float = None) -> msgpackrpc.future.Future:
+    def move_to_position(self, config: SimConfig, vehicle_name: str, z: float = None) -> Future:
         """Moves a vehicle to its new start position.
 
         Args:
@@ -174,7 +182,7 @@ class AirSimControl:
             z (float, optional): the altitude of the drone in meters. Defaults to None.
 
         Returns:
-            msgpackrpc.future.Future: the result of the async move method
+            Future: the result of the async move method
         """
         position = config.get_start_position(vehicle_name == self.observing_drone)
 
@@ -205,7 +213,10 @@ class AirSimControl:
                 print(f'Rotating drone to: {config.orientation}')
                 self.teleport(config)
 
-            self.fly_orbit(config)
+            if config.mode == Mode.ORBIT:
+                self.fly_orbit(config)
+            else:
+                self.fly_collision(config)
 
             if last_sequence_of_kind:
                 self.finish_sequence()
@@ -235,6 +246,7 @@ class AirSimControl:
 
     def wait_for_landing(self) -> None:
         """Wait until the observing drone has landed."""
+        print('Waiting to land...')
         old_pos = airsim.Vector3r()
         while (self.get_position(self.observing_drone) - old_pos).get_length() > 0.01:
             old_pos = self.get_position(self.observing_drone)
@@ -326,6 +338,45 @@ class AirSimControl:
             self.write_states()
 
         return True
+
+    def fly_collision(self, config: SimConfig) -> None:
+        """Let the drones fly on a collision coursetowards the same point with the same arrival time.
+
+        Args:
+            config (SimConfig): the configuration of the collision course
+        """
+        print(f'Starting collision course with length of {config.radius:0.2f}m')
+
+        self.start_angle: Optional[float] = None
+        self.base_dir = self.get_base_dir(config)
+        self.drone_in_frame_previous = False
+        running = True
+
+        self.prepare_sequence()
+
+        pos_observer_drone = self.get_position(self.observing_drone)
+        z = pos_observer_drone.z_val
+
+        while running:
+            # Continue for one timestap (1 second in real time, 1 second * clockspeed in simulation time).
+            self.client.simContinueForTime(1)
+            self.client.simPause(True)
+
+            pos_target_drone = self.get_position()
+            pos_observer_drone = self.get_position(self.observing_drone)
+
+            self.client.moveToPositionAsync(config.center.x_val, config.center.y_val, z, config.global_speed.x_val, 100, airsim.DrivetrainType.MaxDegreeOfFreedom,
+                airsim.YawMode(), vehicle_name=self.observing_drone)
+
+            self.client.moveToPositionAsync(config.center.x_val, config.center.y_val, z, config.global_speed.x_val, 100, airsim.DrivetrainType.MaxDegreeOfFreedom,
+                airsim.YawMode(), vehicle_name=self.target_drone)
+
+            # Stop if drones are close enough to eachother. (2m)
+            if (pos_target_drone - pos_observer_drone).get_length() < 2:
+                running = False
+
+            self.capture()
+            self.iteration += 1
 
     def fly_orbit(self, config: SimConfig) -> None:
         """Let the target drone fly an orbit.

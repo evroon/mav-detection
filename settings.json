@@ -22,60 +22,6 @@
     ],
 
     "collections": {
-        "stationary": {
-            "orbit_speed": [
-                10
-            ],
-
-            "global_speed": {
-                "default": {
-                    "lin_x": 0.0,
-                    "sin_y": 0.0,
-                    "sin_z": 0.0
-                }
-            },
-
-            "radii": [
-                2.5,
-                5.0,
-                7.5,
-                10.0,
-                15.0,
-                20.0
-            ],
-
-            "heights": {
-                "low": 2.0,
-                "medium": 10.0,
-                "high": 30.0
-            },
-
-            "orientations": [
-                "north",
-                "east",
-                "south",
-                "west"
-            ],
-
-            "locations": {
-                "mountains-stationary/lake": {
-                    "x": 170.76849609,
-                    "y": -56.65215332,
-                    "z": 0.18
-                },
-                "citypark-stationary/soccerfield": {
-                    "x": -671.70,
-                    "y": 289.60,
-                    "z": -1.05389
-                },
-                "citypark-stationary/fountain": {
-                    "x": -520.00,
-                    "y": 23.40,
-                    "z": 6.9191
-                }
-            }
-        },
-
         "moving": {
             "orbit_speed": [
                 10
@@ -90,7 +36,17 @@
             },
 
             "radii": [
-                5.0
+                50.0
+            ],
+
+            "collision_angles": [
+                0,
+                45,
+                80
+            ],
+
+            "modes": [
+                "collision"
             ],
 
             "heights": {
@@ -103,19 +59,9 @@
 
             "locations": {
                 "mountains-moving/lake": {
-                    "x": 170.76849609,
-                    "y": -56.65215332,
-                    "z": 0.18
-                },
-                "mountains-moving/high-ground": {
-                    "x": 517.10,
-                    "y": -797.100,
-                    "z": -149.63495117
-                },
-                "citypark-moving/soccerfield": {
-                    "x": -711.70,
-                    "y": 289.60,
-                    "z": -1.05389
+                    "x": 50.0,
+                    "y": 50.0,
+                    "z": -10.0
                 }
             }
         }

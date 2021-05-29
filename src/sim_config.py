@@ -20,8 +20,17 @@ class Orientation(Enum):
             'WEST':  270,
         }[str(self).upper()]
 
+class Mode(Enum):
+    ORBIT       = 0,
+    COLLISION   = 1,
+
+    def __str__(self) -> str:
+        return super().__str__().replace('Mode.', '').lower()
+
 class SimConfig:
-    def __init__(self, base_name: str, height_name: str, center: airsim.Vector3r, orientation: Orientation, radius: float, ground_height: float, orbit_speed: float, global_speed: airsim.Vector3r, global_speed_name: str) -> None:
+    def __init__(self, base_name: str, height_name: str, center: airsim.Vector3r, orientation: Orientation,
+                 radius: float, ground_height: float, orbit_speed: float, global_speed: airsim.Vector3r,
+                 global_speed_name: str, mode: str, collision_angle: float) -> None:
         self.base_name: str = base_name
         self.height_name: str = height_name
         self.center: airsim.Vector3r = center
@@ -31,6 +40,29 @@ class SimConfig:
         self.orbit_speed: float = orbit_speed
         self.global_speed: airsim.Vector3r = global_speed
         self.global_speed_name: str = global_speed_name
+        self.mode: str = mode
+        self.collision_angle: str = collision_angle
+
+    @classmethod
+    def get_mode(cls, mode_key: str) -> Mode:
+        """Converts a str key to the Mode object.
+
+        Args:
+            mode_key (str): key that specifies the Mode to return
+
+        Returns:
+            Mode: The resulting orientation
+        """
+        options = [mode.name for mode in Mode]
+        mode_key = mode_key.upper()
+
+        if mode_key not in options:
+            options_str = ', '.join(options)
+            raise ValueError(
+                f'Mode {mode_key} is not a valid orientation type, has to be one of {options_str}'
+            )
+
+        return Mode[mode_key]
 
     @classmethod
     def get_orientation(cls, orientation_key: str) -> Orientation:
@@ -47,7 +79,7 @@ class SimConfig:
         if orientation_key not in options:
             options_str = ', '.join(options)
             raise ValueError(
-                f'Mode {orientation_key} is not a valid orientation type, has to be one of {options_str}'
+                f'Orientation {orientation_key} is not a valid orientation type, has to be one of {options_str}'
             )
 
         return Orientation[orientation_key]
@@ -74,8 +106,17 @@ class SimConfig:
         return self.is_different_location(other) or self.is_different_pose(other) or self.is_different_height(other) or self.is_different_simple(other)
 
     def get_start_position(self, is_observer: bool) -> airsim.Vector3r:
-        if is_observer:
-            return self.center
+        if self.mode == Mode.ORBIT:
+            if is_observer:
+                return self.center
 
-        heading = np.deg2rad(self.orientation.get_heading() + 90)
-        return self.center + airsim.Vector3r(np.cos(heading) * self.radius, np.sin(heading) * self.radius, 0.0)
+            heading = np.deg2rad(self.orientation.get_heading() + 90)
+            return self.center + airsim.Vector3r(np.cos(heading), np.sin(heading), 0.0) * self.radius
+        elif self.mode == Mode.COLLISION:
+            if is_observer:
+                heading = np.deg2rad(self.orientation.get_heading() + 180)
+            else:
+                heading = np.deg2rad(self.orientation.get_heading() + self.collision_angle)
+
+            return self.center + airsim.Vector3r(np.cos(heading), np.sin(heading), 0.0) * self.radius
+
