@@ -22,7 +22,113 @@
     ],
 
     "collections": {
-        "moving": {
+        "orbit-test-foe": {
+            "orbit_speed": [
+                10
+            ],
+
+            "global_speed": {
+                "slow": {
+                    "lin_x": 2.0,
+                    "sin_y": 0.0,
+                    "sin_z": 0.0
+                },
+                "default": {
+                    "lin_x": 4.0,
+                    "sin_y": 0.0,
+                    "sin_z": 0.0
+                },
+                "fast": {
+                    "lin_x": 6.0,
+                    "sin_y": 0.0,
+                    "sin_z": 0.0
+                },
+                "veryfast": {
+                    "lin_x": 8.0,
+                    "sin_y": 0.0,
+                    "sin_z": 0.0
+                }
+            },
+
+            "radii": [
+                5.0
+            ],
+
+            "collision_angles": [
+                0
+            ],
+
+            "modes": [
+                "orbit"
+            ],
+
+            "heights": {
+                "low": 2.5,
+                "medium": 15.0,
+                "high": 30.0
+            },
+
+            "orientations": [
+                "north"
+            ],
+
+            "locations": {
+                "mountains-moving/lake": {
+                    "x": 0.0,
+                    "y": 0.0,
+                    "z": 0.0
+                }
+            }
+        },
+        "orbit-test-mav-detection": {
+            "orbit_speed": [
+                2.5,
+                5,
+                10,
+                15
+            ],
+
+            "global_speed": {
+                "default": {
+                    "lin_x": 4.0,
+                    "sin_y": 0.0,
+                    "sin_z": 0.0
+                }
+            },
+
+            "radii": [
+                5.0,
+                10.0,
+                15.0,
+                20.0,
+                40.0
+            ],
+
+            "collision_angles": [
+                0
+            ],
+
+            "modes": [
+                "orbit"
+            ],
+
+            "heights": {
+                "low": 2.5
+            },
+
+            "orientations": [
+                "north"
+            ],
+
+            "locations": {
+                "mountains-moving/lake": {
+                    "x": 0.0,
+                    "y": 0.0,
+                    "z": 0.0
+                }
+            }
+        },
+        "collision": {
             "orbit_speed": [
                 10
             ],
@@ -41,8 +147,11 @@
 
             "collision_angles": [
                 0,
+                15,
+                30,
                 45,
-                80
+                60,
+                75
             ],
 
             "modes": [
@@ -50,7 +159,7 @@
             ],
 
             "heights": {
-                "medium": 2.5
+                "low": 2.5
             },
 
             "orientations": [
