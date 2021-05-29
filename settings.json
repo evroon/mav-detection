@@ -142,7 +142,7 @@
             },
 
             "radii": [
-                50.0
+                30.0
             ],
 
             "collision_angles": [
