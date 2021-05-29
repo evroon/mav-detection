@@ -50,7 +50,7 @@
             ],
 
             "heights": {
-                "medium": 5.0
+                "medium": 2.5
             },
 
             "orientations": [
@@ -61,7 +61,7 @@
                 "mountains-moving/lake": {
                     "x": 50.0,
                     "y": 50.0,
-                    "z": -10.0
+                    "z": 0.0
                 }
             }
         }
