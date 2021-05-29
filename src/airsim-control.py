@@ -193,38 +193,19 @@ class AirSimControl:
 
     def fly(self) -> None:
         """Runs the control and data acquisition loop."""
-        for i, config in enumerate(self.configs):
-            first_sequence_of_kind = i == 0 or config.is_different_location(self.configs[i-1])
-            first_sequence_of_pose = i == 0 or config.is_different_pose(self.configs[i-1])
-            first_sequence_of_height = i == 0 or config.is_different_height(self.configs[i-1])
-            will_teleport = i == 0 or i >= len(self.configs) - 1 or config.is_different_location(self.configs[i+1])
-            last_sequence_of_kind = i >= len(self.configs) - 1 or config.is_different(self.configs[i+1])
-
-            if first_sequence_of_kind:
-                self.prepare_run(config)
-            elif first_sequence_of_height:
-                print(f'Moving drone to height: {config.center.z_val:.02f}')
-                f1 = self.move_to_position(config, self.observing_drone)
-                f2 = self.move_to_position(config, self.target_drone)
-                f1.join()
-                f2.join()
-                self.teleport(config)
-            elif first_sequence_of_pose:
-                print(f'Rotating drone to: {config.orientation}')
-                self.teleport(config)
+        for config in self.configs:
+            self.prepare_run(config)
 
             if config.mode == Mode.ORBIT:
                 self.fly_orbit(config)
             else:
                 self.fly_collision(config)
 
-            if last_sequence_of_kind:
-                self.finish_sequence()
+            self.finish_sequence()
 
-            if will_teleport:
-                self.client.armDisarm(False, self.observing_drone)
-                self.client.armDisarm(False, self.target_drone)
-                self.wait_for_landing()
+            self.client.armDisarm(False, self.observing_drone)
+            self.client.armDisarm(False, self.target_drone)
+            self.wait_for_landing()
 
     def teleport(self, config: SimConfig) -> None:
         """Teleport drones to the start locations of a new configuration.
@@ -426,7 +407,7 @@ class AirSimControl:
             if abs(angle_diff) > self.max_yaw:
                 yaw_rate_direction = -angle_diff / abs(angle_diff)
 
-            self.capture()
+            self.capture(config)
             angle_diff = np.rad2deg(angle_to_center - base_heading)
             running = angle_diff > -50
             self.iteration += 1
@@ -562,7 +543,7 @@ class AirSimControl:
 
 if __name__ == '__main__':
     parser = argparse.ArgumentParser(description='Detects MAVs in the dataset using optical flow.')
-    parser.add_argument('--collection',  type=str, help='collection to process', default='moving')
+    parser.add_argument('--collection',  type=str, help='collection to process', default='collision')
     parser.add_argument('--upload-only', action='store_true', help='upload images only')
     args = parser.parse_args()
     load_dotenv()
