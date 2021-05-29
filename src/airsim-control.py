@@ -205,6 +205,7 @@ class AirSimControl:
 
             self.client.armDisarm(False, self.observing_drone)
             self.client.armDisarm(False, self.target_drone)
+            time.sleep(1)
             self.wait_for_landing()
 
     def teleport(self, config: SimConfig) -> None:
@@ -366,7 +367,6 @@ class AirSimControl:
         self.start_angle: Optional[float] = None
         self.base_dir = self.get_base_dir(config)
         self.drone_in_frame_previous = False
-        self.direction *= -1
         running = True
         lookahead_angle = config.orbit_speed * np.pi / 180.0 * self.direction
         yaw_rate_direction = 1
@@ -409,7 +409,7 @@ class AirSimControl:
 
             self.capture(config)
             angle_diff = np.rad2deg(angle_to_center - base_heading)
-            running = angle_diff > -50
+            running = angle_diff < 50
             self.iteration += 1
 
 

@@ -107,7 +107,7 @@ class SimConfig:
             if is_observer:
                 return self.center
 
-            heading = np.deg2rad(self.orientation.get_heading() + 90)
+            heading = np.deg2rad(self.orientation.get_heading() - 70)
             return self.center + airsim.Vector3r(np.cos(heading), np.sin(heading), 0.0) * self.radius
         elif self.mode == Mode.COLLISION:
             if is_observer:
