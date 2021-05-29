@@ -7,6 +7,7 @@ import numpy as np
 import math
 import time
 import argparse
+from dotenv import load_dotenv
 
 from datetime import datetime
 from scipy.spatial.transform import Rotation
@@ -81,15 +82,10 @@ class AirSimControl:
         while True:
             try:
                 print('Connecting...')
-                self.client = airsim.MultirotorClient()
+                self.client = airsim.MultirotorClient(ip=os.getenv('IP_ADDRESS'))
                 self.client.confirmConnection()
                 break
-            except msgpackrpc.error.TransportError:
-                if not is_starting:
-                    with open(os.devnull, 'w') as devnull:
-                        subprocess.Popen(['/home/erik/tno/UE4/LinuxNoEditor/LandscapeMountains.sh'], stdout=devnull)
-                        is_starting = True
-
+            except TransportError:
                 time.sleep(1)
 
         self.client.simSetSegmentationObjectID("[\w]*", 0, True)
@@ -522,6 +518,7 @@ if __name__ == '__main__':
     parser.add_argument('--collection',  type=str, help='collection to process', default='moving')
     parser.add_argument('--upload-only', action='store_true', help='upload images only')
     args = parser.parse_args()
+    load_dotenv()
 
     if not args.upload_only:
         control = AirSimControl(args.collection)
