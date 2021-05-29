@@ -3,6 +3,7 @@
     "SettingsVersion": 1.2,
     "SimMode": "Multirotor",
     "ClockSpeed": 1.0,
+    "ViewMode": "Fpv",
     "Vehicles" : {
         "Drone1" : {
             "VehicleType" : "SimpleFlight",
@@ -53,9 +54,9 @@
         "Imu": {
             "SensorType": 2,
             "Enabled" : true,
-            "GyroAngleRandomWalk": 0,
+            "AngularRandomWalk": 0,
             "GyroBiasStability": 0,
-            "AccelerometerVelocityRandomWalk": 0
+            "VelocityRandomWalk": 0
         }
     }
 }
