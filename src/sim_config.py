@@ -85,13 +85,10 @@ class SimConfig:
         return Orientation[orientation_key]
 
     def __str__(self) -> str:
-        return f'{self.base_name}-{self.orientation}-{self.height_name}-{self.radius}-{self.orbit_speed}-{self.global_speed_name}'
-
-    def full_name(self) -> str:
-        return f'{self.base_name}-{self.orientation}-{self.height_name} ({self.radius}m) {self.orbit_speed} {self.global_speed_name}'
+        return f'{self.base_name}-{self.mode}-{self.collision_angle}-{self.orientation}-{self.height_name}-{self.radius}-{self.orbit_speed}-{self.global_speed_name}'
 
     def is_different_location(self, other: SimConfig) -> bool:
-        return self.base_name != other.base_name
+        return self.base_name != other.base_name or self.mode == Mode.COLLISION
 
     def is_different_pose(self, other: SimConfig) -> bool:
         return self.orientation != other.orientation

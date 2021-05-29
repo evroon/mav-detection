@@ -74,7 +74,7 @@ class AirSimControl:
                                         if not os.path.exists(self.get_base_dir(config)):
                                             self.configs.append(config)
                                         else:
-                                            print(f'Skipping {config.full_name()}')
+                                            print(f'Skipping {config}')
 
         print(f'Number of locations: {len(locations)}')
         print(f'Number of configurations: {len(self.configs)}')
@@ -285,12 +285,8 @@ class AirSimControl:
         else:
             airsim.write_file(os.path.normpath(image_path), response.image_data_uint8)
 
-    def capture(self) -> bool:
-        """Capture frames
-
-        Returns:
-            bool: Whether the simulation run is finished.
-        """
+    def capture(self, config: SimConfig) -> None:
+        """Capture frames"""
         responses = self.client.simGetImages([
             airsim.ImageRequest("segment", airsim.ImageType.Segmentation),
             airsim.ImageRequest("high_res", airsim.ImageType.Scene),
@@ -317,10 +313,11 @@ class AirSimControl:
                 if self.minimum_segmentation_sum > seg_sum:
                     self.minimum_segmentation_sum = seg_sum
 
-                drone_in_frame = seg_sum > self.minimum_segmentation_sum and self.iteration > 10
+                drone_in_frame = config.mode == Mode.COLLISION or (seg_sum > self.minimum_segmentation_sum and self.iteration > 10)
                 self.write_frame(image_path, response)
-                if self.drone_in_frame_previous and self.iteration > 10:
-                    return False
+
+                if config.mode == Mode.ORBIT and self.drone_in_frame_previous and self.iteration > 10:
+                    return
 
                 self.drone_in_frame_previous = drone_in_frame
             elif self.drone_in_frame_previous:
@@ -337,10 +334,8 @@ class AirSimControl:
         if self.drone_in_frame_previous:
             self.write_states()
 
-        return True
-
     def fly_collision(self, config: SimConfig) -> None:
-        """Let the drones fly on a collision coursetowards the same point with the same arrival time.
+        """Let the drones fly on a collision course towards the same point with the same arrival time.
 
         Args:
             config (SimConfig): the configuration of the collision course
@@ -374,8 +369,9 @@ class AirSimControl:
             # Stop if drones are close enough to eachother. (2m)
             if (pos_target_drone - pos_observer_drone).get_length() < 2:
                 running = False
+                self.client.simPause(False)
 
-            self.capture()
+            self.capture(config)
             self.iteration += 1
 
     def fly_orbit(self, config: SimConfig) -> None:
