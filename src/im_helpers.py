@@ -235,6 +235,12 @@ def get_colorwheel(path: str = 'media/colorwheel.png') -> np.ndarray:
     return img
 
 def calculate_iou(gt_img: np.ndarray, img: np.ndarray) -> float:
-    aou = gt_img or img
-    aoo = gt_img and img
-    return cast(float, aoo / aou)
+    aou = (gt_img + img) > 0.0
+    aoo = (gt_img * img) > 0.0
+    return cast(float, np.sum(aoo) / np.sum(aou))
+
+def resize_percent(img: np.ndarray, scale_percent: float) -> np.ndarray:
+    width = int(img.shape[1] * scale_percent / 100)
+    height = int(img.shape[0] * scale_percent / 100)
+    dim = (width, height)
+    return cv2.resize(img, dim, interpolation = cv2.INTER_AREA)

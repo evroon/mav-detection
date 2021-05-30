@@ -299,6 +299,7 @@ class Processor:
                     raise ValueError('Could not load flow field.')
 
                 # print(self.flow_uv[10, self.flow_uv.shape[1]//2-5], self.flow_uv[10, self.flow_uv.shape[1]//2+5])
+                mask = self.dataset.get_sky_segmentation(self.frame_index)
 
                 self.flow_vis = im_helpers.get_flow_vis(self.flow_uv)
                 self.flow_uv_derotated = self.detector.derotate(self.frame_index - self.frame_step_size, self.frame_index, self.flow_uv)

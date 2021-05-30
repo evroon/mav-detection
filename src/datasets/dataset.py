@@ -9,6 +9,9 @@ import logging
 import subprocess
 from typing import Optional, Tuple, cast, List
 
+import im_helpers
+
+
 class Dataset:
     '''Desscribes a dataset with images, annotations and flow fields.'''
 
@@ -32,9 +35,11 @@ class Dataset:
         self.results_path = f'{self.seq_path}/results'
         self.img_pngs = f'{self.img_path}/{img_format}'
         self.img_pngs_ffmpeg = f'{self.img_path}/image_%5d.png'
+        self.img_pngs_glob = f'{self.img_path}/image_*.png'
         self.vid_path = f'{self.seq_path}/recording.mp4'
         self.state_path = f'{self.seq_path}/states'
-        self.hrnet_out = f'{self.img_path}/hrnet'
+        self.half_res_img_path = f'{self.seq_path}/half-res-images'
+        self.hrnet_out = f'{self.half_res_img_path}/hrnet'
 
         self.mp4_to_png()
         self.jpg_to_png()
@@ -58,6 +63,9 @@ class Dataset:
         if not os.path.exists(self.ann_path):
             os.makedirs(self.ann_path)
 
+        if not os.path.exists(self.half_res_img_path):
+            self.create_half_res_images()
+
         if not os.path.exists(self.results_path):
             os.makedirs(self.results_path)
 
@@ -73,14 +81,25 @@ class Dataset:
         if self.capture_size != self.flow_size:
             self.logger.warning(f'original capture with size {self.capture_size} does not match flow, which has size {self.flow_size}')
 
+        if not os.path.exists(self.hrnet_out):
+            self.run_hrnet()
+
         if self.N != utils.get_frame_count(self.orig_capture) - 1:
             self.logger.error(f'Input counts: (images, flow fields): {utils.get_frame_count(self.orig_capture)}, {self.N}')
             self.run_flownet2()
 
-        if not os.path.exists(self.hrnet_out):
-            self.run_hrnet()
-
         self.logger.info('Dataset loaded.')
+
+    def create_half_res_images(self) -> None:
+        """Creates a directory with the images with half the original resolution."""
+
+        utils.create_if_not_exists(self.half_res_img_path)
+        pngs = utils.sorted_glob(self.img_pngs_glob)
+
+        for orig_path in pngs:
+            img = cv2.imread(orig_path)
+            img_half = im_helpers.resize_percent(img, 50)
+            cv2.imwrite(f'{self.half_res_img_path}/{os.path.basename(orig_path)}', img_half)
 
     def run_hrnet(self) -> None:
         """Runs HRNet-OCR on the current sequence."""
@@ -89,7 +108,7 @@ class Dataset:
 
         self.logger.info('Running HRNet-OCR...')
         hrnet = os.environ['HRNET_PATH']
-        subprocess.call([f'{hrnet}/launch_docker.sh', '--run', '--dataset',  f'{self.img_path}'])
+        subprocess.call([f'{hrnet}/launch_docker.sh', '--run', '--dataset',  f'{self.half_res_img_path}'])
 
     def run_flownet2(self) -> None:
         """Runs FlowNet2 on the current sequence."""
@@ -126,6 +145,14 @@ class Dataset:
     def create_depth_visualisation(self) -> None:
         """Creates depth visualisation images if possible."""
         pass
+
+    def get_sky_segmentation(self, i: int) -> np.ndarray:
+        img = cv2.imread(f'{self.hrnet_out}/image_{i:05d}_prediction.png')
+        img = cv2.resize(img, (1920, 1080))
+
+        # Segment sky only
+        mask = (img[..., 0] == 180) * (img[..., 1] == 130)
+        return im_helpers.to_int(mask, normalize=True)
 
     def get_segmentation(self, i: int) -> np.ndarray:
         """Returns the segmentation mask image.
