@@ -297,10 +297,6 @@ class AirSimControl:
 
                 drone_in_frame = config.mode == Mode.COLLISION or (seg_sum > self.minimum_segmentation_sum and self.iteration > 10)
                 self.write_frame(image_path, response)
-
-                if config.mode == Mode.ORBIT and self.drone_in_frame_previous and self.iteration > 10:
-                    return
-
                 self.drone_in_frame_previous = drone_in_frame
             elif self.drone_in_frame_previous:
                 self.write_frame(image_path, response)
