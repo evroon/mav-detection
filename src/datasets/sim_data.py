@@ -43,7 +43,12 @@ class SimData(Dataset):
 
     def get_orientation(self, i:int) -> np.ndarray:
         orientatation = self.get_state(i)['Drone1']['imu']['orientation']
-        euler = Rotation.from_quat([orientatation['x_val'], orientatation['y_val'], orientatation['z_val'], orientatation['w_val']]).as_euler('xyz', degrees=False)
+        euler = Rotation.from_quat([
+            orientatation['x_val'],
+            orientatation['y_val'],
+            orientatation['z_val'],
+            orientatation['w_val']
+        ]).as_euler('xyz', degrees=False)
         return euler
 
     def get_angular_difference(self, first:int, second:int) -> np.ndarray:

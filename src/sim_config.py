@@ -30,7 +30,7 @@ class Mode(Enum):
 class SimConfig:
     def __init__(self, base_name: str, height_name: str, center: airsim.Vector3r, orientation: Orientation,
                  radius: float, ground_height: float, orbit_speed: float, global_speed: airsim.Vector3r,
-                 global_speed_name: str, mode: str, collision_angle: float) -> None:
+                 global_speed_name: str, mode: Mode, collision_angle: float) -> None:
         self.base_name: str = base_name
         self.height_name: str = height_name
         self.center: airsim.Vector3r = center
@@ -40,8 +40,8 @@ class SimConfig:
         self.orbit_speed: float = orbit_speed
         self.global_speed: airsim.Vector3r = global_speed
         self.global_speed_name: str = global_speed_name
-        self.mode: str = mode
-        self.collision_angle: str = collision_angle
+        self.mode = mode
+        self.collision_angle: float = collision_angle
 
     @classmethod
     def get_mode(cls, mode_key: str) -> Mode:
@@ -116,4 +116,3 @@ class SimConfig:
                 heading = np.deg2rad(self.orientation.get_heading() + self.collision_angle)
 
             return self.center + airsim.Vector3r(np.cos(heading), np.sin(heading), 0.0) * self.radius
-

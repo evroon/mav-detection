@@ -320,7 +320,7 @@ class AirSimControl:
         """
         print(f'Starting collision course with length of {config.radius:0.2f}m')
 
-        self.start_angle: Optional[float] = None
+        self.start_angle = None
         self.base_dir = self.get_base_dir(config)
         self.drone_in_frame_previous = False
         running = True
@@ -360,7 +360,7 @@ class AirSimControl:
         """
         print(f'Starting orbit with radius of {config.radius:0.2f}m')
 
-        self.start_angle: Optional[float] = None
+        self.start_angle = None
         self.base_dir = self.get_base_dir(config)
         self.drone_in_frame_previous = False
         running = True
