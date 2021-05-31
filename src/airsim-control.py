@@ -381,6 +381,7 @@ class AirSimControl:
             angle_to_center = math.atan2(dy, dx)
             camera_heading = np.rad2deg(angle_to_center - math.pi)
 
+            # Factor of 0.99333 is needed because the target drone will otherwise drift away from observer.
             vx = config.global_speed.x_val * 0.99333
             vy = config.orbit_speed * config.radius
             z = pos_observer_drone.z_val
