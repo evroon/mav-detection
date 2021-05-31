@@ -23,6 +23,7 @@ class Orientation(Enum):
 class Mode(Enum):
     ORBIT       = 0,
     COLLISION   = 1,
+    LINE        = 2,
 
     def __str__(self) -> str:
         return super().__str__().replace('Mode.', '').lower()
@@ -116,3 +117,8 @@ class SimConfig:
                 heading = np.deg2rad(self.orientation.get_heading() + self.collision_angle)
 
             return self.center + airsim.Vector3r(np.cos(heading), np.sin(heading), 0.0) * self.radius
+        else:
+            if is_observer:
+                return self.center
+
+            return self.center + airsim.Vector3r(self.radius * 1.1, self.radius, 0.0) * self.radius

@@ -198,8 +198,10 @@ class AirSimControl:
 
             if config.mode == Mode.ORBIT:
                 self.fly_orbit(config)
-            else:
+            elif config.mode == Mode.COLLISION:
                 self.fly_collision(config)
+            else:
+                self.fly_straight(config)
 
             self.finish_sequence()
 
@@ -350,6 +352,51 @@ class AirSimControl:
                 self.client.simPause(False)
 
             self.capture(config)
+            self.iteration += 1
+
+    def fly_straight(self, config: SimConfig) -> None:
+        """Let the target drone fly in a straight line.
+
+        Args:
+            config (SimConfig): the configuration of the orbit
+        """
+        print(f'Starting line with distance of {config.radius:0.2f}m')
+
+        self.base_dir = self.get_base_dir(config)
+        self.drone_in_frame_previous = False
+        running = True
+        yaw_rate_direction = 1
+
+        self.prepare_sequence()
+
+        while running:
+            pos_target_drone = self.get_position()
+            pos_observer_drone = self.get_position(self.observing_drone)
+
+            dx = pos_target_drone.x_val - pos_observer_drone.x_val
+            dy = pos_target_drone.y_val - pos_observer_drone.y_val
+            angle_to_center = math.atan2(dy, dx)
+            camera_heading = np.rad2deg(angle_to_center - math.pi)
+
+            vx = config.global_speed.x_val
+            z = pos_observer_drone.z_val
+
+            self.client.moveByVelocityZAsync(vx, 0, z, 10, airsim.DrivetrainType.MaxDegreeOfFreedom,
+                airsim.YawMode(False, camera_heading), vehicle_name=self.target_drone)
+
+            yaw_mode = airsim.YawMode(True, self.yaw_rate * yaw_rate_direction)
+
+            self.client.moveByVelocityZAsync(config.global_speed.x_val, config.global_speed.y_val, config.center.z_val,
+                10, airsim.DrivetrainType.MaxDegreeOfFreedom, yaw_mode, vehicle_name=self.observing_drone)
+
+            # Continue for one timestap (1 second in real time, 1 second * clockspeed in simulation time).
+            self.client.simContinueForTime(1)
+            self.client.simPause(True)
+            self.capture(config)
+
+            base_heading = np.deg2rad(config.orientation.get_heading())
+            angle_diff = np.rad2deg(angle_to_center - base_heading)
+            running = angle_diff < 50
             self.iteration += 1
 
     def fly_orbit(self, config: SimConfig) -> None:

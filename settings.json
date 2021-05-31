@@ -22,7 +22,7 @@
     ],
 
     "collections": {
-        "orbit-test-foe": {
+        "line-test-foe": {
             "orbit_speed": [
                 10
             ],
@@ -59,7 +59,7 @@
             ],
 
             "modes": [
-                "orbit"
+                "line"
             ],
 
             "heights": {
@@ -80,7 +80,7 @@
                 }
             }
         },
-        "orbit-test-mav-detection": {
+        "line-test-mav-detection": {
             "orbit_speed": [
                 5,
                 10,
@@ -106,7 +106,7 @@
             ],
 
             "modes": [
-                "orbit"
+                "line"
             ],
 
             "heights": {
