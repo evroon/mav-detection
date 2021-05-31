@@ -26,7 +26,7 @@ class Processor:
         self.detector = Detector(self.dataset)
         self.detection_results: Dict[int, FrameResult] = dict()
         self.output: Optional[cv2.VideoWriter] = None
-        self.use_gt_of = True
+        self.use_gt_of = False
         self.frame_step_size = 1
 
         self.frame_index, self.start_frame = 0, 100
@@ -266,6 +266,7 @@ class Processor:
         """Runs the detection."""
 
         im_helpers.get_colorwheel()
+        prev_bbox_left = 0
 
         while self.is_active():
             orig_frame = self.dataset.get_frame()
@@ -289,7 +290,6 @@ class Processor:
                 else:
                     self.write(cluster_vis)
             else:
-                prev_frame_index = self.frame_index - self.frame_step_size
                 if self.use_gt_of:
                     self.flow_uv = self.dataset.get_gt_of(self.frame_index)
                 else:
@@ -298,56 +298,63 @@ class Processor:
                 if self.flow_uv is None:
                     raise ValueError('Could not load flow field.')
 
-                # print(self.flow_uv[10, self.flow_uv.shape[1]//2-5], self.flow_uv[10, self.flow_uv.shape[1]//2+5])
                 mask = self.dataset.get_sky_segmentation(self.frame_index)
+                sky_tpr, sky_fpr = self.dataset.validate_sky_segment(mask, self.dataset.get_depth(self.frame_index))
 
                 self.flow_vis = im_helpers.get_flow_vis(self.flow_uv)
                 self.flow_uv_derotated = self.detector.derotate(self.frame_index - self.frame_step_size, self.frame_index, self.flow_uv)
-                self.detection_results[self.frame_index] = FrameResult()
+                self.flow_mag = im_helpers.get_magnitude(self.flow_uv_derotated)
 
-                # print(np.max(im_helpers.get_magnitude(self.flow_uv_derotated)))
-
-                # FoE_sparse = self.focus_of_expansion.get_FOE_sparse(self.old_frame, orig_frame)
                 FoE_dense  = self.focus_of_expansion.get_FOE_dense(self.flow_uv_derotated)
                 FoE_gt = self.dataset.get_gt_foe(self.frame_index)
                 FoE: Tuple[float, float] = utils.assert_type(FoE_dense)
 
                 phi_angle = self.focus_of_expansion.check_flow(self.flow_uv_derotated, FoE)
                 phi_angle_rgb = im_helpers.to_rgb(phi_angle, max_value=180.0)
-                result_img = im_helpers.apply_colormap(phi_angle_rgb) #, max_value=180.0
+                result_img = im_helpers.apply_colormap(phi_angle_rgb, max_value=180.0)
 
-                # analysis: Tuple[float, utils.Rectangle, np.ndarray, float] = self.detector.analyze_pyramid(phi_angle)
-                # window_optimized = self.detector.optimize_window(phi_angle, analysis[1])[1]
-                bounding_box = im_helpers.get_simple_bounding_box(phi_angle)
-                score = 0 #analysis[0]
-                # print(np.median(phi_angle), bounding_box.get_area())
+                frameresult = FrameResult()
+                frameresult.foe_dense = FoE_dense
+                frameresult.foe_gt = utils.assert_type(FoE_gt)
 
-                if bounding_box.size[0] < self.dataset.capture_size[0] * 3 / 4:
-                    self.old_frame = orig_frame
-                    confidence = score / (bounding_box.get_area() * 255)
-                    self.detection_results[self.frame_index].add_box('MAV', confidence, bounding_box)
+                if True:
+                    roll = 0
+                    seg_id = self.frame_index if self.frame_index < roll else self.frame_index - roll
+                    segmentation = self.dataset.get_segmentation(seg_id)[..., 0]
+                    estimate = phi_angle * (mask != True) * (self.flow_mag > 1.0)
 
-                self.detection_results[self.frame_index].data = {
-                    # 'foe_sparse': FoE_sparse,
-                    'foe_dense': FoE_dense,
-                    'foe_gt': FoE_gt,
-                }
+                    drone_flow_avg = np.average(self.dataset.get_gt_of(self.frame_index)[segmentation > 127], axis=0)
+
+                    bounding_box = im_helpers.get_simple_bounding_box(segmentation)
+
+                    print(bounding_box.get_left() - prev_bbox_left, drone_flow_avg[0])
+                    prev_bbox_left = bounding_box.get_left()
+
+                    tpr, fpr = im_helpers.calculate_tpr_fpr(segmentation, estimate)
+                    frameresult.tpr = tpr
+                    frameresult.fpr = fpr
+                    frameresult.sky_tpr = sky_tpr
+                    frameresult.sky_fpr = sky_fpr
+                    frameresult.drone_flow_pixels = (drone_flow_avg[0], drone_flow_avg[1])
+                    frameresult.drone_size_pixels = np.sum(segmentation > 127)
+
+                    utils.create_if_not_exists(self.dataset.result_imgs_path)
+                    cv2.imwrite(f'{self.dataset.result_imgs_path}/image_{self.frame_index:05d}.png', im_helpers.to_rgb(estimate))
 
                 for img in [orig_frame, result_img]:
-                    # img = self.focus_of_expansion.draw_FoE(img, FoE_sparse, [0, 0, 255])
                     img = self.focus_of_expansion.draw_FoE(img, FoE_dense,  [0, 255, 0])
 
                     if FoE_gt is not None:
                         img = self.focus_of_expansion.draw_FoE(img, FoE_gt, [255, 255, 255])
 
-                self.config.results[self.frame_index] = self.detection_results[self.frame_index]
+                self.detection_results[self.frame_index] = frameresult
+                self.config.results[self.frame_index] = frameresult
 
                 if result_img is not None and np.sum(result_img) > 0:
-                    self.write(np.hstack((
-                        self.flow_vis,
-                        im_helpers.get_flow_vis(self.flow_uv_derotated),
-                        result_img
-                    )))
+                    mask_vis = orig_frame
+                    angle_threshold = 20
+                    mask_vis[estimate > angle_threshold, :] = mask_vis[estimate > angle_threshold, :] * 0.5 + 127
+                    self.write(mask_vis)
                 else:
                     print('An error occured while processing frames.')
 

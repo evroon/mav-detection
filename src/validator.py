@@ -113,100 +113,21 @@ class Validator:
                 name = box_split[0]
                 confidence = int(box_split[1])
                 rect = utils.Rectangle.from_yolo_output(floats[1:])
-                frameresult.add_box(name, confidence, rect)
+                # frameresult.add_box(name, confidence, rect)
 
         return result
 
-    def annotate(self, img: np.ndarray, boxes: FrameResult, ground_truth: np.ndarray) -> float:
-        # Plot ground truth.
-        for gt in ground_truth:
-            self.positives += 1
-            img = cv2.rectangle(
-                img,
-                gt.get_topleft_int(),
-                gt.get_bottomright_int(),
-                (0, 0, 255),
-                3
-            )
-
-        threshold: float = 0.5
-        true_positives_in_frame = 0
-
-        iou = im_helpers.calculate_iou(ground_truth, img)
-        return iou
-
     def run_validation(self, estimates: Optional[Dict[int, FrameResult]] = None) -> None:
         self.dataset = self.config.get_dataset()
-        output = utils.get_output(f'{self.dataset.seq_path}/evaluation.mp4', self.dataset.orig_capture)
         self.positives = 0
         self.true_positives = 0
         self.false_positives = 0
         self.false_negatives = 0
         self.frames: Dict[int, FrameResult] = dict()
 
-        try:
-            video_annotated_path = self.dataset.seq_path + '/video-annotated.mp4'
-
-            if estimates is None:
-                # frames_raw = self.get_inference(dataset.vid_path, video_annotated_path, False)
-                # frames = self.parse_frames(frames_raw)
-                self.load_results()
-            else:
-                self.frames = utils.assert_type(estimates)
-
-            ious: List[float] = []
-
-            for i in range(self.dataset.N):
-                frame = self.dataset.get_frame()
-                ground_truth = self.dataset.get_segmentation(i)
-                if i in self.frames:
-                    iou_frame = self.annotate(frame, self.frames[i], ground_truth)
-                    ious.append(iou_frame)
-                    output.write(frame)
-
-            # Save histogram of IoU values.
-            self.ious = np.array(ious)
-            self.plot()
-
-            if self.true_positives > 0:
-                self.config.logger.info(f'TP: {self.true_positives}, FP: {self.false_positives}, FN: {self.false_negatives}')
-            else:
-                self.config.logger.error(f'No detections. TP: {self.true_positives}, FP: {self.false_positives}, FN: {self.false_negatives}')
-        finally:
-            output.release()
-            self.write_results()
-            self.plot_roc()
-
-    def write_results(self) -> None:
-        self.negatives = 0
-        self.true_negatives = 0
-
-        self.results = {
-            'ious': self.ious.tolist(),
-            'foe_error': self.foe_error.tolist(),
-            'true_positives': self.true_positives,
-            'false_positives': self.false_positives,
-            'false_negatives': self.false_negatives,
-            'true_positive_rate': self.true_positives / max(1.0, self.positives),
-            'true_negative_rate': self.true_negatives / max(1.0, self.negatives),
-            'false_positive_rate': self.true_positives / max(1.0, self.false_positives + self.true_negatives),
-            'false_negative_rate': self.true_negatives / max(1.0, self.false_negatives + self.true_positives),
-            'recall': self.true_positives / max(1.0, self.true_positives + self.false_negatives),
-            'precision': self.true_positives / max(1.0, self.true_positives + self.false_positives),
-        }
-        # self.config.logger.info(self.results)
-
-        output_file = f'results/{self.config}.json'
-        utils.create_if_not_exists(os.path.dirname(output_file))
-
-        with open(output_file, 'w') as f:
-            json.dump(self.results, f, indent=4)
-
-        with open('main.csv', 'a') as csv_file:
-            csv_file.write(','.join([str(x) for x in self.config]))
-            csv_file.write(','.join([f'{self.results[x]:.06f}' for x in self.results if x not in ['ious', 'foe_error']]))
-            csv_file.write('\n')
-
+        self.load_results()
+        self.plot()
+        self.plot_roc()
 
     def load_results(self) -> None:
         print('Loading detection results...')
@@ -217,17 +138,8 @@ class Validator:
                 json_result = json.load(f)
 
                 self.frames[i] = FrameResult()
-                self.frames[i].data = json_result['data']
-
-                for j, item in enumerate(json_result['boxes']):
-                    self.frames[i].add_box(
-                        item[0],
-                        item[1],
-                        utils.Rectangle(
-                            item[2]['topleft'],
-                            item[2]['size']
-                        )
-                    )
+                self.frames[i].tpr = json_result['tpr']
+                self.frames[i].fpr = json_result['fpr']
 
     def plot(self) -> None:
         utils.create_if_not_exists('media/output')
@@ -238,8 +150,8 @@ class Validator:
         plt.savefig('media/output/ious.png', bbox_inches='tight')
 
         # Plot histogram of FoE errors.
-        foe_dense = np.array([x[1].data['foe_dense'] for x in self.frames.items()])
-        foe_gt = np.array([x[1].data['foe_gt'] for x in self.frames.items()])
+        foe_dense = np.array([x[1].foe_dense for x in self.frames.items()])
+        foe_gt = np.array([x[1].foe_gt for x in self.frames.items()])
 
         if foe_gt[0] is None:
             return
@@ -273,8 +185,20 @@ class Validator:
         warnings.filterwarnings('ignore')
 
         # Load data
-        x = self.results['true_positive_rate']
-        y = self.results['false_positive_rate']
+        x = [f.fpr for _, f in self.frames.items()]
+        y = [f.tpr for _, f in self.frames.items()]
+
+        x = x[:len(x)//2]
+        y = y[:len(y)//2]
+
+        plt.figure()
+        plt.grid()
+        plt.plot(x, y, ls='', marker='o')
+        plt.xlabel('False Positive Rate')
+        plt.ylabel('True Positive Rate')
+        # plt.xlim(0, 1.0)
+        plt.ylim(0, 1.0)
+        plt.savefig('test.png')
         return
 
         threshold = 0.5

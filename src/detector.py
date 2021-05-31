@@ -186,7 +186,7 @@ class Detector:
 
         self.opt_window: Tuple[float, utils.Rectangle, np.ndarray, float] = self.analyze_pyramid(self.cluster_vis)
         window_optimized = self.opt_window[1]
-        self.frame_result.add_box('MAV', 1.0, window_optimized)
+        # self.frame_result.add_box('MAV', 1.0, window_optimized)
 
         if self.use_optimization:
             window_optimized = self.optimize_window(self.cluster_vis, self.opt_window[1])[1]

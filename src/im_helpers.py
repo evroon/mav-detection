@@ -234,10 +234,15 @@ def get_colorwheel(path: str = 'media/colorwheel.png') -> np.ndarray:
     cv2.imwrite(path, img)
     return img
 
-def calculate_iou(gt_img: np.ndarray, img: np.ndarray) -> float:
-    aou = (gt_img + img) > 0.0
-    aoo = (gt_img * img) > 0.0
-    return cast(float, np.sum(aoo) / np.sum(aou))
+def calculate_tpr_fpr(gt_img: np.ndarray, img: np.ndarray) -> Tuple[float, float]:
+    positives = np.sum(gt_img > 127)
+    negatives = np.sum((255 - gt_img) > 127)
+    true_positives = np.sum((gt_img * img) > 127)
+    false_positives = np.sum(((255 - gt_img) * img) > 127)
+
+    tpr = true_positives / positives
+    fpr = false_positives / negatives
+    return (cast(float, tpr), cast(float, fpr))
 
 def resize_percent(img: np.ndarray, scale_percent: float) -> np.ndarray:
     width = int(img.shape[1] * scale_percent / 100)

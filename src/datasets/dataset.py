@@ -28,11 +28,13 @@ class Dataset:
         self.img_path = f'{self.seq_path}{img_dir}'
         self.seg_path = f'{self.seq_path}/segmentations'
         self.depth_path = f'{self.seq_path}/depths'
+        self.depth_pngs_ffmpeg = f'{self.depth_path}/image_%5d.pfm'
         self.depth_vis_path = f'{self.seq_path}/depth-vis'
         self.gt_of_path = f'{self.seq_path}/optical-flow'
         self.gt_of_vis_path = f'{self.seq_path}/optical-flow-vis'
         self.ann_path = f'{self.seq_path}/annotation'
         self.results_path = f'{self.seq_path}/results'
+        self.result_imgs_path = f'{self.seq_path}/result-images'
         self.img_pngs = f'{self.img_path}/{img_format}'
         self.img_pngs_ffmpeg = f'{self.img_path}/image_%5d.png'
         self.img_pngs_glob = f'{self.img_path}/image_*.png'
@@ -52,6 +54,7 @@ class Dataset:
             utils.img_to_video(self.img_pngs, self.vid_path)
 
         self.orig_capture = cv2.VideoCapture(self.img_pngs)
+        self.depth_capture = cv2.VideoCapture(self.depth_pngs_ffmpeg)
         self.flow_capture = cv2.VideoCapture(f'{self.img_path}/output/flownet2.mp4')
         self.capture_size = utils.get_capture_size(self.orig_capture)
         self.capture_shape = self.get_capture_shape()
@@ -152,7 +155,7 @@ class Dataset:
 
         # Segment sky only
         mask = (img[..., 0] == 180) * (img[..., 1] == 130)
-        return im_helpers.to_int(mask, normalize=True)
+        return mask
 
     def get_segmentation(self, i: int) -> np.ndarray:
         """Returns the segmentation mask image.
@@ -164,6 +167,10 @@ class Dataset:
             np.ndarray: the segmentation mask
         """
         return cv2.imread(f'{self.seg_path}/image_{i:05d}.png')
+
+    def validate_sky_segment(self, sky_mask: np.ndarray, depth_buffer: np.ndarray) -> Tuple[float, float]:
+        # cv2.imshow('sky', depth_buffer)
+        return (0, 0)#im_helpers.calculate_tpr_fpr(sky_mask, depth_buffer > 0.90 * np.max(depth_buffer))
 
     def create_annotations(self) -> None:
         """Creates annotations in YOLOv4 format if possible."""
@@ -314,6 +321,18 @@ class Dataset:
             Optional[np.ndarray]: the ground truth optical flow field
         """
         return None
+
+    def get_depth(self, i:int) -> Optional[np.ndarray]:
+        """Returns the ground truth optical flow field for a given frame
+
+        Args:
+            i (int): Frame index
+
+        Returns:
+            Optional[np.ndarray]: the ground truth optical flow field
+        """
+        _, orig_frame = self.depth_capture.read()
+        return orig_frame#[..., 0]
 
     def release(self) -> None:
         """Release all media resources"""

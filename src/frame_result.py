@@ -3,11 +3,12 @@ import utils
 
 class FrameResult:
     def __init__(self) -> None:
-        self.boxes: List[Tuple[str, float, utils.Rectangle]] = []
-        self.data: Dict[str, Any] = {}
+        self.tpr = 0.0
+        self.fpr = 0.0
+        self.sky_tpr = 0.0
+        self.sky_fpr = 0.0
+        self.drone_size_pixels = 0.0
+        self.drone_flow_pixels = (0.0, 0.0)
+        self.foe_dense = (0.0, 0.0)
+        self.foe_gt = (0.0, 0.0)
 
-    def __iter__(self) -> Iterator[Any]:
-        return iter(self.boxes)
-
-    def add_box(self, name: str, confidence: float, rect: utils.Rectangle) -> None:
-        self.boxes.append((name, confidence, rect))
