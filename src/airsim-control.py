@@ -298,7 +298,10 @@ class AirSimControl:
                     self.minimum_segmentation_sum = seg_sum
 
                 drone_in_frame = config.mode == Mode.COLLISION or (seg_sum > self.minimum_segmentation_sum and self.iteration > 10)
-                self.write_frame(image_path, response)
+
+                if drone_in_frame:
+                    self.write_frame(image_path, response)
+
                 self.drone_in_frame_previous = drone_in_frame
             elif self.drone_in_frame_previous:
                 self.write_frame(image_path, response)
@@ -378,10 +381,11 @@ class AirSimControl:
             angle_to_center = math.atan2(dy, dx)
             camera_heading = np.rad2deg(angle_to_center - math.pi)
 
-            vx = config.global_speed.x_val
+            vx = config.global_speed.x_val * 0.99333
+            vy = config.orbit_speed * config.radius
             z = pos_observer_drone.z_val
 
-            self.client.moveByVelocityZAsync(vx, 0, z, 10, airsim.DrivetrainType.MaxDegreeOfFreedom,
+            self.client.moveByVelocityZAsync(vx, vy, z, 10, airsim.DrivetrainType.MaxDegreeOfFreedom,
                 airsim.YawMode(False, camera_heading), vehicle_name=self.target_drone)
 
             yaw_mode = airsim.YawMode(True, self.yaw_rate * yaw_rate_direction)
@@ -394,9 +398,8 @@ class AirSimControl:
             self.client.simPause(True)
             self.capture(config)
 
-            base_heading = np.deg2rad(config.orientation.get_heading())
-            angle_diff = np.rad2deg(angle_to_center - base_heading)
-            running = angle_diff < 50
+            print(pos_observer_drone.x_val, pos_target_drone.x_val, pos_observer_drone.x_val - pos_target_drone.x_val)
+            running = pos_target_drone.y_val < 1.1 * config.radius
             self.iteration += 1
 
     def fly_orbit(self, config: SimConfig) -> None:
