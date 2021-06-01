@@ -318,10 +318,9 @@ class Processor:
                 frameresult.foe_gt = utils.assert_type(FoE_gt)
 
                 if True:
-                    roll = 0
-                    seg_id = self.frame_index if self.frame_index < roll else self.frame_index - roll
-                    segmentation = self.dataset.get_segmentation(seg_id)[..., 0]
+                    segmentation = self.dataset.get_segmentation(self.frame_index)[..., 0]
                     estimate = phi_angle * (mask != True) * (self.flow_mag > 1.0)
+                    angle_threshold = 20
 
                     drone_flow_avg = np.average(self.dataset.get_gt_of(self.frame_index)[segmentation > 127], axis=0)
 
@@ -330,7 +329,7 @@ class Processor:
                     print(bounding_box.get_left() - prev_bbox_left, drone_flow_avg[0])
                     prev_bbox_left = bounding_box.get_left()
 
-                    tpr, fpr = im_helpers.calculate_tpr_fpr(segmentation, estimate)
+                    tpr, fpr = im_helpers.calculate_tpr_fpr(segmentation, 255 * (estimate > angle_threshold))
                     frameresult.tpr = tpr
                     frameresult.fpr = fpr
                     frameresult.sky_tpr = sky_tpr
@@ -352,7 +351,6 @@ class Processor:
 
                 if result_img is not None and np.sum(result_img) > 0:
                     mask_vis = orig_frame
-                    angle_threshold = 20
                     mask_vis[estimate > angle_threshold, :] = mask_vis[estimate > angle_threshold, :] * 0.5 + 127
                     self.write(mask_vis)
                 else:
