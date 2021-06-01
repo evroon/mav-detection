@@ -322,11 +322,12 @@ class Processor:
                     estimate = phi_angle * (mask != True) * (self.flow_mag > 1.0)
                     angle_threshold = 20
 
-                    drone_flow_avg = np.average(self.dataset.get_gt_of(self.frame_index)[segmentation > 127], axis=0)
+                    drone_flow_avg = np.average(self.flow_uv[segmentation > 127], axis=0)
+                    drone_flow_avg_gt = np.average(self.dataset.get_gt_of(self.frame_index)[segmentation > 127], axis=0)
 
                     bounding_box = im_helpers.get_simple_bounding_box(segmentation)
 
-                    print(bounding_box.get_left() - prev_bbox_left, drone_flow_avg[0])
+                    print(bounding_box.get_left() - prev_bbox_left, drone_flow_avg[0], drone_flow_avg_gt[0], 1920 / self.dataset.N)
                     prev_bbox_left = bounding_box.get_left()
 
                     tpr, fpr = im_helpers.calculate_tpr_fpr(segmentation, 255 * (estimate > angle_threshold))

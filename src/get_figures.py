@@ -1,13 +1,19 @@
+import glob
 import numpy as np
-import cv2
+import matplotlib.pyplot as plt
 
-pixel_counts = []
+validation_data = glob.glob('/home/erik/tno/datasets/data/mountains-line/*/validation.npy')
+validation_data.sort()
 
-for i in range(5, 18):
-    img = cv2.imread(f'data/mountains-moving/lake-orbit-0-north-low-40.0-15-default/segmentations/image_{i:05d}.png', 0)
-    pixel_count = np.sum(img) / 255
-    pixel_counts.append(pixel_count)
+for d in validation_data:
+    validation = np.load(d, allow_pickle=True)
+    tpr = validation[:2]
+    size = validation[2:4]
+    flow_x = validation[4:6]
+    flow_y = validation[6:8]
 
-pixel_counts = np.array(pixel_counts)
-print(np.average(pixel_counts), np.std(pixel_counts))
-print(pixel_counts)
+    label = f'{flow_x[0]} (±{flow_x[1]}) px/s'
+    plt.errorbar(size[0], size[1], tpr[0], tpr[1],
+                marker='o', markersize=6, capsize=3,
+                barsabove=False, label=label, zorder=1, color='indigo')
+    plt.savefig('test')

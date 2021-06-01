@@ -140,6 +140,10 @@ class Validator:
                 self.frames[i] = FrameResult()
                 self.frames[i].tpr = json_result['tpr']
                 self.frames[i].fpr = json_result['fpr']
+                self.frames[i].sky_tpr = json_result['sky_tpr']
+                self.frames[i].sky_fpr = json_result['sky_fpr']
+                self.frames[i].foe_dense = json_result['foe_dense']
+                self.frames[i].foe_gt = json_result['foe_gt']
 
     def plot(self) -> None:
         utils.create_if_not_exists('media/output')
@@ -160,7 +164,7 @@ class Validator:
         self.foe_error = foe_dense - foe_gt
         foe_error_mag = im_helpers.get_magnitude(self.foe_error)
 
-        outlier_threshold = 50.0
+        outlier_threshold = 40.0
         inliers_list = []
 
         for i in range(self.foe_error.shape[0]):
@@ -168,7 +172,12 @@ class Validator:
                 inliers_list.append(i)
 
         inliers = np.array(inliers_list)
-        print(f'foe outliers: {self.foe_error.shape[0] - inliers.shape[0]}, average error: {np.average(foe_error_mag[inliers]):.3f}, std: {np.std(foe_error_mag[inliers]):.3f}')
+        foe_error_inliers = self.foe_error[inliers]
+        mean_error = np.average(foe_error_inliers, axis=0)
+        std_error = np.std(foe_error_inliers, axis=0)
+        print(self.foe_error.shape, foe_error_inliers.shape)
+        print(f'foe outliers: {self.foe_error.shape[0] - inliers.shape[0]}, average error:',
+              f'({mean_error[0]:.3f}, {mean_error[1]:.3f}), std: ({std_error[0]:.3f}, {std_error[1]:.3f})')
 
         plt.hist(self.foe_error[..., 0], np.linspace(-outlier_threshold, outlier_threshold, 40), histtype=u'step', label='x', color='b')
         plt.hist(self.foe_error[..., 1], np.linspace(-outlier_threshold, outlier_threshold, 40), histtype=u'step', label='y', color='m')
@@ -187,6 +196,40 @@ class Validator:
         # Load data
         x = [f.fpr for _, f in self.frames.items()]
         y = [f.tpr for _, f in self.frames.items()]
+        flow_x = [f.drone_flow_pixels[0] for _, f in self.frames.items()]
+        flow_y = [f.drone_flow_pixels[1] for _, f in self.frames.items()]
+        size = [f.drone_size_pixels for _, f in self.frames.items()]
+
+        x_easy = x[2:len(x)//2]
+        y_easy = y[2:len(y)//2]
+        x_hard = x[len(x)//2:-2]
+        y_hard = y[len(y)//2:-2]
+
+        plt.figure()
+        plt.grid()
+        plt.plot(x_easy, y_easy, ls='', marker='o', label='antiparallel')
+        plt.plot(x_hard, y_hard, ls='', marker='o', label='parallel')
+        plt.xlabel('False Positive Rate')
+        plt.ylabel('True Positive Rate')
+        # plt.xlim(0, np.max(x_hard) * 1.02)
+        plt.ylim(0, 1.0)
+        plt.legend()
+        plt.savefig(f'{self.dataset.seq_path}/roc', bbox_inches='tight')
+
+        np.save(
+            f'{self.dataset.seq_path}/validation.npy',
+            np.array([
+                np.average(y), np.std(y),
+                np.average(size), np.std(size),
+                np.average(flow_x), np.std(flow_x),
+                np.average(flow_y), np.std(flow_y),
+                x, y,
+            ])
+        )
+
+        # Plot sky segmentation RoC
+        x = [f.sky_fpr for _, f in self.frames.items()]
+        y = [f.sky_tpr for _, f in self.frames.items()]
 
         x = x[:len(x)//2]
         y = y[:len(y)//2]
@@ -198,7 +241,7 @@ class Validator:
         plt.ylabel('True Positive Rate')
         # plt.xlim(0, 1.0)
         plt.ylim(0, 1.0)
-        plt.savefig('test.png')
+        plt.savefig(f'{self.dataset.seq_path}/sky_roc', bbox_inches='tight')
         return
 
         threshold = 0.5
