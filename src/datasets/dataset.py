@@ -110,7 +110,7 @@ class Dataset:
 
         self.logger.info('Running HRNet-OCR...')
         hrnet = os.environ['HRNET_PATH']
-        subprocess.call([f'{hrnet}/launch_docker.sh', '--run', '--dataset',  f'{self.half_res_img_path}'])
+        subprocess.call([f'{hrnet}/launch_docker.sh', '--run', '--dataset',  self.half_res_img_path])
 
     def run_flownet2(self) -> None:
         """Runs FlowNet2 on the current sequence."""
@@ -119,7 +119,7 @@ class Dataset:
 
         self.logger.info('Running FlowNet2...')
         flownet2 = os.environ['FLOWNET2']
-        subprocess.call([f'{flownet2}/launch_docker.sh', '--run', '--dataset',  f'{self.img_path}'])
+        subprocess.call([f'{flownet2}/launch_docker.sh', '--run', '--dataset',  self.img_path])
 
     def get_default_sequence(self) -> str:
         """The default sequence to use if no sequence was specified by user
@@ -210,6 +210,7 @@ class Dataset:
 
         if self.capture_size != self.flow_size:
             flow_uv = cv2.resize(flow_uv, self.capture_size)
+            flow_uv[..., 1] *= self.capture_size[1] / self.flow_size[1]
 
         return flow_uv
 
