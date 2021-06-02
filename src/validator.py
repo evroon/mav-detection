@@ -138,6 +138,7 @@ class Validator:
                 json_result = json.load(f)
 
                 self.frames[i] = FrameResult()
+                self.frames[i].time = json_result['time']
                 self.frames[i].tpr = json_result['tpr']
                 self.frames[i].fpr = json_result['fpr']
                 self.frames[i].sky_tpr = json_result['sky_tpr']
@@ -199,6 +200,7 @@ class Validator:
         warnings.filterwarnings('ignore')
 
         # Load data
+        t = [f.time for _, f in self.frames.items()]
         x = [f.fpr for _, f in self.frames.items()]
         y = [f.tpr for _, f in self.frames.items()]
         flow_x = np.array([float(f.drone_flow_pixels[0]) for _, f in self.frames.items()])
@@ -225,6 +227,15 @@ class Validator:
         plt.ticklabel_format(axis="x", style="sci", scilimits=(0,0))
         plt.legend(loc='lower right')
         plt.savefig(f'{self.dataset.seq_path}/roc', bbox_inches='tight')
+
+        # Time series
+        plt.figure()
+        plt.grid()
+        plt.plot(t, y, ls='', marker='o')
+        plt.xlabel('Time [s]')
+        plt.ylabel('True Positive Rate')
+        plt.ylim(0, 1.0)
+        plt.savefig(f'{self.dataset.seq_path}/tpr_vs_time', bbox_inches='tight')
 
         print(f'size: {np.average(size):.3f}, {np.std(size):.1f}')
         print(f'flow x: {np.average(flow_x):.3f}, {np.std(flow_x):.1f}')

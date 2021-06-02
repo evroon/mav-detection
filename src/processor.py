@@ -337,6 +337,7 @@ class Processor:
                     frameresult.sky_fpr = sky_fpr
                     frameresult.drone_flow_pixels = (drone_flow_avg_gt[0], drone_flow_avg_gt[1])
                     frameresult.drone_size_pixels = np.sum(segmentation > 127)
+                    frameresult.time = self.dataset.get_time(self.frame_index)
 
                     utils.create_if_not_exists(self.dataset.result_imgs_path)
                     img = im_helpers.apply_colormap(estimate, max_value=180)

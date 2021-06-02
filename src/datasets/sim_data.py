@@ -19,6 +19,8 @@ class SimData(Dataset):
     def __init__(self, logger: logging.Logger, sequence: str) -> None:
         simdata_path = os.environ['SIMDATA_PATH']
         super().__init__(simdata_path, logger, sequence)
+        self.start_time = 0
+        self.start_time = self.get_time(0)
 
     def write_yolo_annotation(self, image_path: str) -> None:
         filename = os.path.basename(image_path)
@@ -57,13 +59,13 @@ class SimData(Dataset):
         omega[2] = -omega[2]
         return omega
 
-    def get_delta_time(self, i:int) -> float:
-        if i < 1:
-            return 0.0
+    def get_time(self, i:int) -> float:
+        return self.get_state(i)['Drone1']['imu']['time_stamp'] / 1e9 - self.start_time
 
-        time_stamp1 = self.get_state(i-1)['Drone1']['imu']['time_stamp']
-        time_stamp2 = self.get_state(i)['Drone1']['imu']['time_stamp']
-        return float(time_stamp2 - time_stamp1) / 1e9
+    def get_delta_time(self, i:int) -> float:
+        time_stamp1 = self.get_time(i-1)
+        time_stamp2 = self.get_time(i)
+        return float(time_stamp2 - time_stamp1)
 
     def get_gt_foe(self, i:int) -> Optional[Tuple[float, float]]:
         FoE = self.get_state(i)['Drone1']['ue4']['FoE']

@@ -289,6 +289,17 @@ class Dataset:
         """
         pass
 
+    def get_time(self, i:int) -> float:
+        """Returns the time in seconds at the current frame
+
+        Args:
+            i (int): Current frame index
+
+        Returns:
+            float: Time in seconds
+        """
+        pass
+
     def get_delta_time(self, i:int) -> float:
         """Returns the time difference in seconds between the previous and current frame
 
