@@ -18,8 +18,8 @@ class SimData(Dataset):
 
     def __init__(self, logger: logging.Logger, sequence: str) -> None:
         simdata_path = os.environ['SIMDATA_PATH']
-        super().__init__(simdata_path, logger, sequence)
         self.start_time = 0
+        super().__init__(simdata_path, logger, sequence)
         self.start_time = self.get_time(0)
 
     def write_yolo_annotation(self, image_path: str) -> None:
@@ -37,7 +37,7 @@ class SimData(Dataset):
             f.write(rect.to_yolo(img_size))
 
     def get_state_filenames(self) -> List[str]:
-        return utils.sorted_glob(f'{self.state_path}/*.json')
+        return utils.sorted_glob(f'{self.state_path}/1*.json')
 
     def get_state(self, i:int) -> np.ndarray:
         with open(self.get_state_filenames()[i], 'r') as f:
