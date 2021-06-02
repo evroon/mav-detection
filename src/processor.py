@@ -335,11 +335,14 @@ class Processor:
                     frameresult.fpr = fpr
                     frameresult.sky_tpr = sky_tpr
                     frameresult.sky_fpr = sky_fpr
-                    frameresult.drone_flow_pixels = (drone_flow_avg[0], drone_flow_avg[1])
+                    frameresult.drone_flow_pixels = (drone_flow_avg_gt[0], drone_flow_avg_gt[1])
                     frameresult.drone_size_pixels = np.sum(segmentation > 127)
 
                     utils.create_if_not_exists(self.dataset.result_imgs_path)
-                    cv2.imwrite(f'{self.dataset.result_imgs_path}/image_{self.frame_index:05d}.png', im_helpers.to_rgb(estimate))
+                    img = im_helpers.apply_colormap(estimate, max_value=180)
+                    img = self.focus_of_expansion.draw_FoE(img, FoE_dense,  [255, 255, 255])
+
+                    cv2.imwrite(f'{self.dataset.result_imgs_path}/image_{self.frame_index:05d}.png', img)
 
                 for img in [orig_frame, result_img]:
                     img = self.focus_of_expansion.draw_FoE(img, FoE_dense,  [0, 255, 0])

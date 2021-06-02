@@ -144,6 +144,8 @@ class Validator:
                 self.frames[i].sky_fpr = json_result['sky_fpr']
                 self.frames[i].foe_dense = json_result['foe_dense']
                 self.frames[i].foe_gt = json_result['foe_gt']
+                self.frames[i].drone_flow_pixels = json_result['drone_flow_pixels']
+                self.frames[i].drone_size_pixels = json_result['drone_size_pixels']
 
     def plot(self) -> None:
         utils.create_if_not_exists('media/output')
@@ -171,20 +173,23 @@ class Validator:
             if np.abs(self.foe_error[i, 0]) < outlier_threshold and np.abs(self.foe_error[i, 1]) < outlier_threshold:
                 inliers_list.append(i)
 
-        inliers = np.array(inliers_list)
-        foe_error_inliers = self.foe_error[inliers]
-        mean_error = np.average(foe_error_inliers, axis=0)
-        std_error = np.std(foe_error_inliers, axis=0)
-        print(self.foe_error.shape, foe_error_inliers.shape)
-        print(f'foe outliers: {self.foe_error.shape[0] - inliers.shape[0]}, average error:',
-              f'({mean_error[0]:.3f}, {mean_error[1]:.3f}), std: ({std_error[0]:.3f}, {std_error[1]:.3f})')
+        if len(inliers_list) > 0:
+            inliers = np.array(inliers_list)
+            foe_error_inliers = self.foe_error[inliers]
+            mean_error = np.average(foe_error_inliers, axis=0)
+            std_error = np.std(foe_error_inliers, axis=0)
+            print(self.foe_error.shape, foe_error_inliers.shape)
+            print(f'foe outliers: {self.foe_error.shape[0] - inliers.shape[0]}, average error:',
+                f'({mean_error[0]:.3f}, {mean_error[1]:.3f}), std: ({std_error[0]:.3f}, {std_error[1]:.3f})')
 
-        plt.hist(self.foe_error[..., 0], np.linspace(-outlier_threshold, outlier_threshold, 40), histtype=u'step', label='x', color='b')
-        plt.hist(self.foe_error[..., 1], np.linspace(-outlier_threshold, outlier_threshold, 40), histtype=u'step', label='y', color='m')
-        plt.xlabel('FoE error [pixels]')
-        plt.ylabel('Frequency [frames]')
-        plt.legend()
-        plt.savefig('media/output/foe-error.png', bbox_inches='tight')
+            plt.hist(self.foe_error[..., 0], np.linspace(-outlier_threshold, outlier_threshold, 40), histtype=u'step', label='x', color='b')
+            plt.hist(self.foe_error[..., 1], np.linspace(-outlier_threshold, outlier_threshold, 40), histtype=u'step', label='y', color='m')
+            plt.xlabel('FoE error [pixels]')
+            plt.ylabel('Frequency [frames]')
+            plt.legend()
+            plt.savefig('media/output/foe-error.png', bbox_inches='tight')
+        else:
+            print('Error: no inliers in FoE estimates')
 
     def plot_roc(self) -> None:
         ''' Plots the ROC curve for different thresholds. '''
@@ -196,9 +201,12 @@ class Validator:
         # Load data
         x = [f.fpr for _, f in self.frames.items()]
         y = [f.tpr for _, f in self.frames.items()]
-        flow_x = [f.drone_flow_pixels[0] for _, f in self.frames.items()]
-        flow_y = [f.drone_flow_pixels[1] for _, f in self.frames.items()]
-        size = [f.drone_size_pixels for _, f in self.frames.items()]
+        flow_x = np.array([float(f.drone_flow_pixels[0]) for _, f in self.frames.items()])
+        flow_y = np.array([float(f.drone_flow_pixels[1]) for _, f in self.frames.items()])
+        size = np.array([int(f.drone_size_pixels) for _, f in self.frames.items()])
+
+        flow_x = flow_x[~np.isnan(flow_x)]
+        flow_y = flow_y[~np.isnan(flow_y)]
 
         x_easy = x[2:len(x)//2]
         y_easy = y[2:len(y)//2]
@@ -207,14 +215,20 @@ class Validator:
 
         plt.figure()
         plt.grid()
-        plt.plot(x_easy, y_easy, ls='', marker='o', label='antiparallel')
-        plt.plot(x_hard, y_hard, ls='', marker='o', label='parallel')
+        plt.plot(x_easy, y_easy, ls='', marker='o', label=r'$\phi \approx 180\degree$')
+        plt.plot(x_hard, y_hard, ls='', marker='o', label=r'$\phi \approx 0\degree$')
         plt.xlabel('False Positive Rate')
         plt.ylabel('True Positive Rate')
         # plt.xlim(0, np.max(x_hard) * 1.02)
+        plt.xlim(0, 8e-4)
         plt.ylim(0, 1.0)
-        plt.legend()
+        plt.ticklabel_format(axis="x", style="sci", scilimits=(0,0))
+        plt.legend(loc='lower right')
         plt.savefig(f'{self.dataset.seq_path}/roc', bbox_inches='tight')
+
+        print(f'size: {np.average(size):.3f}, {np.std(size):.1f}')
+        print(f'flow x: {np.average(flow_x):.3f}, {np.std(flow_x):.1f}')
+        print(f'flow y: {np.average(flow_y):.3f}, {np.std(flow_y):.1f}')
 
         np.save(
             f'{self.dataset.seq_path}/validation.npy',
