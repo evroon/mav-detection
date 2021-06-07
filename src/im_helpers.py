@@ -122,10 +122,13 @@ def apply_colormap(img: np.ndarray, max_value: float = None) -> np.ndarray:
     Returns:
         np.ndarray: [description]
     """
+    if img.dtype == np.float32 or img.dtype == np.float64:
+        img = to_int(img, normalize=True, max_value=max_value)
+
     if max_value is None:
         return cv2.applyColorMap(img, cv2.COLORMAP_JET)
 
-    old_value = img[0, 0, 0]
+    old_value = img[0, 0, ...]
     img[0, 0, ...] = max_value
     result = cv2.applyColorMap(img, cv2.COLORMAP_JET)
     result[0, 0, ...] = cv2.applyColorMap(np.ones((1, 1, 3), dtype=np.uint8) * old_value, cv2.COLORMAP_JET)
