@@ -379,14 +379,15 @@ class AirSimControl:
             dx = pos_target_drone.x_val - pos_observer_drone.x_val
             dy = pos_target_drone.y_val - pos_observer_drone.y_val
             angle_to_center = math.atan2(dy, dx)
-            camera_heading = np.rad2deg(angle_to_center - math.pi)
+            camera_heading = np.rad2deg(angle_to_center)
 
             # Factor of 0.99333 is needed because the target drone will otherwise drift away from observer.
             vx = config.global_speed.x_val * 0.99333
             vy = config.orbit_speed * config.radius
             z = pos_observer_drone.z_val
+            z_target = z - 0.2 * config.radius
 
-            self.client.moveByVelocityZAsync(vx, vy, z, 10, airsim.DrivetrainType.MaxDegreeOfFreedom,
+            self.client.moveByVelocityZAsync(vx, vy, z_target, 10, airsim.DrivetrainType.MaxDegreeOfFreedom,
                 airsim.YawMode(False, camera_heading), vehicle_name=self.target_drone)
 
             yaw_mode = airsim.YawMode(True, self.yaw_rate * yaw_rate_direction)
@@ -399,7 +400,6 @@ class AirSimControl:
             self.client.simPause(True)
             self.capture(config)
 
-            print(pos_observer_drone.x_val, pos_target_drone.x_val, pos_observer_drone.x_val - pos_target_drone.x_val)
             running = pos_target_drone.y_val < 1.1 * config.radius
             self.iteration += 1
 

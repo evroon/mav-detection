@@ -72,7 +72,7 @@ def plot_states(states_dir: str, observable: str) -> np.ndarray:
 
 
 if __name__ == '__main__':
-    states_dir = 'data/mountains-moving/lake-collision-0-north-medium-50.0-10-default/states'
+    states_dir = 'data/mountains-moving/lake-line-0-north-low-20.0-0.05-default/states'
     plot_states(states_dir, 'linear_acceleration')
     plot_states(states_dir, 'orientation')
     t = plot_states(states_dir, 'angular_velocity')
