@@ -154,7 +154,7 @@ class Validator:
         plt.grid()
         plt.xlabel('IoU')
         plt.ylabel('Frequency [frames]')
-        plt.savefig('media/output/ious.png', bbox_inches='tight')
+        plt.savefig('media/output/ious.eps', bbox_inches='tight')
 
         # Plot histogram of FoE errors.
         foe_dense = np.array([x[1].foe_dense for x in self.frames.items()])
@@ -188,7 +188,7 @@ class Validator:
             plt.xlabel('FoE error [pixels]')
             plt.ylabel('Frequency [frames]')
             plt.legend()
-            plt.savefig('media/output/foe-error.png', bbox_inches='tight')
+            plt.savefig('media/output/foe-error.eps', bbox_inches='tight')
         else:
             print('Error: no inliers in FoE estimates')
 
