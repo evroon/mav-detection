@@ -42,6 +42,7 @@ class Dataset:
         self.state_path = f'{self.seq_path}/states'
         self.half_res_img_path = f'{self.seq_path}/half-res-images'
         self.hrnet_out = f'{self.half_res_img_path}/hrnet'
+        self.flownet_output = f'{self.img_path}/output/inference/run.epoch-0-flow-field'
 
         self.mp4_to_png()
         self.jpg_to_png()
@@ -54,6 +55,10 @@ class Dataset:
             utils.img_to_video(self.img_pngs, self.vid_path)
 
         self.orig_capture = cv2.VideoCapture(self.img_pngs)
+
+        if not os.path.exists(self.flownet_output):
+            self.run_flownet2()
+
         self.flow_capture = cv2.VideoCapture(f'{self.img_path}/output/flownet2.mp4')
         self.capture_size = utils.get_capture_size(self.orig_capture)
         self.capture_shape = self.get_capture_shape()
@@ -85,10 +90,6 @@ class Dataset:
 
         if not os.path.exists(self.hrnet_out):
             self.run_hrnet()
-
-        if self.N != utils.get_frame_count(self.orig_capture) - 1:
-            self.logger.error(f'Input counts: (images, flow fields): {utils.get_frame_count(self.orig_capture)}, {self.N}')
-            self.run_flownet2()
 
         self.logger.info('Dataset loaded.')
 

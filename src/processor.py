@@ -181,7 +181,7 @@ class Processor:
         """
         self.logger.info(f'Preparing sequence {sequence}')
         self.sequence = sequence
-        self.flo_path = f'{self.img_path}/output/inference/run.epoch-0-flow-field'
+        self.flo_path = self.dataset.flownet2_output
 
         self.capture_shape = self.dataset.get_capture_shape()
         self.resolution = np.array(self.capture_shape)[:2][::-1]
