@@ -121,4 +121,4 @@ class SimConfig:
             if is_observer:
                 return self.center
 
-            return self.center + airsim.Vector3r(1, -1.1, 0.0) * self.radius
+            return self.center + airsim.Vector3r(1, -1, 0.15) * self.radius
