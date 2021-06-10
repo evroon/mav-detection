@@ -385,7 +385,7 @@ class AirSimControl:
             vx = config.global_speed.x_val * 0.99333
             vy = config.orbit_speed * config.radius
             z = pos_observer_drone.z_val
-            z_target = z - 0.2 * config.radius
+            z_target = z - 0.15 * config.radius
 
             self.client.moveByVelocityZAsync(vx, vy, z_target, 10, airsim.DrivetrainType.MaxDegreeOfFreedom,
                 airsim.YawMode(False, camera_heading), vehicle_name=self.target_drone)
@@ -400,7 +400,7 @@ class AirSimControl:
             self.client.simPause(True)
             self.capture(config)
 
-            running = pos_target_drone.y_val < 1.1 * config.radius
+            running = pos_target_drone.y_val < config.radius
             self.iteration += 1
 
     def fly_orbit(self, config: SimConfig) -> None:
