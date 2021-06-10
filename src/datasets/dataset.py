@@ -207,13 +207,7 @@ class Dataset:
             np.ndarray: (w, h, 2) array with flow vectors
         """
         flo_path = f'{self.img_path}/output/inference/run.epoch-0-flow-field/{i:06d}.flo'
-        flow_uv = utils.read_flow(flo_path)
-
-        if self.capture_size != self.flow_size:
-            flow_uv = cv2.resize(flow_uv, self.capture_size)
-            flow_uv[..., 1] *= self.capture_size[1] / self.flow_size[1]
-
-        return flow_uv
+        return utils.read_flow(flo_path)
 
     def get_capture_shape(self) -> Tuple[int, int, int]:
         """Get the shape of the original image inputs.
