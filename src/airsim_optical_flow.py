@@ -116,6 +116,9 @@ def write_flow(dataset: Dataset) -> np.ndarray:
     coords = np.stack((x_coords, y_coords)).swapaxes(0, 2)
 
     for i, _ in enumerate(states[1:]):
+        if i % int(len(states[1:]) / 10) == 0:
+            dataset.logger.info(f'{i / len(states[1:]) * 100:.2f}%')
+
         state1 = get_state(states[i-1])
         state2 = get_state(states[i])
 
