@@ -147,6 +147,7 @@ class Validator:
                 self.frames[i].foe_gt = json_result['foe_gt']
                 self.frames[i].drone_flow_pixels = json_result['drone_flow_pixels']
                 self.frames[i].drone_size_pixels = json_result['drone_size_pixels']
+                self.frames[i].center_phi = json_result['center_phi']
 
     def plot(self) -> None:
         utils.create_if_not_exists('media/output')
@@ -164,10 +165,9 @@ class Validator:
             return
 
         # print(foe_dense.dtype)
-        self.foe_error = foe_dense - foe_gt
-        foe_error_mag = im_helpers.get_magnitude(self.foe_error)
+        self.foe_error = foe_dense[1:] - foe_gt[1:]
 
-        outlier_threshold = 40.0
+        outlier_threshold = 50.0
         inliers_list = []
 
         for i in range(self.foe_error.shape[0]):
@@ -200,9 +200,10 @@ class Validator:
         warnings.filterwarnings('ignore')
 
         # Load data
-        t = [f.time for _, f in self.frames.items()]
-        x = [f.fpr for _, f in self.frames.items()]
-        y = [f.tpr for _, f in self.frames.items()]
+        t = np.array([f.time for _, f in self.frames.items()])
+        phi = np.array([float(f.center_phi) for _, f in self.frames.items()])
+        x = np.array([f.fpr for _, f in self.frames.items()])
+        y = np.array([f.tpr for _, f in self.frames.items()])
         flow_x = np.array([float(f.drone_flow_pixels[0]) for _, f in self.frames.items()])
         flow_y = np.array([float(f.drone_flow_pixels[1]) for _, f in self.frames.items()])
         size = np.array([int(f.drone_size_pixels) for _, f in self.frames.items()])
@@ -210,44 +211,62 @@ class Validator:
         flow_x = flow_x[~np.isnan(flow_x)]
         flow_y = flow_y[~np.isnan(flow_y)]
 
-        x_easy = x[2:len(x)//2]
-        y_easy = y[2:len(y)//2]
-        x_hard = x[len(x)//2:-2]
-        y_hard = y[len(y)//2:-2]
-
+        # Phi vs TPR
         plt.figure()
         plt.grid()
-        plt.plot(x_easy, y_easy, ls='', marker='o', label=r'$\phi \approx 180\degree$')
-        plt.plot(x_hard, y_hard, ls='', marker='o', label=r'$\phi \approx 0\degree$')
-        plt.xlabel('False Positive Rate')
-        plt.ylabel('True Positive Rate')
-        # plt.xlim(0, np.max(x_hard) * 1.02)
-        plt.xlim(0, 8e-4)
-        plt.ylim(0, 1.0)
-        plt.ticklabel_format(axis="x", style="sci", scilimits=(0,0))
-        plt.legend(loc='lower right')
-        plt.savefig(f'{self.dataset.seq_path}/roc', bbox_inches='tight')
-
-        # Time series
-        plt.figure()
-        plt.grid()
-        plt.plot(t, y, ls='', marker='o')
-        plt.xlabel('Time [s]')
+        plt.plot(phi, y, ls='', marker='o')
+        plt.xlabel(r'$\phi$ [deg]')
         plt.ylabel('True Positive Rate')
         plt.ylim(0, 1.0)
-        plt.savefig(f'{self.dataset.seq_path}/tpr_vs_time', bbox_inches='tight')
+        plt.xlim(-180, 0)
 
         print(f'size: {np.average(size):.3f}, {np.std(size):.1f}')
         print(f'flow x: {np.average(flow_x):.3f}, {np.std(flow_x):.1f}')
         print(f'flow y: {np.average(flow_y):.3f}, {np.std(flow_y):.1f}')
 
+        plt.savefig(f'{self.dataset.seq_path}/tpr_vs_time_raw', bbox_inches='tight')
+
+        # Cluster/window the data into bins to make plot more readble.
+        bins_start = np.linspace(-180, -25, 40)
+        bins_end = np.linspace(-25, 0, 30)
+        bins = np.concatenate([bins_start, bins_end])
+        avg_std = np.zeros((len(bins), 3))
+        y_finite = y[~np.isnan(y)]
+
+        for i in range(1, len(bins)):
+            bin_mask = (phi >= bins[i - 1]) * (phi < bins[i])
+
+            avg_std[i-1, :] = [
+                np.average(phi[bin_mask]),
+                np.average(y_finite[bin_mask]),
+                np.std(y_finite[bin_mask])
+            ]
+
+        # Remove nan values.
+        # avg_std = avg_std[avg_std[:, 0] > -180.0, :]
+
+        # Plot errorbars only for the optimal threshold.
+        plt.figure()
+        plt.grid()
+        plt.xlabel(r'$\phi$ [deg]')
+        plt.ylabel('True Positive Rate')
+        plt.ylim(0, 1.0)
+        plt.errorbar(avg_std[:, 0], avg_std[:, 1], yerr=avg_std[:, 2],
+            marker='o', markersize=6, capsize=3, barsabove=True, label='', zorder=1, color='indigo')
+
+        print(avg_std[:, 1])
+
+        plt.savefig(f'{self.dataset.seq_path}/tpr_vs_time', bbox_inches='tight')
+
+        # Save data
         np.save(
             f'{self.dataset.seq_path}/validation.npy',
             np.array([
                 np.average(y), np.std(y),
                 np.average(size), np.std(size),
-                np.average(flow_x), np.std(flow_x),
+                np.median(flow_x), np.std(flow_x),
                 np.average(flow_y), np.std(flow_y),
+                avg_std,
                 x, y,
             ])
         )
@@ -264,7 +283,6 @@ class Validator:
         plt.plot(x, y, ls='', marker='o')
         plt.xlabel('False Positive Rate')
         plt.ylabel('True Positive Rate')
-        # plt.xlim(0, 1.0)
         plt.ylim(0, 1.0)
         plt.savefig(f'{self.dataset.seq_path}/sky_roc', bbox_inches='tight')
         return

@@ -147,8 +147,8 @@ class FocusOfExpansion:
         intersections = intersections[intersections[:, 0] != 0.0, :]
         return self.ransac(intersections)
 
-    def check_flow(self, derotated_flow_uv: np.ndarray, FoE: Tuple[float, float]) -> np.ndarray:
-        """Checks which pixels of a flow field are parallel with the FoE.
+    def get_phi(self, derotated_flow_uv: np.ndarray, FoE: Tuple[float, float]) -> np.ndarray:
+        """Calculates the angle phi per pixel.
 
         Args:
             derotated_flow_uv (np.ndarray): the derotated flow field

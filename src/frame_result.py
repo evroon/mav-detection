@@ -12,3 +12,4 @@ class FrameResult:
         self.drone_flow_pixels = (0.0, 0.0)
         self.foe_dense = (0.0, 0.0)
         self.foe_gt = (0.0, 0.0)
+        self.center_phi = 0.0

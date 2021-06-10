@@ -309,7 +309,7 @@ class Processor:
                 FoE_gt = self.dataset.get_gt_foe(self.frame_index)
                 FoE: Tuple[float, float] = utils.assert_type(FoE_dense)
 
-                phi_angle = self.focus_of_expansion.check_flow(self.flow_uv_derotated, FoE)
+                phi_angle = self.focus_of_expansion.get_phi(self.flow_uv_derotated, FoE)
                 phi_angle_rgb = im_helpers.to_rgb(phi_angle, max_value=180.0)
                 result_img = im_helpers.apply_colormap(phi_angle_rgb, max_value=180.0)
 
@@ -319,16 +319,15 @@ class Processor:
 
                 if True:
                     segmentation = self.dataset.get_segmentation(self.frame_index)[..., 0]
-                    estimate = phi_angle * (mask != True) * (self.flow_mag > 1.0)
-                    angle_threshold = 20
+                    estimate = phi_angle * (self.flow_mag > 1.0) * (mask != True)
+                    angle_threshold = 15
 
                     drone_flow_avg = np.average(self.flow_uv[segmentation > 127], axis=0)
                     drone_flow_avg_gt = np.average(self.dataset.get_gt_of(self.frame_index)[segmentation > 127], axis=0)
 
                     bounding_box = im_helpers.get_simple_bounding_box(segmentation)
-
-                    print(bounding_box.get_left() - prev_bbox_left, drone_flow_avg[0], drone_flow_avg_gt[0], 1920 / self.dataset.N)
-                    prev_bbox_left = bounding_box.get_left()
+                    center = bounding_box.get_center()
+                    center_phi = np.rad2deg(np.arctan2(center[1] - FoE_gt[1], center[0] - FoE_gt[0]))
 
                     tpr, fpr = im_helpers.calculate_tpr_fpr(segmentation, 255 * (estimate > angle_threshold))
                     frameresult.tpr = tpr
@@ -338,12 +337,19 @@ class Processor:
                     frameresult.drone_flow_pixels = (drone_flow_avg_gt[0], drone_flow_avg_gt[1])
                     frameresult.drone_size_pixels = np.sum(segmentation > 127)
                     frameresult.time = self.dataset.get_time(self.frame_index)
+                    frameresult.center_phi = center_phi
 
                     utils.create_if_not_exists(self.dataset.result_imgs_path)
-                    img = im_helpers.apply_colormap(estimate, max_value=180)
-                    img = self.focus_of_expansion.draw_FoE(img, FoE_dense,  [255, 255, 255])
-
+                    img = im_helpers.to_rgb(255 * (estimate > angle_threshold))
                     cv2.imwrite(f'{self.dataset.result_imgs_path}/image_{self.frame_index:05d}.png', img)
+
+                    derotated_path = self.dataset.seq_path + '/derotated'
+                    utils.create_if_not_exists(derotated_path)
+                    cv2.imwrite(f'{derotated_path}/image_{self.frame_index:05d}.png', im_helpers.get_flow_vis(self.flow_uv_derotated))
+
+                    phi_path = self.dataset.seq_path + '/phi'
+                    utils.create_if_not_exists(phi_path)
+                    cv2.imwrite(f'{phi_path}/image_{self.frame_index:05d}.png', phi_angle_rgb)
 
                 for img in [orig_frame, result_img]:
                     img = self.focus_of_expansion.draw_FoE(img, FoE_dense,  [0, 255, 0])
@@ -355,8 +361,12 @@ class Processor:
                 self.config.results[self.frame_index] = frameresult
 
                 if result_img is not None and np.sum(result_img) > 0:
-                    mask_vis = orig_frame
-                    mask_vis[estimate > angle_threshold, :] = mask_vis[estimate > angle_threshold, :] * 0.5 + 127
+                    mask = estimate > angle_threshold
+                    mask_rgb = np.zeros_like(orig_frame)
+                    mask_rgb[mask, 0] = 150
+                    mask_rgb[mask, 2] = 150
+                    alpha = 0.5
+                    mask_vis = cv2.addWeighted(orig_frame, alpha, mask_rgb, 1.0 - alpha, 0.0)
                     self.write(mask_vis)
                 else:
                     print('An error occured while processing frames.')
