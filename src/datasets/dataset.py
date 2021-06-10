@@ -151,7 +151,7 @@ class Dataset:
 
     def get_sky_segmentation(self, i: int) -> np.ndarray:
         img = cv2.imread(f'{self.hrnet_out}/image_{i:05d}_prediction.png')
-        img = cv2.resize(img, (1920, 1080))
+        img = cv2.resize(img, (1920, 1024))
 
         # Segment sky only
         mask = (img[..., 0] == 180) * (img[..., 1] == 130)

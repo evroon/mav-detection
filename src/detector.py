@@ -101,7 +101,7 @@ class Detector:
         derotation[..., 1] *= h * dt / 2
 
         # idx = 0
-        # print('center', np.average(derotation[1080//2, 1920//2, idx]) - np.average(flow_uv[1080//2, 1920//2, idx]))
+        # print('center', np.average(derotation[1024//2, 1920//2, idx]) - np.average(flow_uv[1024//2, 1920//2, idx]))
         # print('topleft', np.average(derotation[0, 0, idx]) - np.average(flow_uv[0, 0, idx]))
         # print('bottomleft', np.average(derotation[-1, 0, idx]) - np.average(flow_uv[-1, 0, idx]))
         # print('bottomright', np.average(derotation[-1, -1, idx]) - np.average(flow_uv[-1, -1, idx]))
