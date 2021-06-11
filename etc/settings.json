@@ -2,7 +2,7 @@
     "SeeDocsAt": "https://github.com/Microsoft/AirSim/blob/master/docs/settings_json.md",
     "SettingsVersion": 1.2,
     "SimMode": "Multirotor",
-    "ClockSpeed": 1.0,
+	"ClockSpeed": 0.05,
     "ViewMode": "Fpv",
     "Vehicles" : {
         "Drone1" : {

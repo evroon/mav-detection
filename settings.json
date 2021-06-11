@@ -80,17 +80,61 @@
                 }
             }
         },
+        "demo": {
+            "orbit_speed": [
+                10
+            ],
+
+            "global_speed": {
+                "default": {
+                    "lin_x": 4.0,
+                    "sin_y": 0.0,
+                    "sin_z": 0.0
+                }
+            },
+
+            "radii": [
+                5.0
+            ],
+
+            "collision_angles": [
+                0
+            ],
+
+            "modes": [
+                "orbit"
+            ],
+
+            "heights": {
+                "low": 2.5
+            },
+
+            "orientations": [
+                "north"
+            ],
+
+            "locations": {
+                "mountains-moving/lake": {
+                    "x": 0.0,
+                    "y": 0.0,
+                    "z": 0.0
+                }
+            }
+        },
         "line-test-mav-detection": {
             "orbit_speed": [
-                0.0214,
+                0.1924,
                 0.0428,
-                0.0641,
-                0.0855,
-                0.1069,
-                0.1283,
                 0.1497,
+                0.0641,
+                0.1069,
+
                 0.1710,
-                0.1924
+                0.1283,
+                0.0855,
+                0.0535,
+                0.0321,
+                0.0214
             ],
 
             "global_speed": {
