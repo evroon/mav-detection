@@ -4,13 +4,15 @@ import matplotlib.colors as colors
 import glob
 import os
 
+from typing import Tuple
+
 dump_path = 'results/rad_err_combined.npy'
 start = 20
 end = 120
 N = end - start
 resolution = 1920 * 1024
 
-def gather_data():
+def gather_data() -> Tuple[np.ndarray, np.ndarray]:
     files = glob.glob('results/mag_vs_rad/mag_vs_rad_err_*.npy')
     files.sort()
     x, y = np.zeros(resolution * N), np.zeros(resolution * N)
