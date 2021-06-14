@@ -6,6 +6,7 @@ import glob
 import shutil
 import subprocess
 import json
+import matplotlib.pyplot as plt
 
 import im_helpers
 from typing import List, Dict, Tuple, Optional
@@ -262,6 +263,16 @@ class Processor:
                 with open(os.devnull, 'w') as devnull:
                     subprocess.call(command, stdout=devnull)
 
+    def analyze_radial_error(self) -> None:
+        """Compare the angular error in flow to the magnitude of the flow."""
+        flow_mag = im_helpers.get_magnitude(self.flow_uv)
+        flow_error_radial = np.rad2deg(im_helpers.get_rho(self.flow_uv) - im_helpers.get_rho(self.gt_flow_uv))
+
+        flow_mag = flow_mag[~self.sky_mask].flatten()
+        flow_error_radial = flow_error_radial[~self.sky_mask].flatten()
+
+        np.save(f'results/mag_vs_rad/mag_vs_rad_err_{self.frame_index:05d}', np.array([flow_mag, flow_error_radial]))
+
     def run_detection(self) -> Dict[int, FrameResult]:
         """Runs the detection."""
 
@@ -291,17 +302,20 @@ class Processor:
                     self.write(cluster_vis)
             else:
                 self.flow_uv = self.dataset.get_flow_uv(self.frame_index)
+                self.flow_vis = im_helpers.get_flow_vis(self.flow_uv)
+                self.gt_flow_uv: np.ndarray = utils.assert_type(self.dataset.get_gt_of(self.frame_index))
 
                 if self.flow_uv is None:
                     raise ValueError('Could not load flow field.')
 
-                mask = self.dataset.get_sky_segmentation(self.frame_index)
+                self.sky_mask = self.dataset.get_sky_segmentation(self.frame_index)
                 depth_buffer: np.ndarray = utils.assert_type(self.dataset.get_depth(self.frame_index))
-                sky_tpr, sky_fpr = self.dataset.validate_sky_segment(mask, depth_buffer)
+                sky_tpr, sky_fpr = self.dataset.validate_sky_segment(self.sky_mask, depth_buffer)
 
-                self.flow_vis = im_helpers.get_flow_vis(self.flow_uv)
                 self.flow_uv_derotated = self.detector.derotate(self.frame_index - self.frame_step_size, self.frame_index, self.flow_uv)
                 self.flow_mag = im_helpers.get_magnitude(self.flow_uv_derotated)
+
+                self.analyze_radial_error()
 
                 FoE_dense  = self.focus_of_expansion.get_FOE_dense(self.flow_uv_derotated)
                 FoE_gt = self.dataset.get_gt_foe(self.frame_index)
@@ -317,12 +331,11 @@ class Processor:
 
                 if True:
                     segmentation = self.dataset.get_segmentation(self.frame_index)[..., 0]
-                    estimate = phi_angle * (self.flow_mag > 1.0) * (mask != True)
+                    estimate = phi_angle * (self.flow_mag > 1.0) * ~self.sky_mask
                     angle_threshold = 15
 
                     drone_flow_avg = np.average(self.flow_uv[segmentation > 127], axis=0)
-                    gt_of: np.ndarray = utils.assert_type(self.dataset.get_gt_of(self.frame_index))
-                    drone_flow_avg_gt = np.average(gt_of[segmentation > 127], axis=0)
+                    drone_flow_avg_gt = np.average(self.gt_flow_uv[segmentation > 127], axis=0)
 
                     bounding_box = im_helpers.get_simple_bounding_box(segmentation)
                     center = bounding_box.get_center()
