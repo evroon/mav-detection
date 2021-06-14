@@ -4,6 +4,7 @@ from numpy.core.numeric import zeros_like
 from datasets.dataset import Dataset
 import logging
 import numpy as np
+from typing import cast
 
 class Experiment(Dataset):
     '''Helper functions for the TNO experiment dataset.'''
@@ -12,8 +13,8 @@ class Experiment(Dataset):
         experiment_path = os.environ['EXPERIMENT_PATH']
         super().__init__(experiment_path, logger, sequence)
 
-        self.gps_states_csv = np.genfromtxt(f'{self.state_path}/vn_gps_log.csv', delimiter=',', skip_header=1)
-        self.imu_states_csv = np.genfromtxt(f'{self.state_path}/vn_imu_log.csv', delimiter=',', skip_header=1)
+        self.gps_states_csv: np.ndarray = np.genfromtxt(f'{self.state_path}/vn_gps_log.csv', delimiter=',', skip_header=1)
+        self.imu_states_csv: np.ndarray = np.genfromtxt(f'{self.state_path}/vn_imu_log.csv', delimiter=',', skip_header=1)
 
         self.gps_first_timestamp = self.gps_states_csv[0, 2]
 
@@ -42,10 +43,10 @@ class Experiment(Dataset):
         return 'moving-sample'
 
     def get_gps_state(self, i:int) -> np.ndarray:
-        return self.gps_states_csv[self.video_gps_indices[i], :]
+        return cast(np.ndarray, self.gps_states_csv[self.video_gps_indices[i], :])
 
     def get_imu_state(self, i:int) -> np.ndarray:
-        return self.imu_states_csv[self.video_imu_indices[i], :]
+        return cast(np.ndarray, self.imu_states_csv[self.video_imu_indices[i], :])
 
     def get_angular_difference(self, first:int, second:int) -> np.ndarray:
         imu_index_start, imu_index_end = self.video_imu_indices[first], self.video_imu_indices[second]

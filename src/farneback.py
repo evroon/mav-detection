@@ -2,6 +2,7 @@ import numpy as np
 import cv2
 import time
 import sys
+from typing import cast
 
 # Source: https://www.youtube.com/watch?v=uv73CjWscxI&ab_channel=SahakornBuangam
 # code: https://github.com/sahakorn/Python-optical-flow-tracking/blob/master/optical_flow.py
@@ -26,7 +27,7 @@ class Farneback:
 
     def draw_flow(self, img: np.ndarray, flow: np.ndarray, step: int = 8) -> np.ndarray:
         h, w = img.shape[:2]
-        y, x = np.mgrid[step//2:h:step, step//2:w:step].reshape(2, -1).astype(np.int)
+        y, x = np.mgrid[step//2:h:step, step//2:w:step].reshape(2, -1).astype(np.int32)
         fx, fy = flow[y, x].T
 
         threshold = 1.0
@@ -38,7 +39,7 @@ class Farneback:
         fy = np.extract(mask, fy)
 
         lines = np.vstack([x, y, x+fx, y+fy]).T.reshape(-1, 2, 2)
-        lines = np.int32(lines + 0.5)
+        lines = (lines + 0.5).astype(np.int32)
 
         cv2.polylines(img, lines, 0, (0, 255, 0))
         for (x1, y1), (x2, y2) in lines:
@@ -56,7 +57,7 @@ class Farneback:
         hsv[..., 1] = 255
         hsv[..., 2] = np.minimum(v*4, 255)
         bgr = cv2.cvtColor(hsv, cv2.COLOR_HSV2BGR)
-        return bgr
+        return cast(np.ndarray, bgr)
 
 
     def warp_flow(self, img: np.ndarray, flow: np.ndarray) -> np.ndarray:
@@ -65,7 +66,7 @@ class Farneback:
         flow[:, :, 0] += np.arange(w)
         flow[:, :, 1] += np.arange(h)[:, np.newaxis]
         res = cv2.remap(img, flow, None, cv2.INTER_LINEAR)
-        return res
+        return cast(np.ndarray, res)
 
 
     def process(self) -> np.ndarray:
@@ -91,7 +92,7 @@ class Farneback:
         self.hsv[mask, 0] = 127
         self.hsv[mask, 2] = 255
 
-        result = cv2.cvtColor(self.hsv, cv2.COLOR_HSV2BGR)
+        result: np.ndarray = cv2.cvtColor(self.hsv, cv2.COLOR_HSV2BGR)
 
         if invalid_frame:
             result = self.prev_results[..., 0].astype(np.uint8)

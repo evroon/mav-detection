@@ -22,7 +22,7 @@ class FocusOfExpansion:
         self.magnitude_threshold = 2.5
         self.ransac_threshold = 30.0 # pixels
         self.color = np.random.randint(0, 255, (self.lucas_kanade.total_num_corners, 3))
-        self.trace = np.zeros((self.lucas_kanade.total_num_corners, 2000), dtype=np.int)
+        self.trace = np.zeros((self.lucas_kanade.total_num_corners, 2000), dtype=np.int32)
         self.random_lines = np.random.randint(0, self.lucas_kanade.total_num_corners, self.lucas_kanade.total_num_corners)
         flow_height, flow_width = self.lucas_kanade.old_frame.shape[0], self.lucas_kanade.old_frame.shape[1]
 
@@ -158,7 +158,7 @@ class FocusOfExpansion:
             np.ndarray: BGR image with higher intensities for higher local motion.
         """
         if FoE[0] is np.nan:
-            return
+            return np.zeros(0)
 
         # Calculate angle between line from FoE and feature with the flow vector of the feature.
         diff1 = derotated_flow_uv
@@ -175,7 +175,7 @@ class FocusOfExpansion:
         angle_diff = np.arccos(arccos_arg)
 
         angle_diff[np.isnan(angle_diff)] = 0
-        phi_angle_deg = np.rad2deg(angle_diff)
+        phi_angle_deg: np.ndarray = np.rad2deg(angle_diff)
         self.max_flow = np.max(phi_angle_deg)
 
         # mask = im_helpers.get_magnitude(derotated_flow_uv) < self.magnitude_threshold
@@ -198,7 +198,7 @@ class FocusOfExpansion:
         if FoE[0] is np.nan or FoE[1] is np.nan or np.abs(FoE[0]) > 1e9 or np.abs(FoE[1]) > 1e9:
             return frame
 
-        return cv2.circle(frame, (int(FoE[0]), int(FoE[1])), radius, color, -1)
+        return cast(np.ndarray, cv2.circle(frame, (int(FoE[0]), int(FoE[1])), radius, color, -1))
 
     def draw(self, frame: np.ndarray, FoE: Tuple[float, float]) -> np.ndarray:
         """Draw FoE algorithm visualization
@@ -211,7 +211,7 @@ class FocusOfExpansion:
             np.ndarray: angle difference between vector towards FoE and flow vector
         """
         if FoE[0] is np.nan:
-            return
+            return frame
 
         frame = cv2.circle(frame, (int(FoE[0]), int(FoE[1])), 20, [0, 42, 255], -1)
         frame_gray = cv2.cvtColor(frame, cv2.COLOR_BGR2GRAY)
@@ -238,4 +238,4 @@ class FocusOfExpansion:
         self.old_gray = frame_gray.copy()
 
         self.time += 1
-        return cv2.add(frame, self.mask)
+        return cast(np.ndarray, cv2.add(frame, self.mask))

@@ -35,7 +35,7 @@ def pyramid(image: np.ndarray, scale: float = 1.5, minSize: Tuple[int, int] = (3
         yield image
 
 
-def sliding_window(image: np.ndarray, stepSize: int, windowSize: Tuple[int, int]) -> Iterator[np.ndarray]:
+def sliding_window(image: np.ndarray, stepSize: int, windowSize: Tuple[int, int]) -> Iterator[Tuple[int, int, np.ndarray]]:
     """Slides a window across the image
 
     Args:
@@ -97,7 +97,7 @@ def get_flow_radial(frame: np.ndarray) -> np.ndarray:
     flow_hsv[..., 0] = flow_hsv[..., 0]
     flow_hsv[..., 1] = 255
     flow_hsv[..., 2] = 255
-    return cv2.cvtColor(flow_hsv, cv2.COLOR_HSV2BGR)
+    return cast(np.ndarray, cv2.cvtColor(flow_hsv, cv2.COLOR_HSV2BGR))
 
 
 def get_flow_vis(frame: np.ndarray, magnitude_factor: float = 1.0) -> np.ndarray:
@@ -109,7 +109,7 @@ def get_flow_vis(frame: np.ndarray, magnitude_factor: float = 1.0) -> np.ndarray
     Returns:
         np.ndarray: BGR flow field visualized in HSV space
     """
-    return flow_vis.flow_to_color(frame, convert_to_bgr=True)
+    return cast(np.ndarray, flow_vis.flow_to_color(frame, convert_to_bgr=True))
 
 
 def apply_colormap(img: np.ndarray, max_value: float = None) -> np.ndarray:
@@ -126,13 +126,13 @@ def apply_colormap(img: np.ndarray, max_value: float = None) -> np.ndarray:
         img = to_int(img, normalize=True, max_value=max_value)
 
     if max_value is None:
-        return cv2.applyColorMap(img, cv2.COLORMAP_JET)
+        return cast(np.ndarray, cv2.applyColorMap(img, cv2.COLORMAP_JET))
 
     old_value = img[0, 0, ...]
     img[0, 0, ...] = max_value
     result = cv2.applyColorMap(img, cv2.COLORMAP_JET)
     result[0, 0, ...] = cv2.applyColorMap(np.ones((1, 1, 3), dtype=np.uint8) * old_value, cv2.COLORMAP_JET)
-    return result
+    return cast(np.ndarray, result)
 
 
 def get_rho(img: np.ndarray) -> np.ndarray:
@@ -144,7 +144,7 @@ def get_rho(img: np.ndarray) -> np.ndarray:
     Returns:
         np.ndarray: (h, w) array of angles (radians)
     """
-    return np.arctan2(img[:, :, 1], img[:, :, 0])
+    return cast(np.ndarray, np.arctan2(img[:, :, 1], img[:, :, 0]))
 
 
 def get_magnitude(img: np.ndarray) -> np.ndarray:
@@ -156,7 +156,7 @@ def get_magnitude(img: np.ndarray) -> np.ndarray:
     Returns:
         np.ndarray: (h, w) array of magnitudes
     """
-    return np.linalg.norm(img, axis=-1)
+    return cast(np.ndarray, np.linalg.norm(img, axis=-1))
 
 
 def to_rgb(img: np.ndarray, max_value: float = None)-> np.ndarray:
@@ -168,7 +168,9 @@ def to_rgb(img: np.ndarray, max_value: float = None)-> np.ndarray:
     Returns:
         np.ndarray: output RGB image
     """
-    return cv2.cvtColor(to_int(img, np.uint8, True, max_value=max_value), cv2.COLOR_GRAY2RGB)
+    return cast(np.ndarray,
+        cv2.cvtColor(to_int(img, np.uint8, True, max_value=max_value), cv2.COLOR_GRAY2RGB)
+    )
 
 
 def to_int(img: np.ndarray, type: type=np.uint8, normalize: bool=False, max_value: float = None) -> np.ndarray:
@@ -193,7 +195,9 @@ def to_int(img: np.ndarray, type: type=np.uint8, normalize: bool=False, max_valu
 
         img_normalized = np.abs(img_normalized) * 255 / max_value
 
-    return np.around(img_normalized).astype(type)
+    return cast(np.ndarray,
+        np.around(img_normalized).astype(type)
+    )
 
 
 def get_fft(frame: np.ndarray) -> np.ndarray:
@@ -207,7 +211,7 @@ def get_fft(frame: np.ndarray) -> np.ndarray:
 
 def plot_colorbar(path: str = 'media/colorbar.png') -> np.ndarray:
     if os.path.exists(path):
-        return cv2.imread(path)
+        return cast(np.ndarray, cv2.imread(path))
 
     img = np.zeros((200, 30, 3), dtype=np.uint8)
     for y in range(img.shape[0]):
@@ -220,7 +224,7 @@ def plot_colorbar(path: str = 'media/colorbar.png') -> np.ndarray:
 
 def get_colorwheel(path: str = 'media/colorwheel.png') -> np.ndarray:
     if os.path.exists(path):
-        return cv2.imread(path)
+        return cast(np.ndarray, cv2.imread(path))
 
     diameter = 250
     radius = diameter / 2
@@ -251,4 +255,6 @@ def resize_percent(img: np.ndarray, scale_percent: float) -> np.ndarray:
     width = int(img.shape[1] * scale_percent / 100)
     height = int(img.shape[0] * scale_percent / 100)
     dim = (width, height)
-    return cv2.resize(img, dim, interpolation = cv2.INTER_AREA)
+    return cast(np.ndarray,
+        cv2.resize(img, dim, interpolation = cv2.INTER_AREA)
+    )

@@ -50,7 +50,7 @@ class Detector:
         self.fov = 90 # degrees
         self.focal_length = 1 / np.tan(np.deg2rad(self.fov) / 2)
 
-    def get_gradient_and_magnitude(self, frame: np.ndarray) -> np.ndarray:
+    def get_gradient_and_magnitude(self, frame: np.ndarray) -> Tuple[np.ndarray, np.ndarray]:
         """Returns the polar representation of a cartesian flow field.
 
         Args:
@@ -59,8 +59,8 @@ class Detector:
         Returns:
             np.ndarray: [description]
         """
-        return np.sqrt(frame[..., 0] ** 2.0 + frame[..., 1] ** 2.0), \
-            np.arctan2(frame[..., 1], frame[..., 0])
+        return cast(np.ndarray, np.sqrt(frame[..., 0] ** 2.0 + frame[..., 1] ** 2.0)), \
+            cast(np.ndarray, np.arctan2(frame[..., 1], frame[..., 0]))
 
     def get_rotation(self, flow_uv: np.ndarray, use_fundamental: bool = True) -> Tuple[np.ndarray, np.ndarray, np.ndarray]:
         # self.get_transformation_matrix()
@@ -114,7 +114,7 @@ class Detector:
         # )
         # print()
 
-        return flow_uv - derotation
+        return cast(np.ndarray, flow_uv - derotation)
 
     def get_transformation_matrix(self, orig_frame: np.ndarray, flow_uv: np.ndarray) -> None:
         """Calculates the affine or homography matrix.
@@ -290,21 +290,21 @@ class Detector:
         """
         # Based on: https://www.pyimagesearch.com/2015/03/23/sliding-windows-for-object-detection-with-python-and-opencv/
         width, height = (64, 64)
-        result = (0, utils.Rectangle((0, 0), (0, 0)), 0, 0)
+        result = (0, utils.Rectangle((0, 0), (0, 0)), np.zeros(0), 0)
 
         for resized in pyramid(img, scale=1.5):
             for (x, y, window) in sliding_window(resized, stepSize=16, windowSize=(width, height)):
                 if window.shape[0] != width or window.shape[1] != height:
                     continue
 
-                score = np.sum(window)
-                max_flow = np.unravel_index(window.argmax(), window.shape)
+                score: int = np.sum(window)
+                max_flow: int = np.unravel_index(window.argmax(), window.shape)
 
                 # Check if window has higher score than current maximum.
                 if result[0] < score:
                     result = (
                         score,
-                        utils.Rectangle((x, y), window.shape),
+                        utils.Rectangle((x, y), (window.shape[0], window.shape[1])),
                         window,
                         max_flow
                     )
@@ -374,10 +374,10 @@ class Detector:
         self.flow_uv_history[self.history_index, ...] = flow_uv
 
         k = (self.history_index + 1) % (self.history_length - 1)
-        orig_map = np.zeros_like(flow_uv, dtype=np.float64)
+        orig_map: np.ndarray = np.zeros_like(flow_uv, dtype=np.float64)
         orig_map[..., 0] = self.y_coords
         orig_map[..., 1] = self.x_coords
-        lookup_map = np.copy(orig_map)
+        lookup_map: np.ndarray = np.copy(orig_map)
 
         while k != (self.history_index) % (self.history_length - 1):
             warped = lookup_map.astype(np.float32)
@@ -385,7 +385,7 @@ class Detector:
             k = (k + 1) % self.history_length
 
         self.history_index = (self.history_index + 1) % self.history_length
-        return lookup_map - orig_map
+        return cast(np.ndarray, lookup_map - orig_map)
 
     def predict(self, segment: np.ndarray, flow_uv: np.ndarray, orig_frame: np.ndarray) -> None:
         avg = np.average(flow_uv[segment], 0)
@@ -420,7 +420,7 @@ class Detector:
         res = res.reshape((img.shape))
 
         if enable_raw:
-            return res, None
+            return res, np.zeros(0)
 
         rgb = cv2.cvtColor(res, cv2.COLOR_GRAY2RGB)
         mask = rgb[..., 0] >= 225

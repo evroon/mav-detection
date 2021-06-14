@@ -545,8 +545,9 @@ class AirSimControl:
         def list_timestamps(states_dir: str) -> Tuple[List[str], np.ndarray]:
             files = os.listdir(states_dir)
             files.sort()
-            timestamps = [int(os.path.basename(x).rstrip('.json')) for x in files if 'timestamp' not in x]
-            timestamps = np.array(timestamps)
+            timestamps = np.array(
+                [int(os.path.basename(x).rstrip('.json')) for x in files if 'timestamp' not in x]
+            )
             return [f'{states_dir}/{x}' for x in files], timestamps
 
         in_files, in_timestamps = list_timestamps(states_in_dir)
@@ -558,7 +559,7 @@ class AirSimControl:
 
         for out_file, out_timestamp in zip(out_files, out_timestamps):
             diffs = in_timestamps - out_timestamp
-            selected_input = np.argmin(np.abs(diffs))
+            selected_input = int(np.argmin(np.abs(diffs)))
 
             with open(out_file, 'r') as f_out:
                 result = json.load(f_out)

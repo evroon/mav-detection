@@ -66,7 +66,7 @@ def screen_to_world(view_proj_inv: np.ndarray, screen_res: Tuple[int, int], scre
 
     norm = np.linalg.norm(RayEndWorldSpace - RayStartWorldSpace, axis=2)
     RayDirWorldSpace = np.zeros_like(RayEndWorldSpace)
-    result = np.zeros_like(RayEndWorldSpace)
+    result: np.ndarray = np.zeros_like(RayEndWorldSpace)
 
     for i in range(3):
         RayDirWorldSpace[..., i] = (RayEndWorldSpace[..., i] - RayStartWorldSpace[..., i]) / norm
@@ -87,7 +87,7 @@ def get_view_proj_mat(state: dict) -> np.ndarray:
 def calculate_flow(
         view_proj1: np.ndarray,
         view_proj2: np.ndarray,
-        screen_res: np.ndarray,
+        screen_res: Tuple[int, int],
         screen_pos2: np.ndarray,
         depth_img: np.ndarray,
         drone_displacement: Vector3r,
@@ -104,9 +104,9 @@ def calculate_flow(
     world_pos[drone_mask, 2] -= drone_displacement.z_val
 
     screen_pos1 = world_to_screen(view_proj1, screen_res, world_pos)
-    return screen_pos1 - screen_pos2
+    return cast(np.ndarray, screen_pos1 - screen_pos2)
 
-def write_flow(dataset: Dataset) -> np.ndarray:
+def write_flow(dataset: Dataset) -> None:
     print('Calculating ground truth optical flow...')
     screen_res = dataset.capture_size
     states = [x for x in dataset.get_state_filenames() if 'timestamp' not in x]

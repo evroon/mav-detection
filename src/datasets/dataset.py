@@ -154,7 +154,7 @@ class Dataset:
         img = cv2.resize(img, (1920, 1024))
 
         # Segment sky only
-        mask = (img[..., 0] == 180) * (img[..., 1] == 130)
+        mask: np.ndarray = (img[..., 0] == 180) * (img[..., 1] == 130)
         return mask
 
     def get_segmentation(self, i: int) -> np.ndarray:
@@ -166,7 +166,9 @@ class Dataset:
         Returns:
             np.ndarray: the segmentation mask
         """
-        return cv2.imread(f'{self.seg_path}/image_{i:05d}.png')
+        return cast(np.ndarray,
+            cv2.imread(f'{self.seg_path}/image_{i:05d}.png')
+        )
 
     def validate_sky_segment(self, sky_mask: np.ndarray, depth_buffer: np.ndarray) -> Tuple[float, float]:
         sky_mask_gt = depth_buffer > 0.80 * np.max(depth_buffer)
@@ -225,7 +227,7 @@ class Dataset:
             np.ndarray: the raw BGR input frame
         """
         _, orig_frame = self.orig_capture.read()
-        return orig_frame
+        return cast(np.ndarray, orig_frame)
 
     def mp4_to_png(self) -> None:
         """Converts MP4 into the correct PNG format (if they do not already exist)."""

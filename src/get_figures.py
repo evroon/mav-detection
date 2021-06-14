@@ -18,8 +18,6 @@ plt.ylabel('True Positive Rate')
 plt.ylim(0, 1.0)
 
 colors = ['g', 'b', 'indigo', 'purple', 'r', 'orange', 'yellow', 'pink', 'darkgrey']
-flows = [2.02, 4.2, 8.77]
-flows = [2.0, 4.0, 8.0]
 
 data_per_velocity = {}
 tpr_at_180_list = []

@@ -290,16 +290,14 @@ class Processor:
                 else:
                     self.write(cluster_vis)
             else:
-                if self.use_gt_of:
-                    self.flow_uv = self.dataset.get_gt_of(self.frame_index)
-                else:
-                    self.flow_uv = self.dataset.get_flow_uv(self.frame_index)
+                self.flow_uv = self.dataset.get_flow_uv(self.frame_index)
 
                 if self.flow_uv is None:
                     raise ValueError('Could not load flow field.')
 
                 mask = self.dataset.get_sky_segmentation(self.frame_index)
-                sky_tpr, sky_fpr = self.dataset.validate_sky_segment(mask, self.dataset.get_depth(self.frame_index))
+                depth_buffer: np.ndarray = utils.assert_type(self.dataset.get_depth(self.frame_index))
+                sky_tpr, sky_fpr = self.dataset.validate_sky_segment(mask, depth_buffer)
 
                 self.flow_vis = im_helpers.get_flow_vis(self.flow_uv)
                 self.flow_uv_derotated = self.detector.derotate(self.frame_index - self.frame_step_size, self.frame_index, self.flow_uv)

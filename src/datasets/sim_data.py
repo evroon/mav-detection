@@ -5,7 +5,7 @@ import re
 import os
 import json
 import airsim
-from typing import Optional, Tuple, cast, List
+from typing import Optional, Tuple, List, Any
 from scipy.spatial.transform import Rotation
 
 import utils
@@ -39,13 +39,13 @@ class SimData(Dataset):
     def get_state_filenames(self) -> List[str]:
         return utils.sorted_glob(f'{self.state_path}/1*.json')
 
-    def get_state(self, i:int) -> np.ndarray:
+    def get_state(self, i:int) -> Any:
         with open(self.get_state_filenames()[i], 'r') as f:
             return json.load(f)
 
     def get_orientation(self, i:int) -> np.ndarray:
         orientatation = self.get_state(i)['Drone1']['imu']['orientation']
-        euler = Rotation.from_quat([
+        euler: np.ndarray = Rotation.from_quat([
             orientatation['x_val'],
             orientatation['y_val'],
             orientatation['z_val'],
@@ -54,7 +54,7 @@ class SimData(Dataset):
         return euler
 
     def get_angular_difference(self, first:int, second:int) -> np.ndarray:
-        omega = self.get_orientation(second) - self.get_orientation(first)
+        omega: np.ndarray = self.get_orientation(second) - self.get_orientation(first)
         omega = omega[[1, 2, 0]]
         omega[2] = -omega[2]
         return omega

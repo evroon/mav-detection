@@ -14,7 +14,7 @@ class LucasKanade:
         self.num_corners = 2000
         self.minimum_num_corners = self.num_corners // 3
         self.total_num_corners = self.num_corners + self.minimum_num_corners
-        self.corners = np.zeros((self.total_num_corners, 2), dtype=np.int)
+        self.corners = np.zeros((self.total_num_corners, 2), dtype=np.uint)
         self.num_features = 0
         self.features: List[Tuple[float, float]] = []
 
@@ -46,7 +46,7 @@ class LucasKanade:
         self.old_frame = frame
 
         if np.sum(self.old_gray) < 1:
-            return [], [], []
+            return np.zeros(0), np.zeros(0), np.zeros(0)
 
         if len(self.features) < self.minimum_num_corners:
             # Take first frame and find corners in it

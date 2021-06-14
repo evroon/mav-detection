@@ -31,8 +31,8 @@ class Rectangle:
 
     @classmethod
     def from_yolo_input(cls, arr: List[float], img_size: np.ndarray) -> Rectangle:
-        center = np.array([arr[1], arr[2]]) * img_size.astype(np.float)
-        size = np.array([arr[3], arr[4]]) * img_size.astype(np.float)
+        center = np.array([arr[1], arr[2]]) * img_size.astype(np.float64)
+        size = np.array([arr[3], arr[4]]) * img_size.astype(np.float64)
         return Rectangle.from_center(center, size)
 
     @classmethod
@@ -79,7 +79,7 @@ class Rectangle:
         return max(1.0, self.size[0] * self.size[1])
 
     def to_yolo(self, img_size: np.ndarray, obj_id: int = 0) -> str:
-        img_size = img_size.astype(np.float)
+        img_size = img_size.astype(np.float64)
         center = np.array(self.get_center()) / img_size
         size = np.array(self.size) / img_size
         return f'{obj_id} {center[0]} {center[1]} {size[0]} {size[1]}\n'
@@ -231,7 +231,7 @@ def write_flow(filename: str, uv: np.ndarray, v: np.ndarray = None) -> None:
     Original code by Deqing Sun, adapted from Daniel Scharstein.
     """
 
-    TAG_CHAR = np.array([202021.25], np.float32)
+    TAG_CHAR = np.array([202021.25], np.float32).tobytes()
     nBands = 2
 
     if v is None:
@@ -344,7 +344,7 @@ def rotation_matrix_to_euler(R: np.ndarray) -> np.ndarray:
         y = np.arctan2(-R[2, 0], sy)
         z = 0
 
-    return np.rad2deg(np.array([x, y, z]))
+    return cast(np.ndarray, np.rad2deg(np.array([x, y, z])))
 
 
 def get_json(obj: Dict[str, Any]) -> Dict[str, Any]:
@@ -365,12 +365,6 @@ def create_if_not_exists(dir: str) -> None:
     """Creates a directory if it does not already exist."""
     if not os.path.exists(dir):
         os.makedirs(dir)
-
-
-def get_magnitude(vector: np.ndarray) -> float:
-    """Return the magnitude of a vector."""
-    return float(np.sqrt(vector.x_val ** 2.0 + vector.y_val ** 2.0 + vector.z_val ** 2.0))
-
 
 def get_time() -> datetime:
     return datetime.now()

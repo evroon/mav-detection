@@ -272,8 +272,8 @@ class Validator:
         )
 
         # Plot sky segmentation RoC
-        x = [f.sky_fpr for _, f in self.frames.items()]
-        y = [f.sky_tpr for _, f in self.frames.items()]
+        x = np.array([f.sky_fpr for _, f in self.frames.items()])
+        y = np.array([f.sky_tpr for _, f in self.frames.items()])
 
         x = x[:len(x)//2]
         y = y[:len(y)//2]
