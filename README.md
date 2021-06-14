@@ -1,4 +1,5 @@
-# optical-flow-mav-detection
+# Motion-based MAV detection
+[![docker-build](https://github.com/evroon/mav-detection/actions/workflows/main.yml/badge.svg)](https://github.com/evroon/mav-detection/actions/workflows/main.yml)
 
 ![preview](media/preview.png)
 
