@@ -181,7 +181,7 @@ class Processor:
         """
         self.logger.info(f'Preparing sequence {sequence}')
         self.sequence = sequence
-        self.flo_path = self.dataset.flownet2_output
+        self.flo_path = self.dataset.flownet_output
 
         self.capture_shape = self.dataset.get_capture_shape()
         self.resolution = np.array(self.capture_shape)[:2][::-1]
@@ -323,11 +323,12 @@ class Processor:
                     angle_threshold = 15
 
                     drone_flow_avg = np.average(self.flow_uv[segmentation > 127], axis=0)
-                    drone_flow_avg_gt = np.average(self.dataset.get_gt_of(self.frame_index)[segmentation > 127], axis=0)
+                    gt_of: np.ndarray = utils.assert_type(self.dataset.get_gt_of(self.frame_index))
+                    drone_flow_avg_gt = np.average(gt_of[segmentation > 127], axis=0)
 
                     bounding_box = im_helpers.get_simple_bounding_box(segmentation)
                     center = bounding_box.get_center()
-                    center_phi = np.rad2deg(np.arctan2(center[1] - FoE_gt[1], center[0] - FoE_gt[0]))
+                    center_phi = np.rad2deg(np.arctan2(center[1] - frameresult.foe_gt[1], center[0] - frameresult.foe_gt[0]))
 
                     tpr, fpr = im_helpers.calculate_tpr_fpr(segmentation, 255 * (estimate > angle_threshold))
                     frameresult.tpr = tpr

@@ -18,7 +18,7 @@ class SimData(Dataset):
 
     def __init__(self, logger: logging.Logger, sequence: str) -> None:
         simdata_path = os.environ['SIMDATA_PATH']
-        self.start_time = 0
+        self.start_time = 0.0
         super().__init__(simdata_path, logger, sequence)
         self.start_time = self.get_time(0)
 
@@ -60,7 +60,8 @@ class SimData(Dataset):
         return omega
 
     def get_time(self, i:int) -> float:
-        return self.get_state(i)['Drone1']['imu']['time_stamp'] / 1e9 - self.start_time
+        timestamp: float = self.get_state(i)['Drone1']['imu']['time_stamp']
+        return timestamp / 1e9 - self.start_time
 
     def get_delta_time(self, i:int) -> float:
         time_stamp1 = self.get_time(i-1)

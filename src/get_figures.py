@@ -7,7 +7,8 @@ import json
 from matplotlib import cm
 from matplotlib.ticker import LinearLocator
 
-validation_data = glob.glob(os.getenv('SIMDATA_PATH') + '/mountains-line-cloudsv2/lake-line-0-north-low-5.0-0.*-default/validation.npy')
+base_path = os.getenv('SIMDATA_PATH')
+validation_data = glob.glob(f'{base_path}/mountains-line-cloudsv2/lake-line-0-north-low-5.0-0.*-default/validation.npy')
 validation_data.sort()
 
 # Plot errorbars only for the optimal threshold.
@@ -21,7 +22,7 @@ flows = [2.02, 4.2, 8.77]
 flows = [2.0, 4.0, 8.0]
 
 data_per_velocity = {}
-tpr_at_180 = []
+tpr_at_180_list = []
 
 for i, d in enumerate(validation_data):
     matches = re.findall('^.+lake-line-0-north-low-(.+)-(.+)-default.+$', d)
@@ -40,7 +41,7 @@ for i, d in enumerate(validation_data):
     if isinstance(avg_std, np.ndarray):
         data_per_velocity[flow_x[0]] = (np.absolute(avg_std[2:, 0]), avg_std[2:, 1])
         tpr_sample = np.nan_to_num(avg_std[2:30, 1], 0)
-        tpr_at_180.append((np.average(tpr_sample), np.std(tpr_sample)))
+        tpr_at_180_list.append((np.average(tpr_sample), np.std(tpr_sample)))
 
         plt.errorbar(avg_std[:, 0], avg_std[:, 1],# yerr=avg_std[:, 2],
             marker='o', markersize=6, capsize=3, barsabove=False, label=label, zorder=1, color=colors[i])
@@ -86,7 +87,7 @@ fig.colorbar(surf, shrink=0.7, aspect=10, ax=ax, pad=0.12)
 plt.savefig('tpr_flow_vs_phi.png', bbox_inches='tight')
 plt.savefig('tpr_flow_vs_phi.eps', bbox_inches='tight')
 
-tpr_at_180 = np.array(tpr_at_180)
+tpr_at_180 = np.array(tpr_at_180_list)
 plt.figure()
 plt.grid()
 plt.xlabel(r'OF magnitude [px/frame]')
