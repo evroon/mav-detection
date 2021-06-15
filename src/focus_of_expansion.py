@@ -155,7 +155,7 @@ class FocusOfExpansion:
             FoE (Tuple[float, float]): the Focus of Expansion
 
         Returns:
-            np.ndarray: BGR image with higher intensities for higher local motion.
+            np.ndarray: image with phi per pixel in degrees
         """
         if FoE[0] is np.nan:
             return np.zeros(0)

@@ -141,6 +141,8 @@ class Validator:
                 self.frames[i].time = json_result['time']
                 self.frames[i].tpr = json_result['tpr']
                 self.frames[i].fpr = json_result['fpr']
+                self.frames[i].tpr_fixed = json_result['tpr_fixed']
+                self.frames[i].fpr_fixed = json_result['fpr_fixed']
                 self.frames[i].sky_tpr = json_result['sky_tpr']
                 self.frames[i].sky_fpr = json_result['sky_fpr']
                 self.frames[i].foe_dense = json_result['foe_dense']
@@ -203,7 +205,12 @@ class Validator:
         t = np.array([f.time for _, f in self.frames.items()])
         phi = np.array([float(f.center_phi) for _, f in self.frames.items()])
         x = np.array([f.fpr for _, f in self.frames.items()])
-        y = np.array([f.tpr for _, f in self.frames.items()])
+
+        tpr = np.array([f.tpr for _, f in self.frames.items()])
+        tpr_fixed = np.array([f.tpr_fixed for _, f in self.frames.items()])
+        fpr = np.array([f.fpr for _, f in self.frames.items()])
+        fpr_fixed = np.array([f.fpr_fixed for _, f in self.frames.items()])
+
         flow_x = np.array([float(f.drone_flow_pixels[0]) for _, f in self.frames.items()])
         flow_y = np.array([float(f.drone_flow_pixels[1]) for _, f in self.frames.items()])
         size = np.array([int(f.drone_size_pixels) for _, f in self.frames.items()])
@@ -214,7 +221,7 @@ class Validator:
         # Phi vs TPR
         plt.figure()
         plt.grid()
-        plt.plot(phi, y, ls='', marker='o')
+        plt.plot(phi, tpr, ls='', marker='o')
         plt.xlabel(r'$\phi$ [deg]')
         plt.ylabel('True Positive Rate')
         plt.ylim(0, 1.0)
@@ -230,31 +237,34 @@ class Validator:
         bins_start = np.linspace(-180, -25, 40)
         bins_end = np.linspace(-25, 0, 30)
         bins = np.concatenate([bins_start, bins_end])
-        avg_std = np.zeros((len(bins), 3))
-        y_finite = y[~np.isnan(y)]
 
-        for i in range(1, len(bins)):
-            bin_mask = (phi >= bins[i - 1]) * (phi < bins[i])
+        def get_avg_std(phi: np.ndarray, pr: np.ndarray) -> np.ndarray:
+            avg_std_tmp = np.zeros((len(bins), 3))
+            pr_finite = pr[~np.isnan(pr)]
 
-            avg_std[i-1, :] = [
-                np.average(phi[bin_mask]),
-                np.average(y_finite[bin_mask]),
-                np.std(y_finite[bin_mask])
-            ]
+            for i in range(1, len(bins)):
+                bin_mask = (phi >= bins[i - 1]) * (phi < bins[i])
 
-        # Remove nan values.
-        # avg_std = avg_std[avg_std[:, 0] > -180.0, :]
+                avg_std_tmp[i-1, :] = [
+                    np.average(phi[bin_mask]),
+                    np.average(pr_finite[bin_mask]),
+                    np.std(pr_finite[bin_mask])
+                ]
 
-        # Plot errorbars only for the optimal threshold.
+            return avg_std_tmp
+
+        avg_std_tpr = get_avg_std(phi, tpr)
+        avg_std_tpr_fixed = get_avg_std(phi, tpr_fixed)
+        avg_std_fpr = get_avg_std(phi, fpr)
+        avg_std_fpr_fixed = get_avg_std(phi, fpr_fixed)
+
         plt.figure()
         plt.grid()
         plt.xlabel(r'$\phi$ [deg]')
         plt.ylabel('True Positive Rate')
         plt.ylim(0, 1.0)
-        plt.errorbar(avg_std[:, 0], avg_std[:, 1], yerr=avg_std[:, 2],
+        plt.errorbar(avg_std_tpr[:, 0], avg_std_tpr[:, 1], yerr=avg_std_tpr[:, 2],
             marker='o', markersize=6, capsize=3, barsabove=True, label='', zorder=1, color='indigo')
-
-        print(avg_std[:, 1])
 
         plt.savefig(f'{self.dataset.seq_path}/tpr_vs_time', bbox_inches='tight')
 
@@ -262,12 +272,13 @@ class Validator:
         np.save(
             f'{self.dataset.seq_path}/validation.npy',
             np.array([
-                np.average(y), np.std(y),
+                np.average(tpr), np.std(tpr),
                 np.average(size), np.std(size),
                 np.median(flow_x), np.std(flow_x),
                 np.average(flow_y), np.std(flow_y),
-                avg_std,
-                x, y,
+                avg_std_tpr, avg_std_tpr_fixed,
+                avg_std_fpr, avg_std_fpr_fixed,
+                x, tpr,
             ])
         )
 

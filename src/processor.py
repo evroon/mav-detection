@@ -1,3 +1,4 @@
+from numpy.lib import angle
 import utils
 import cv2
 import os
@@ -302,6 +303,8 @@ class Processor:
                     self.write(cluster_vis)
             else:
                 self.flow_uv = self.dataset.get_flow_uv(self.frame_index)
+                self.flow_uv_derotated = self.detector.derotate(self.frame_index - self.frame_step_size, self.frame_index, self.flow_uv)
+
                 self.flow_vis = im_helpers.get_flow_vis(self.flow_uv)
                 self.gt_flow_uv: np.ndarray = utils.assert_type(self.dataset.get_gt_of(self.frame_index))
 
@@ -312,10 +315,9 @@ class Processor:
                 depth_buffer: np.ndarray = utils.assert_type(self.dataset.get_depth(self.frame_index))
                 sky_tpr, sky_fpr = self.dataset.validate_sky_segment(self.sky_mask, depth_buffer)
 
-                self.flow_uv_derotated = self.detector.derotate(self.frame_index - self.frame_step_size, self.frame_index, self.flow_uv)
                 self.flow_mag = im_helpers.get_magnitude(self.flow_uv_derotated)
 
-                self.analyze_radial_error()
+                # self.analyze_radial_error()
 
                 FoE_dense  = self.focus_of_expansion.get_FOE_dense(self.flow_uv_derotated)
                 FoE_gt = self.dataset.get_gt_foe(self.frame_index)
@@ -331,8 +333,16 @@ class Processor:
 
                 if True:
                     segmentation = self.dataset.get_segmentation(self.frame_index)[..., 0]
-                    estimate = phi_angle * (self.flow_mag > 1.0) * ~self.sky_mask
-                    angle_threshold = 15
+                    flow_mag = im_helpers.get_magnitude(self.flow_uv)
+                    angle_threshold_max = phi_angle > (0.25 + (0.5 + 8 / flow_mag))
+                    angle_threshold_min = phi_angle < (0.25 - (0.5 + 8 / flow_mag))
+                    angle_threshold = np.logical_or(angle_threshold_min, angle_threshold_max)
+
+                    total_mask = (self.flow_mag > 0.5) * ~self.sky_mask * angle_threshold
+                    estimate = phi_angle * total_mask
+
+                    estimate_fixed_threshold = phi_angle * (self.flow_mag > 1.0) * ~self.sky_mask
+                    fixed_angle_threshold = 15
 
                     drone_flow_avg = np.average(self.flow_uv[segmentation > 127], axis=0)
                     drone_flow_avg_gt = np.average(self.gt_flow_uv[segmentation > 127], axis=0)
@@ -341,9 +351,13 @@ class Processor:
                     center = bounding_box.get_center()
                     center_phi = np.rad2deg(np.arctan2(center[1] - frameresult.foe_gt[1], center[0] - frameresult.foe_gt[0]))
 
-                    tpr, fpr = im_helpers.calculate_tpr_fpr(segmentation, 255 * (estimate > angle_threshold))
+                    tpr_fixed, fpr_fixed = im_helpers.calculate_tpr_fpr(segmentation, 255 * (estimate_fixed_threshold > fixed_angle_threshold))
+                    tpr, fpr = im_helpers.calculate_tpr_fpr(segmentation, 255 * total_mask)
+
                     frameresult.tpr = tpr
                     frameresult.fpr = fpr
+                    frameresult.tpr_fixed = tpr_fixed
+                    frameresult.fpr_fixed = fpr_fixed
                     frameresult.sky_tpr = sky_tpr
                     frameresult.sky_fpr = sky_fpr
                     frameresult.drone_flow_pixels = (drone_flow_avg_gt[0], drone_flow_avg_gt[1])
@@ -352,7 +366,7 @@ class Processor:
                     frameresult.center_phi = center_phi
 
                     utils.create_if_not_exists(self.dataset.result_imgs_path)
-                    img = im_helpers.to_rgb(255 * (estimate > angle_threshold))
+                    img = im_helpers.to_rgb(255 * estimate)
                     cv2.imwrite(f'{self.dataset.result_imgs_path}/image_{self.frame_index:05d}.png', img)
 
                     derotated_path = self.dataset.seq_path + '/derotated'
@@ -373,10 +387,9 @@ class Processor:
                 self.config.results[self.frame_index] = frameresult
 
                 if result_img is not None and np.sum(result_img) > 0:
-                    mask = estimate > angle_threshold
                     mask_rgb = np.zeros_like(orig_frame)
-                    mask_rgb[mask, 0] = 150
-                    mask_rgb[mask, 2] = 150
+                    mask_rgb[total_mask, 0] = 150
+                    mask_rgb[total_mask, 2] = 150
                     alpha = 0.5
                     mask_vis = cv2.addWeighted(orig_frame, alpha, mask_rgb, 1.0 - alpha, 0.0)
                     self.write(mask_vis)

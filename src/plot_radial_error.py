@@ -55,3 +55,4 @@ ax.set_ybound(np.min(bins[1]), np.max(bins[1]))
 ax.text(5, -17, r'Fit: $0.25 \pm (0.5 + \frac{8}{x})$', fontsize=12)
 
 plt.savefig('results/mag_vs_rad_err.png', bbox_inches='tight')
+plt.savefig('results/mag_vs_rad_err.eps', bbox_inches='tight')

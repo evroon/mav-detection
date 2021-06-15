@@ -6,6 +6,8 @@ class FrameResult:
         self.time = 0.0
         self.tpr = 0.0
         self.fpr = 0.0
+        self.tpr_fixed = 0.0
+        self.fpr_fixed = 0.0
         self.sky_tpr = 0.0
         self.sky_fpr = 0.0
         self.drone_size_pixels = 0.0
