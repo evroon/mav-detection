@@ -24,6 +24,7 @@ class Mode(Enum):
     ORBIT       = 0,
     COLLISION   = 1,
     LINE        = 2,
+    FOE_DEMO    = 3,
 
     def __str__(self) -> str:
         return super().__str__().replace('Mode.', '').lower()

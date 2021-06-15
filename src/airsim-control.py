@@ -200,6 +200,8 @@ class AirSimControl:
                 self.fly_orbit(config)
             elif config.mode == Mode.COLLISION:
                 self.fly_collision(config)
+            elif config.mode == Mode.FOE_DEMO:
+                self.fly_foe_demo(config)
             else:
                 self.fly_straight(config)
 
@@ -297,7 +299,7 @@ class AirSimControl:
                 if self.minimum_segmentation_sum > seg_sum:
                     self.minimum_segmentation_sum = seg_sum
 
-                drone_in_frame = config.mode == Mode.COLLISION or (seg_sum > self.minimum_segmentation_sum and self.iteration > 10)
+                drone_in_frame = config.mode in [Mode.COLLISION, Mode.FOE_DEMO] or (seg_sum > self.minimum_segmentation_sum and self.iteration > 10)
 
                 if drone_in_frame:
                     self.write_frame(image_path, response)
@@ -355,6 +357,30 @@ class AirSimControl:
                 self.client.simPause(False)
 
             self.capture(config)
+            self.iteration += 1
+
+    def fly_foe_demo(self, config: SimConfig) -> None:
+        """Fly only the observer to analyze FoE estimation performance.
+
+        Args:
+            config (SimConfig): the configuration of the demo
+        """
+        self.base_dir = self.get_base_dir(config)
+        self.drone_in_frame_previous = False
+        running = True
+
+        self.prepare_sequence()
+
+        while running:
+            self.client.moveByVelocityZAsync(config.global_speed.x_val, config.global_speed.y_val, config.center.z_val,
+                10, airsim.DrivetrainType.MaxDegreeOfFreedom, airsim.YawMode(), vehicle_name=self.observing_drone)
+
+            # Continue for one timestap (1 second in real time, 1 second * clockspeed in simulation time).
+            self.client.simContinueForTime(1)
+            self.client.simPause(True)
+            self.capture(config)
+
+            running = self.iteration < 1e3
             self.iteration += 1
 
     def fly_straight(self, config: SimConfig) -> None:
