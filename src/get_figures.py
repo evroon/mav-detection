@@ -16,12 +16,23 @@ tpr_at_180_fixed_list = []
 fpr_at_180_list = []
 fpr_at_180_fixed_list = []
 
-for i, d in enumerate(validation_data[:1]):
+# Plot errorbars only for the optimal threshold.
+plt.grid()
+plt.xlabel(r'$\phi$ [deg]')
+plt.ylabel('True Positive Rate')
+plt.ylim(0, 1.0)
+
+colors = ['g', 'b', 'indigo', 'purple', 'darkgrey', 'orange', 'yellow', 'pink', 'r']
+
+for i, d in enumerate(validation_data[:-1]):
     matches = re.findall('^.+lake-line-0-north-low-(.+)-(.+)-default.+$', d)
     distance = float(matches[0][0])
     velocity = float(matches[0][1])
 
     validation = np.load(d, allow_pickle=True)
+    if len(validation) != 14:
+        continue
+
     tpr = validation[:2]
     size = validation[2:4]
     flow_x = validation[4:6]
@@ -46,6 +57,17 @@ for i, d in enumerate(validation_data[:1]):
         tpr_at_180_fixed_list.append((np.average(tpr_sample_fixed), np.std(tpr_sample_fixed)))
         fpr_at_180_list.append((np.average(fpr_sample), np.std(fpr_sample)))
         fpr_at_180_fixed_list.append((np.average(fpr_sample_fixed), np.std(fpr_sample_fixed)))
+
+        label = f'OF: {flow_x[0]:.01f} px/frame'
+
+        if i < 3 or i == len(validation_data) - 2:
+            plt.errorbar(np.abs(tpr[:-1, 0]), tpr[:-1, 1],# yerr=avg_std[:, 2],
+                marker='o', markersize=6, capsize=3, barsabove=False, label=label, zorder=1, color=colors[i])
+
+plt.legend()
+plt.xlim(180, 0)
+plt.savefig('media/tpr_vs_phi.png', bbox_inches='tight')
+plt.savefig('media/tpr_vs_phi.eps', bbox_inches='tight')
 
 if len(data_per_velocity.keys()) < 1:
     raise ValueError('Could not load data.')
@@ -111,10 +133,11 @@ def plot_vs_magnitude(type: str, pr_at_180_list: list, pr_at_180_fixed_list: lis
     plt.errorbar(flows, pr_at_180_fixed[..., 0], yerr=pr_at_180_fixed[..., 1], label='fixed threshold',
         marker='o', markersize=6, capsize=3, barsabove=False, zorder=1, color='blue')
 
-    plt.ylim(0, 1)
+    plt.ylim(0, 1 if type == 'TPR' else 0.03)
     plt.xlim(left=0)
-    plt.legend()
+    plt.legend(loc='lower right')
     plt.savefig(f'media/{type.lower()}_vs_flow.png', bbox_inches='tight')
+    plt.savefig(f'media/{type.lower()}_vs_flow.eps', bbox_inches='tight')
 
 
 plot_vs_magnitude('TPR', tpr_at_180_list, tpr_at_180_fixed_list)

@@ -39,8 +39,8 @@ bins = (np.linspace(0, 10, 160), np.linspace(-20, 20, 160))
 counts, _, _ = np.histogram2d(x, y, bins=bins)
 
 fig, ax = plt.subplots()
-plt.xlabel('Flow magnitude [px/frame]')
-plt.ylabel('Radial error in flow [deg]')
+plt.xlabel('OF magnitude [px/frame]')
+plt.ylabel('Radial error in OF [deg]')
 
 pcm = ax.pcolor(bins[0], bins[1], counts.T / N,
                    norm=colors.LogNorm(vmin=1, vmax=counts.max()),
@@ -52,7 +52,7 @@ y_theoretic = 0.5 + 8 / x_theoretic
 ax.plot(x_theoretic, 0.25 + y_theoretic, color='white', ls='--')
 ax.plot(x_theoretic, 0.25 - y_theoretic, color='white', ls='--')
 ax.set_ybound(np.min(bins[1]), np.max(bins[1]))
-ax.text(5, -17, r'Fit: $0.25 \pm (0.5 + \frac{8}{x})$', fontsize=12)
+ax.text(5, -17, r'Fit: $0.25 \pm (0.5 + \frac{8}{|OF|})$', fontsize=12)
 
 plt.savefig('results/mag_vs_rad_err.png', bbox_inches='tight')
 plt.savefig('results/mag_vs_rad_err.eps', bbox_inches='tight')

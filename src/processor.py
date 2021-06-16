@@ -304,9 +304,10 @@ class Processor:
             else:
                 self.flow_uv = self.dataset.get_flow_uv(self.frame_index)
                 self.flow_uv_derotated = self.detector.derotate(self.frame_index - self.frame_step_size, self.frame_index, self.flow_uv)
+                self.flow_mag = im_helpers.get_magnitude(self.flow_uv_derotated)
 
-                self.flow_vis = im_helpers.get_flow_vis(self.flow_uv)
                 self.gt_flow_uv: np.ndarray = utils.assert_type(self.dataset.get_gt_of(self.frame_index))
+                self.gt_flow_uv_derotated = self.detector.derotate(self.frame_index - self.frame_step_size, self.frame_index, self.gt_flow_uv)
 
                 if self.flow_uv is None:
                     raise ValueError('Could not load flow field.')
@@ -314,8 +315,6 @@ class Processor:
                 self.sky_mask = self.dataset.get_sky_segmentation(self.frame_index)
                 depth_buffer: np.ndarray = utils.assert_type(self.dataset.get_depth(self.frame_index))
                 sky_tpr, sky_fpr = self.dataset.validate_sky_segment(self.sky_mask, depth_buffer)
-
-                self.flow_mag = im_helpers.get_magnitude(self.flow_uv_derotated)
 
                 # self.analyze_radial_error()
 
@@ -333,25 +332,24 @@ class Processor:
 
                 if True:
                     segmentation = self.dataset.get_segmentation(self.frame_index)[..., 0]
-                    flow_mag = im_helpers.get_magnitude(self.flow_uv)
-                    angle_threshold_max = phi_angle > (0.25 + (0.5 + 8 / flow_mag))
-                    angle_threshold_min = phi_angle < (0.25 - (0.5 + 8 / flow_mag))
+                    angle_threshold_max = phi_angle > (0.25 + (0.5 + 8 / self.flow_mag))
+                    angle_threshold_min = phi_angle < (0.25 - (0.5 + 8 / self.flow_mag))
                     angle_threshold = np.logical_or(angle_threshold_min, angle_threshold_max)
 
                     total_mask = (self.flow_mag > 0.5) * ~self.sky_mask * angle_threshold
                     estimate = phi_angle * total_mask
 
-                    estimate_fixed_threshold = phi_angle * (self.flow_mag > 1.0) * ~self.sky_mask
                     fixed_angle_threshold = 15
+                    estimate_fixed = phi_angle * (self.flow_mag > 1.0) * ~self.sky_mask > fixed_angle_threshold
 
-                    drone_flow_avg = np.average(self.flow_uv[segmentation > 127], axis=0)
-                    drone_flow_avg_gt = np.average(self.gt_flow_uv[segmentation > 127], axis=0)
+                    drone_flow_avg = np.average(self.flow_uv_derotated[segmentation > 127], axis=0)
+                    drone_flow_avg_gt = np.average(self.gt_flow_uv_derotated[segmentation > 127], axis=0)
 
                     bounding_box = im_helpers.get_simple_bounding_box(segmentation)
                     center = bounding_box.get_center()
                     center_phi = np.rad2deg(np.arctan2(center[1] - frameresult.foe_gt[1], center[0] - frameresult.foe_gt[0]))
 
-                    tpr_fixed, fpr_fixed = im_helpers.calculate_tpr_fpr(segmentation, 255 * (estimate_fixed_threshold > fixed_angle_threshold))
+                    tpr_fixed, fpr_fixed = im_helpers.calculate_tpr_fpr(segmentation, 255 * estimate_fixed)
                     tpr, fpr = im_helpers.calculate_tpr_fpr(segmentation, 255 * total_mask)
 
                     frameresult.tpr = tpr

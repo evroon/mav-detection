@@ -599,11 +599,3 @@ if __name__ == '__main__':
     if not args.upload_only:
         control = AirSimControl(args.collection)
         control.run()
-
-    # scp_command = [
-    #     'scp',
-    #     '-r',
-    #     'data',
-    #     'erik@192.168.178.235:~/tno/datasets'
-    # ]
-    # subprocess.call(scp_command)
