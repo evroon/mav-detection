@@ -80,15 +80,15 @@
                 }
             }
         },
-        "demo": {
+        "demo-left": {
             "orbit_speed": [
-                10
+                0
             ],
 
             "global_speed": {
                 "default": {
-                    "lin_x": 4.0,
-                    "sin_y": 0.0,
+                    "lin_x": 3.06,
+                    "sin_y": -2.57,
                     "sin_z": 0.0
                 }
             },
@@ -102,7 +102,89 @@
             ],
 
             "modes": [
-                "orbit"
+                "foe_demo"
+            ],
+
+            "heights": {
+                "low": 2.5
+            },
+
+            "orientations": [
+                "north"
+            ],
+
+            "locations": {
+                "mountains-moving/lake": {
+                    "x": 0.0,
+                    "y": 0.0,
+                    "z": 0.0
+                }
+            }
+        },
+        "demo-center": {
+            "orbit_speed": [
+                0
+            ],
+
+            "global_speed": {
+                "default": {
+                    "lin_x": 4,
+                    "sin_y": 0,
+                    "sin_z": 0.0
+                }
+            },
+
+            "radii": [
+                5.0
+            ],
+
+            "collision_angles": [
+                0
+            ],
+
+            "modes": [
+                "foe_demo"
+            ],
+
+            "heights": {
+                "low": 2.5
+            },
+
+            "orientations": [
+                "north"
+            ],
+
+            "locations": {
+                "mountains-moving/lake": {
+                    "x": 0.0,
+                    "y": 0.0,
+                    "z": 0.0
+                }
+            }
+        },
+        "demo-right": {
+            "orbit_speed": [
+                0
+            ],
+
+            "global_speed": {
+                "default": {
+                    "lin_x": 3.06,
+                    "sin_y": 2.57,
+                    "sin_z": 0.0
+                }
+            },
+
+            "radii": [
+                5.0
+            ],
+
+            "collision_angles": [
+                0
+            ],
+
+            "modes": [
+                "foe_demo"
             ],
 
             "heights": {
