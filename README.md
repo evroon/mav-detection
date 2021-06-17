@@ -20,16 +20,16 @@ cp etc/settings.json ~/Documents/AirSim/settings.json
 
 The following environment variables need to be set in `.bashrc` with their correct paths:
 ```bash
-export FLOWNET2="~/flownet2-pytorch"
-export FLOWNET2_CHECKPOINTS_DIR="~/tno/datasets/flownet2-checkpoints"
+export FLOWNET2="~/neural-nets/flownet2-pytorch"
+export FLOWNET2_CHECKPOINTS_DIR="~/neural-nets/flownet2-checkpoints"
+export HRNET_PATH="~/neural-nets/semantic-segmentation"
 ```
 
 Optionally, you can set the following environment variables depending on which dataset you want to use:
 ```bash
-export SIMDATA_PATH="~/tno/datasets/sim-data"
-export YOLOv4_PATH="~/tno/yolov4"
-export MIDGARD_PATH="~/tno/datasets/MIDGARD"
-export UNDISTORT_PATH="~/tno/datasets/undistortFunctions/launch_docker.sh"
+export SIMDATA_PATH="~/datasets/sim-data"
+export MIDGARD_PATH="~/datasets/midgard"
+export EXPERIMENT_PATH="~/datasets/experiment"
 ```
 
 ## Usage
@@ -68,26 +68,22 @@ To check the typing of the Python code run:
 mypy
 ```
 
-## Related projects
-### [YOLOv4](https://github.com/evroon/yolov4)
-[![docker-build](https://github.com/evroon/yolov4/actions/workflows/main.yml/badge.svg)](https://github.com/evroon/yolov4/actions/workflows/main.yml)
-
+## Dependencies for object detection
 ### [flownet2-pytorch](https://github.com/evroon/flownet2-pytorch)
-
 [![docker-build](https://github.com/evroon/flownet2-pytorch/actions/workflows/main.yml/badge.svg)](https://github.com/evroon/flownet2-pytorch/actions/workflows/main.yml)
-
-## Other repositories created for this project
-
-### [raft](https://github.com/evroon/RAFT)
-[![docker-build](https://github.com/evroon/RAFT/actions/workflows/main.yml/badge.svg)](https://github.com/evroon/RAFT/actions/workflows/main.yml)
 
 ### [semantic-segmentation](https://github.com/evroon/semantic-segmentation)
 [![docker-build](https://github.com/evroon/semantic-segmentation/actions/workflows/main.yml/badge.svg)](https://github.com/evroon/semantic-segmentation/actions/workflows/main.yml)
 
+## Other repositories created for this project
+### [YOLOv4](https://github.com/evroon/yolov4)
+[![docker-build](https://github.com/evroon/yolov4/actions/workflows/main.yml/badge.svg)](https://github.com/evroon/yolov4/actions/workflows/main.yml)
+
+### [raft](https://github.com/evroon/RAFT)
+[![docker-build](https://github.com/evroon/RAFT/actions/workflows/main.yml/badge.svg)](https://github.com/evroon/RAFT/actions/workflows/main.yml)
 
 ### [undistort-functions](https://github.com/evroon/undistort-functions)
 [![test](https://github.com/evroon/undistort-functions/actions/workflows/main.yml/badge.svg)](https://github.com/evroon/undistort-functions/actions/workflows/main.yml)
-
 
 ### [mask-rcnn](https://github.com/evroon/mask-rcnn)
 [![test](https://github.com/evroon/mask-rcnn/actions/workflows/main.yml/badge.svg)](https://github.com/evroon/mask-rcnn/actions/workflows/main.yml)
