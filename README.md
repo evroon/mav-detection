@@ -3,7 +3,7 @@
 
 ![preview](media/preview.png)
 
-This project is intended to run on Ubuntu 20.04, with Python 3.8.
+This project performs motion-based object detection of MAVs using optical flow and the Focus of Expansion. It also includes Python scripts to generate datasets from AirSim. It is intended to run on Ubuntu 20.04, with Python 3.8.
 
 ## Install
 Install the Python dependencies:
@@ -18,6 +18,7 @@ Set the settings for AirSim:
 cp etc/settings.json ~/Documents/AirSim/settings.json
 ```
 
+You will need the `FlowNet2` and `semantic-segmentation` forks listed under [dependencies](#dependencies-for-object-detection).
 The following environment variables need to be set in `.bashrc` with their correct paths:
 ```bash
 export FLOWNET2="~/neural-nets/flownet2-pytorch"
