@@ -76,6 +76,10 @@ mypy
 ### [semantic-segmentation](https://github.com/evroon/semantic-segmentation)
 [![docker-build](https://github.com/evroon/semantic-segmentation/actions/workflows/main.yml/badge.svg)](https://github.com/evroon/semantic-segmentation/actions/workflows/main.yml)
 
+## To create datasets with AirSim
+### [AirSim](https://github.com/evroon/AirSim)
+[![Ubuntu Build](https://github.com/evroon/AirSim/actions/workflows/test_ubuntu.yml/badge.svg)](https://github.com/evroon/AirSim/actions/workflows/test_ubuntu.yml)
+
 ## Other repositories created for this project
 ### [YOLOv4](https://github.com/evroon/yolov4)
 [![docker-build](https://github.com/evroon/yolov4/actions/workflows/main.yml/badge.svg)](https://github.com/evroon/yolov4/actions/workflows/main.yml)
