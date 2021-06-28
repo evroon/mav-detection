@@ -290,7 +290,7 @@ class Detector:
         """
         # Based on: https://www.pyimagesearch.com/2015/03/23/sliding-windows-for-object-detection-with-python-and-opencv/
         width, height = (64, 64)
-        result = (0, utils.Rectangle((0, 0), (0, 0)), np.zeros(0), 0)
+        result: Tuple[float, utils.Rectangle, np.ndarray, Any] = (0, utils.Rectangle((0, 0), (0, 0)), np.zeros(0), 0)
 
         for resized in pyramid(img, scale=1.5):
             for (x, y, window) in sliding_window(resized, stepSize=16, windowSize=(width, height)):
