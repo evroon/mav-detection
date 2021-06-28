@@ -157,6 +157,7 @@ class Validator:
         plt.grid()
         plt.xlabel('IoU')
         plt.ylabel('Frequency [frames]')
+        plt.savefig('media/output/ious.png', bbox_inches='tight')
         plt.savefig('media/output/ious.eps', bbox_inches='tight')
 
         # Plot histogram of FoE errors.
@@ -166,31 +167,29 @@ class Validator:
         if foe_gt[0] is None:
             return
 
-        # print(foe_dense.dtype)
-        self.foe_error = foe_dense[1:] - foe_gt[1:]
+        # Give drone time to stabilize.
+        self.foe_error = foe_dense[56:] - foe_gt[56:]
 
         outlier_threshold = 50.0
         inliers_list = []
+        outliers_list = []
 
         for i in range(self.foe_error.shape[0]):
             if np.abs(self.foe_error[i, 0]) < outlier_threshold and np.abs(self.foe_error[i, 1]) < outlier_threshold:
                 inliers_list.append(i)
+            else:
+                outliers_list.append(i)
+
+        print(outliers_list)
 
         if len(inliers_list) > 0:
             inliers = np.array(inliers_list)
             foe_error_inliers = self.foe_error[inliers]
             mean_error = np.average(foe_error_inliers, axis=0)
             std_error = np.std(foe_error_inliers, axis=0)
-            print(self.foe_error.shape, foe_error_inliers.shape)
-            print(f'foe outliers: {self.foe_error.shape[0] - inliers.shape[0]}, average error:',
-                f'({mean_error[0]:.3f}, {mean_error[1]:.3f}), std: ({std_error[0]:.3f}, {std_error[1]:.3f})')
 
-            plt.hist(self.foe_error[..., 0], np.linspace(-outlier_threshold, outlier_threshold, 40), histtype=u'step', label='x', color='b')
-            plt.hist(self.foe_error[..., 1], np.linspace(-outlier_threshold, outlier_threshold, 40), histtype=u'step', label='y', color='m')
-            plt.xlabel('FoE error [pixels]')
-            plt.ylabel('Frequency [frames]')
-            plt.legend()
-            plt.savefig('media/output/foe-error.eps', bbox_inches='tight')
+            print(f'foe outliers: {self.foe_error.shape[0] - inliers.shape[0]}, average error:',
+                f'({mean_error[0]:.2f}, {mean_error[1]:.2f}), std: ({std_error[0]:.1f}, {std_error[1]:.1f})')
         else:
             print('Error: no inliers in FoE estimates')
 
@@ -222,21 +221,21 @@ class Validator:
         plt.figure()
         plt.grid()
         plt.plot(phi, tpr, ls='', marker='o')
-        plt.xlabel(r'$\phi$ [deg]')
+        plt.xlabel(r'$\kappa$ [deg]')
         plt.ylabel('True Positive Rate')
         plt.ylim(0, 1.0)
         plt.xlim(-180, 0)
 
         print(f'size: {np.average(size):.3f}, {np.std(size):.1f}')
-        print(f'flow x: {np.average(flow_x):.3f}, {np.std(flow_x):.1f}')
-        print(f'flow y: {np.average(flow_y):.3f}, {np.std(flow_y):.1f}')
+        print(f'flow x: {np.average(flow_x):.2f}, {np.std(flow_x):.1f}')
+        print(f'flow y: {np.average(flow_y):.2f}, {np.std(flow_y):.1f}')
 
         plt.savefig(f'{self.dataset.seq_path}/tpr_vs_time_raw', bbox_inches='tight')
 
         # Cluster/window the data into bins to make plot more readble.
-        bins_start = np.linspace(-180, -25, 40)
-        bins_end = np.linspace(-25, 0, 30)
-        bins = np.concatenate([bins_start, bins_end])
+        bins_start = np.linspace(-180, 0, 40)
+        # bins_end = np.linspace(-25, 0, 30)
+        bins = np.concatenate([bins_start])
 
         def get_avg_std(phi: np.ndarray, pr: np.ndarray) -> np.ndarray:
             avg_std_tmp = np.zeros((len(bins), 3))
@@ -244,11 +243,12 @@ class Validator:
 
             for i in range(1, len(bins)):
                 bin_mask = (phi >= bins[i - 1]) * (phi < bins[i])
+                bin_mask_pr = bin_mask[~np.isnan(pr)]
 
                 avg_std_tmp[i-1, :] = [
                     np.average(phi[bin_mask]),
-                    np.average(pr_finite[bin_mask]),
-                    np.std(pr_finite[bin_mask])
+                    np.average(pr_finite[bin_mask_pr]),
+                    np.std(pr_finite[bin_mask_pr])
                 ]
 
             return avg_std_tmp
@@ -260,7 +260,7 @@ class Validator:
 
         plt.figure()
         plt.grid()
-        plt.xlabel(r'$\phi$ [deg]')
+        plt.xlabel(r'$\kappa$ [deg]')
         plt.ylabel('True Positive Rate')
         plt.ylim(0, 1.0)
         plt.errorbar(avg_std_tpr[:, 0], avg_std_tpr[:, 1], yerr=avg_std_tpr[:, 2],
@@ -279,6 +279,7 @@ class Validator:
                 avg_std_tpr, avg_std_tpr_fixed,
                 avg_std_fpr, avg_std_fpr_fixed,
                 x, tpr,
+                self.foe_error,
             ])
         )
 

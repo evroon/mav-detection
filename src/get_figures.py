@@ -6,26 +6,38 @@ import re
 from matplotlib import cm
 from matplotlib.ticker import LinearLocator
 
+from typing import Tuple
+
 base_path = os.getenv('SIMDATA_PATH')
-validation_data = glob.glob(f'{base_path}/mountains-line-cloudsv2/lake-line-0-north-low-5.0-0.*-default/validation.npy')
-validation_data.sort()
+use_foe_data = False
+
+if use_foe_data:
+    validation_data = glob.glob(f'{base_path}/mountains-demo/lake-foe_demo_*-0-north-low-5.0-*-default/validation.npy')
+    validation_data.sort()
+    match_pattern = '^.+lake-.+-0-north-low-(.+)-(.+)-default.+$'
+else:
+    validation_data = glob.glob(f'{base_path}/mountains-line-cloudsv2/lake-line-0-north-low-5.0-0.*-default/validation.npy')
+    validation_data.sort()
+    validation_data = validation_data[:-1]
+    match_pattern = '^.+lake-line-0-north-low-(.+)-(.+)-default.+$'
 
 data_per_velocity = {}
 tpr_at_180_list = []
 tpr_at_180_fixed_list = []
 fpr_at_180_list = []
 fpr_at_180_fixed_list = []
+# foe_error_list = []
 
 # Plot errorbars only for the optimal threshold.
 plt.grid()
-plt.xlabel(r'$\phi$ [deg]')
+plt.xlabel(r'$\kappa$ [deg]')
 plt.ylabel('True Positive Rate')
 plt.ylim(0, 1.0)
 
 colors = ['g', 'b', 'indigo', 'purple', 'darkgrey', 'orange', 'yellow', 'pink', 'r']
 
-for i, d in enumerate(validation_data[:-1]):
-    matches = re.findall('^.+lake-line-0-north-low-(.+)-(.+)-default.+$', d)
+for i, d in enumerate(validation_data):
+    matches = re.findall(match_pattern, d)
     distance = float(matches[0][0])
     velocity = float(matches[0][1])
 
@@ -41,6 +53,7 @@ for i, d in enumerate(validation_data[:-1]):
     tpr_fixed = validation[9]
     fpr = validation[10]
     fpr_fixed = validation[11]
+    # foe_error = validation[14]
 
     if isinstance(tpr, np.ndarray):
         data_per_velocity[flow_x[0]] = (
@@ -57,22 +70,13 @@ for i, d in enumerate(validation_data[:-1]):
         tpr_at_180_fixed_list.append((np.average(tpr_sample_fixed), np.std(tpr_sample_fixed)))
         fpr_at_180_list.append((np.average(fpr_sample), np.std(fpr_sample)))
         fpr_at_180_fixed_list.append((np.average(fpr_sample_fixed), np.std(fpr_sample_fixed)))
+        # foe_error_list.append(foe_error)
 
         label = f'OF: {flow_x[0]:.01f} px/frame'
 
         if i < 3 or i == len(validation_data) - 2:
             plt.errorbar(np.abs(tpr[:-1, 0]), tpr[:-1, 1],# yerr=avg_std[:, 2],
                 marker='o', markersize=6, capsize=3, barsabove=False, label=label, zorder=1, color=colors[i])
-
-plt.legend()
-plt.xlim(180, 0)
-plt.savefig('media/tpr_vs_phi.png', bbox_inches='tight')
-plt.savefig('media/tpr_vs_phi.eps', bbox_inches='tight')
-
-if len(data_per_velocity.keys()) < 1:
-    raise ValueError('Could not load data.')
-
-flows = np.array(list(data_per_velocity.keys()))
 
 def plot_3d() -> None:
     """Plots tpr_flow_vs_phi.png"""
@@ -97,7 +101,7 @@ def plot_3d() -> None:
 
     # A StrMethodFormatter is used automatically
     ax.zaxis.set_major_formatter('{x:.01f}')
-    ax.set_xlabel(r'$\phi$ [deg]')
+    ax.set_xlabel(r'$\kappa$ [deg]')
     ax.set_ylabel(r'OF magnitude [px/frame]')
     ax.set_zlabel('True Positive Rate')
 
@@ -111,7 +115,7 @@ def plot_3d() -> None:
     plt.savefig('media/tpr_flow_vs_phi.eps', bbox_inches='tight')
 
 
-def plot_vs_magnitude(type: str, pr_at_180_list: list, pr_at_180_fixed_list: list) -> None:
+def plot_vs_magnitude(type: str, pr_at_180_list: list, pr_at_180_fixed_list: list, ax: plt.axis) -> Tuple[plt.axis, plt.axis]:
     """Plots tpr_vs_flow.png and fpr_vs_flow.png
 
     Args:
@@ -121,24 +125,102 @@ def plot_vs_magnitude(type: str, pr_at_180_list: list, pr_at_180_fixed_list: lis
     """
     pr_at_180 = np.array(pr_at_180_list)
     pr_at_180_fixed = np.array(pr_at_180_fixed_list)
+    color = 'tab:blue' if type == 'TPR' else 'tab:green'
 
+    ax.set_ylabel(type, color=color)
+
+    ln1 = ax.errorbar(flows, pr_at_180[..., 0], yerr=pr_at_180[..., 1], label=f'{type}, dynamic',
+        marker='o', markersize=6, capsize=3, barsabove=False, zorder=1, color=color)
+
+    ln2 = ax.errorbar(flows, pr_at_180_fixed[..., 0], yerr=pr_at_180_fixed[..., 1], label=f'{type}, fixed',
+        marker='o', markersize=6, capsize=3, barsabove=False, zorder=1, color=color, ls='--')
+
+    print(ln1)
+
+    ax.tick_params(axis='y', labelcolor=color)
+    ax.set_ylim(0, 1 if type == 'TPR' else 0.03)
+    return ln1, ln2
+
+def plot_foe_hist(foe_error: np.ndarray) -> None:
+    outlier_threshold = 50.0
     plt.figure()
-    plt.grid()
-    plt.xlabel(r'OF magnitude [px/frame]')
-    plt.ylabel(type)
+    # plt.subplot(1, 2, 1)
 
-    plt.errorbar(flows, pr_at_180[..., 0], yerr=pr_at_180[..., 1], label='dynamic threshold',
-        marker='o', markersize=6, capsize=3, barsabove=False, zorder=1, color='black')
+    colors = [
+        ['tab:red', 'darkred'],
+        ['tab:green', 'darkgreen'],
+        ['tab:blue', 'darkblue'],
+    ]
 
-    plt.errorbar(flows, pr_at_180_fixed[..., 0], yerr=pr_at_180_fixed[..., 1], label='fixed threshold',
-        marker='o', markersize=6, capsize=3, barsabove=False, zorder=1, color='blue')
-
-    plt.ylim(0, 1 if type == 'TPR' else 0.03)
-    plt.xlim(left=0)
-    plt.legend(loc='lower right')
-    plt.savefig(f'media/{type.lower()}_vs_flow.png', bbox_inches='tight')
-    plt.savefig(f'media/{type.lower()}_vs_flow.eps', bbox_inches='tight')
+    # Order is determined by glob.
+    directions = [
+        'center',
+        'left',
+        'right',
+    ]
 
 
-plot_vs_magnitude('TPR', tpr_at_180_list, tpr_at_180_fixed_list)
-plot_vs_magnitude('FPR', fpr_at_180_list, fpr_at_180_fixed_list)
+    means = [
+        (2.81, -7.18),
+        (9.16, -7.44),
+        (-8.09, -2.37),
+    ]
+    stds = [
+        (4.9, 6.4),
+        (9.6, 5.6),
+        (6.5, 5.0),
+    ]
+
+    fig, axes = plt.subplots(nrows=2, ncols=1)
+
+    for i in range(foe_error.shape[0]):
+        label = f'{directions[i]} ({means[i][0]:.02f}$\pm${stds[i][0]:.01f} px)'
+        axes[0].hist(foe_error[i, ..., 0], np.linspace(-outlier_threshold, outlier_threshold, 40), histtype=u'step', label=label, color=colors[i][0])
+
+        label = f'{directions[i]} ({means[i][1]:.02f}$\pm${stds[i][1]:.01f} px)'
+        axes[1].hist(foe_error[i, ..., 1], np.linspace(-outlier_threshold, outlier_threshold, 40), histtype=u'step', label=label, color=colors[i][0])
+
+    # Change order of legend items.
+    order = [1, 0, 2]
+
+    for i, ax in enumerate(axes):
+        ax_label = 'x' if i == 0 else 'y'
+        handles, labels = ax.get_legend_handles_labels()
+
+        ax.set_xlabel(f'FoE error ({ax_label}) [pixels]')
+        ax.grid()
+        ax.set_ylabel('Frequency [frames]')
+        ax.legend([handles[idx] for idx in order],[labels[idx] for idx in order])
+
+    fig.tight_layout()
+    plt.savefig('media/output/foe-error.eps', bbox_inches='tight')
+    plt.savefig('media/output/foe-error.png', bbox_inches='tight')
+
+
+plt.legend()
+plt.xlim(180, 0)
+plt.savefig('media/tpr_vs_phi.png', bbox_inches='tight')
+plt.savefig('media/tpr_vs_phi.eps', bbox_inches='tight')
+
+if len(data_per_velocity.keys()) < 1:
+    raise ValueError('Could not load data.')
+
+flows = np.array(list(data_per_velocity.keys()))
+
+fig, ax1 = plt.subplots()
+plt.grid()
+ax1.set_xlabel(r'OF magnitude [px/frame]')
+ln1, ln2 = plot_vs_magnitude('TPR', tpr_at_180_list, tpr_at_180_fixed_list, ax1)
+
+ax2 = ax1.twinx()
+ln3, ln4 = plot_vs_magnitude('FPR', fpr_at_180_list, fpr_at_180_fixed_list, ax2)
+
+lns = [ln1, ln2, ln3, ln4]
+labs = [l.get_label() for l in lns]
+ax1.legend(lns, labs, loc=4, bbox_to_anchor=(1.1, 1.02), ncol=4)
+ax1.set_xlim(left=0)
+
+plt.savefig('media/tpr_fpr_vs_flow.png', bbox_inches='tight')
+plt.savefig('media/tpr_fpr_vs_flow.eps', bbox_inches='tight')
+
+# plot_foe_hist(np.array(foe_error_list))

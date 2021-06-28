@@ -316,8 +316,6 @@ class Processor:
                 depth_buffer: np.ndarray = utils.assert_type(self.dataset.get_depth(self.frame_index))
                 sky_tpr, sky_fpr = self.dataset.validate_sky_segment(self.sky_mask, depth_buffer)
 
-                # self.analyze_radial_error()
-
                 FoE_dense  = self.focus_of_expansion.get_FOE_dense(self.flow_uv_derotated)
                 FoE_gt = self.dataset.get_gt_foe(self.frame_index)
                 FoE: Tuple[float, float] = utils.assert_type(FoE_dense)
@@ -364,8 +362,8 @@ class Processor:
                     frameresult.center_phi = center_phi
 
                     utils.create_if_not_exists(self.dataset.result_imgs_path)
-                    img = im_helpers.to_rgb(255 * estimate)
-                    cv2.imwrite(f'{self.dataset.result_imgs_path}/image_{self.frame_index:05d}.png', img)
+                    result_img = im_helpers.to_rgb(255 * estimate_fixed)
+                    cv2.imwrite(f'{self.dataset.result_imgs_path}/image_{self.frame_index:05d}.png', result_img)
 
                     derotated_path = self.dataset.seq_path + '/derotated'
                     utils.create_if_not_exists(derotated_path)
@@ -373,7 +371,7 @@ class Processor:
 
                     phi_path = self.dataset.seq_path + '/phi'
                     utils.create_if_not_exists(phi_path)
-                    cv2.imwrite(f'{phi_path}/image_{self.frame_index:05d}.png', phi_angle_rgb)
+                    cv2.imwrite(f'{phi_path}/image_{self.frame_index:05d}.png', im_helpers.apply_colormap(phi_angle_rgb))
 
                 for img in [orig_frame, result_img]:
                     img = self.focus_of_expansion.draw_FoE(img, FoE_dense,  [0, 255, 0])
@@ -385,10 +383,11 @@ class Processor:
                 self.config.results[self.frame_index] = frameresult
 
                 if result_img is not None and np.sum(result_img) > 0:
-                    mask_rgb = np.zeros_like(orig_frame)
-                    mask_rgb[total_mask, 0] = 150
-                    mask_rgb[total_mask, 2] = 150
-                    alpha = 0.5
+                    mask_rgb = np.copy(orig_frame)
+                    mask_rgb[estimate_fixed, 0] = 150
+                    mask_rgb[estimate_fixed, 1] = 0
+                    mask_rgb[estimate_fixed, 2] = 150
+                    alpha = 0.2
                     mask_vis = cv2.addWeighted(orig_frame, alpha, mask_rgb, 1.0 - alpha, 0.0)
                     self.write(mask_vis)
                 else:
