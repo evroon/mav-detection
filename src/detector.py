@@ -298,7 +298,7 @@ class Detector:
                     continue
 
                 score: int = np.sum(window)
-                max_flow: int = np.unravel_index(window.argmax(), window.shape)
+                max_flow = np.unravel_index(window.argmax(), window.shape)
 
                 # Check if window has higher score than current maximum.
                 if result[0] < score:
