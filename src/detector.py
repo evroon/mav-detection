@@ -184,7 +184,7 @@ class Detector:
 
         flow_uv_warped_mag_vis = im_helpers.to_rgb(self.flow_uv_warped_mag)
 
-        self.opt_window: Tuple[float, utils.Rectangle, np.ndarray, float] = self.analyze_pyramid(self.cluster_vis)
+        self.opt_window: Tuple[float, utils.Rectangle, np.ndarray, np.ndarray] = self.analyze_pyramid(self.cluster_vis)
         window_optimized = self.opt_window[1]
         # self.frame_result.add_box('MAV', 1.0, window_optimized)
 
@@ -192,7 +192,7 @@ class Detector:
             window_optimized = self.optimize_window(self.cluster_vis, self.opt_window[1])[1]
             opt_window_list = list(self.opt_window)
             opt_window_list[1] = window_optimized
-            self.opt_window = cast(Tuple[float, utils.Rectangle, np.ndarray, float], opt_window_list)
+            self.opt_window = cast(Tuple[float, utils.Rectangle, np.ndarray, np.ndarray], opt_window_list)
 
         for gt in self.dataset.ground_truth:
             self.iou = utils.Rectangle.calculate_iou(window_optimized, gt)
@@ -277,7 +277,7 @@ class Detector:
         #     )
 
 
-    def analyze_pyramid(self, img: np.ndarray) -> Tuple[float, utils.Rectangle, np.ndarray, float]:
+    def analyze_pyramid(self, img: np.ndarray) -> Tuple[float, utils.Rectangle, np.ndarray, np.ndarray]:
         """Analyze a frame using pyramid scales.
 
         Determines which window has heighest score (magnitude).
@@ -290,7 +290,7 @@ class Detector:
         """
         # Based on: https://www.pyimagesearch.com/2015/03/23/sliding-windows-for-object-detection-with-python-and-opencv/
         width, height = (64, 64)
-        result = (0, utils.Rectangle((0, 0), (0, 0)), np.zeros(0), 0)
+        result = (0, utils.Rectangle((0, 0), (0, 0)), np.zeros(0), np.zeros(0))
 
         for resized in pyramid(img, scale=1.5):
             for (x, y, window) in sliding_window(resized, stepSize=16, windowSize=(width, height)):
