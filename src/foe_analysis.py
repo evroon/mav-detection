@@ -9,8 +9,8 @@ import json
 
 import im_helpers
 
-N = 10
-max_value = 54 # degrees
+N = 100
+max_value = 43 # degrees
 
 def get_error_img(foe_location: str = 'center') -> np.ndarray:
     resolution = (1920, 1024)
@@ -51,7 +51,12 @@ def get_error_img(foe_location: str = 'center') -> np.ndarray:
 
             result_img += angle_diff
 
-    print(np.max(result_img) / 3 / N)
+    averaged = result_img / 3 / N
+    max = np.max(averaged)
+    less_than_one = np.sum(averaged < 1) / (resolution[0] * resolution[1]) * 100
+    less_than_five = np.sum(averaged < 5) / (resolution[0] * resolution[1]) * 100
+    print(f'{max:.01f} deg', f'{less_than_one:.01f}%', f'{less_than_five:.01f}%')
+
     result_img = im_helpers.apply_colormap(result_img, max_value=max_value * 3 * N)
     cv2.imwrite(f'media/foe-error-{foe_location}.png', result_img)
     return result_img
