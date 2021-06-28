@@ -112,13 +112,13 @@ def get_flow_vis(frame: np.ndarray, magnitude_factor: float = 1.0) -> np.ndarray
     return cast(np.ndarray, flow_vis.flow_to_color(frame, convert_to_bgr=True))
 
 
-def apply_colormap(img: np.ndarray, max_value: float = None) -> np.ndarray:
+def apply_colormap(img: np.ndarray, max_value: float = None, colormap: int = cv2.COLORMAP_JET) -> np.ndarray:
     """Applies the jet colormap to the input image.
 
     Args:
         img (np.ndarray): the image to apply the colormap to
         max_value (float, optional): scaling variable which sets the input image's range to [0, max_value]. Defaults to None.
-
+        colormap (int): the colormap type to apply. Defaults to COLORMAP_JET.
     Returns:
         np.ndarray: [description]
     """
@@ -126,12 +126,12 @@ def apply_colormap(img: np.ndarray, max_value: float = None) -> np.ndarray:
         img = to_int(img, normalize=True, max_value=max_value)
 
     if max_value is None:
-        return cast(np.ndarray, cv2.applyColorMap(img, cv2.COLORMAP_JET))
+        return cast(np.ndarray, cv2.applyColorMap(img, colormap))
 
     old_value = img[0, 0, ...]
     img[0, 0, ...] = max_value
-    result = cv2.applyColorMap(img, cv2.COLORMAP_JET)
-    result[0, 0, ...] = cv2.applyColorMap(np.ones((1, 1, 3), dtype=np.uint8) * old_value, cv2.COLORMAP_JET)
+    result = cv2.applyColorMap(img, colormap)
+    result[0, 0, ...] = cv2.applyColorMap(np.ones((1, 1, 3), dtype=np.uint8) * old_value, colormap)
     return cast(np.ndarray, result)
 
 

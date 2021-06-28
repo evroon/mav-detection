@@ -9,6 +9,9 @@ import json
 
 import im_helpers
 
+N = 10
+max_value = 54 # degrees
+
 def get_error_img(foe_location: str = 'center') -> np.ndarray:
     resolution = (1920, 1024)
     img_shape = (resolution[1], resolution[0], 2)
@@ -17,7 +20,7 @@ def get_error_img(foe_location: str = 'center') -> np.ndarray:
     base_path = os.getenv('SIMDATA_PATH')
     validation_data = glob.glob(f'{base_path}/mountains-demo/lake-foe_demo_{foe_location}-0-north-low-5.0-0-default/results/image_*.json')
     validation_data.sort()
-    validation_data = validation_data[100:200]
+    validation_data = validation_data[100:100+N]
 
     for i, json_path in enumerate(validation_data):
         if i % int(len(validation_data) / 10) == 0:
@@ -48,12 +51,11 @@ def get_error_img(foe_location: str = 'center') -> np.ndarray:
 
             result_img += angle_diff
 
+    print(np.max(result_img) / 3 / N)
+    result_img = im_helpers.apply_colormap(result_img, max_value=max_value * 3 * N)
+    cv2.imwrite(f'media/foe-error-{foe_location}.png', result_img)
     return result_img
 
-img_left = get_error_img('left')
-img_center = get_error_img('center')
-img_right = get_error_img('right')
-
-total = img_left + img_center + img_right
-img = im_helpers.apply_colormap(total)
-cv2.imwrite('media/foe-error.png', img)
+get_error_img('left')
+get_error_img('center')
+get_error_img('right')
