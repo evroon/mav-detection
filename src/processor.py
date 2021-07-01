@@ -34,7 +34,6 @@ class Processor:
         self.frame_index, self.start_frame = 0, 100
         self.is_exiting = False
 
-        self.midgard_path = os.environ['MIDGARD_PATH']
         self.focus_of_expansion = FocusOfExpansion(self.detector.lucas_kanade)
         self.old_frame: np.ndarray = np.zeros((self.dataset.capture_size[1], self.dataset.capture_size[0], 3), dtype=np.uint8)
         self.colorbar = im_helpers.plot_colorbar()
@@ -141,6 +140,7 @@ class Processor:
         shutil.copy2(src, dst)
 
     def get_data(self, sequence: str, with_yolo_ann: bool = True) -> Tuple[List[str], List[str]]:
+        self.midgard_path = os.environ['MIDGARD_PATH']
         self.img_path = f'{self.midgard_path}/{sequence}/images'
         self.ann_path = f'{self.midgard_path}/{sequence}/annotation'
         cal_glob =  glob.glob(f'{self.midgard_path}/{sequence}/info/calibration/*.txt')
