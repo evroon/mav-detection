@@ -96,7 +96,7 @@ class FocusOfExpansion:
             Tuple[float, float]: FoE estimation location
         """
         if np.sum(old_frame) < 1:
-            return (np.nan, np.nan)
+            return (0, 0)
 
         old_features, new_features, status = self.lucas_kanade.get_features(new_frame)
         self.mask = np.zeros_like(old_frame)

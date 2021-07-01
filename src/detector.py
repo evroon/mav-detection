@@ -85,7 +85,7 @@ class Detector:
         h = self.dataset.capture_size[1]
 
         # X displacement corresponds to yaw (Z-axis) and Y displacement corresponds to pitch (Y-axis)
-        omega = self.dataset.get_angular_difference(previous_frame_index, current_frame_index) / dt
+        omega = self.dataset.get_angular_difference(current_frame_index-1, current_frame_index) / dt
 
         x_coords = -(self.x_coords / w - 0.5) * 2.0
         y_coords = -(self.y_coords / h - 0.5) * 2.0

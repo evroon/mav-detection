@@ -18,7 +18,9 @@ class Experiment(Dataset):
 
         self.gps_first_timestamp = self.gps_states_csv[0, 2]
 
-        self.cropped_start_frame = 4 * 60 + 54
+        self.imu_start_offset = 0.5 # seconds. IMU data starts somewhat earlier than the video
+        self.cropped_start_frame = 4 * 60 + 54 + self.imu_start_offset
+        self.skip_frame_factor = 16
         self.duration = 15
 
         self.fps = (self.N+1) / self.duration
@@ -28,7 +30,7 @@ class Experiment(Dataset):
         self.end_gps_line = self.cropped_start_frame + self.cropped_end_frame
 
         # Relate video frames to imu and gps timestamps.
-        video_timestamps = np.arange(0, self.N) / self.fps
+        video_timestamps = np.linspace(0, self.duration, self.N)
         self.video_gps_indices = np.zeros_like(video_timestamps, dtype=np.uint16)
         self.video_imu_indices = np.zeros_like(video_timestamps, dtype=np.uint16)
 
@@ -39,8 +41,9 @@ class Experiment(Dataset):
             self.video_gps_indices[i] = np.argmin(time_diff_gps)
             self.video_imu_indices[i] = np.argmin(time_diff_imu)
 
+
     def get_default_sequence(self) -> str:
-        return 'moving-sample'
+        return 'moving-sample-low-fps'
 
     def get_gps_state(self, i:int) -> np.ndarray:
         return cast(np.ndarray, self.gps_states_csv[self.video_gps_indices[i], :])
@@ -49,12 +52,18 @@ class Experiment(Dataset):
         return cast(np.ndarray, self.imu_states_csv[self.video_imu_indices[i], :])
 
     def get_angular_difference(self, first:int, second:int) -> np.ndarray:
-        imu_index_start, imu_index_end = self.video_imu_indices[first], self.video_imu_indices[second]
+        imu_index_start, imu_index_end = self.video_imu_indices[first], self.video_imu_indices[first + 1]
         acc_diff = np.zeros(3)
+
+        if imu_index_end <= imu_index_start:
+            return np.array([0, 0, 0])
 
         for i in range(imu_index_start, imu_index_end):
             dt = self.imu_states_csv[i, 2] - self.imu_states_csv[i-1, 2]
             acc_diff += self.imu_states_csv[i, 6:] * dt
+
+        acc_diff /= (imu_index_end - imu_index_start)
+        print(imu_index_start, imu_index_end, acc_diff)
 
         acc_diff = acc_diff[[1, 2, 0]]
         acc_diff[0] = -acc_diff[0]
@@ -62,4 +71,4 @@ class Experiment(Dataset):
         return acc_diff
 
     def get_delta_time(self, i:int) -> float:
-        return 1 / self.fps
+        return self.skip_frame_factor / self.fps

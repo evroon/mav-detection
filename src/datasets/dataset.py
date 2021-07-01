@@ -88,8 +88,8 @@ class Dataset:
         if self.capture_size != self.flow_size:
             self.logger.warning(f'original capture with size {self.capture_size} does not match flow, which has size {self.flow_size}')
 
-        if not os.path.exists(self.hrnet_out):
-            self.run_hrnet()
+        # if not os.path.exists(self.hrnet_out):
+        #     self.run_hrnet()
 
         self.logger.info('Dataset loaded.')
 
@@ -151,7 +151,7 @@ class Dataset:
 
     def get_sky_segmentation(self, i: int) -> np.ndarray:
         img = cv2.imread(f'{self.hrnet_out}/image_{i:05d}_prediction.png')
-        img = cv2.resize(img, (1920, 1024))
+        img = cv2.resize(img, (2048, 1350))
 
         # Segment sky only
         mask: np.ndarray = (img[..., 0] == 180) * (img[..., 1] == 130)
@@ -209,7 +209,10 @@ class Dataset:
             np.ndarray: (w, h, 2) array with flow vectors
         """
         flo_path = f'{self.img_path}/output/inference/run.epoch-0-flow-field/{i:06d}.flo'
-        return utils.read_flow(flo_path)
+        flow = utils.read_flow(flo_path)
+        result = np.zeros((flow.shape[0] + 6, flow.shape[1], 2))
+        result[3:-3, ...] = flow
+        return result
 
     def get_capture_shape(self) -> Tuple[int, int, int]:
         """Get the shape of the original image inputs.

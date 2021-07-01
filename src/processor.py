@@ -34,7 +34,6 @@ class Processor:
         self.frame_index, self.start_frame = 0, 100
         self.is_exiting = False
 
-        self.midgard_path = os.environ['MIDGARD_PATH']
         self.focus_of_expansion = FocusOfExpansion(self.detector.lucas_kanade)
         self.old_frame: np.ndarray = np.zeros((self.dataset.capture_size[1], self.dataset.capture_size[0], 3), dtype=np.uint8)
         self.colorbar = im_helpers.plot_colorbar()
@@ -141,6 +140,7 @@ class Processor:
         shutil.copy2(src, dst)
 
     def get_data(self, sequence: str, with_yolo_ann: bool = True) -> Tuple[List[str], List[str]]:
+        self.midgard_path = os.environ['MIDGARD_PATH']
         self.img_path = f'{self.midgard_path}/{sequence}/images'
         self.ann_path = f'{self.midgard_path}/{sequence}/annotation'
         cal_glob =  glob.glob(f'{self.midgard_path}/{sequence}/info/calibration/*.txt')
@@ -279,6 +279,7 @@ class Processor:
 
         im_helpers.get_colorwheel()
         prev_bbox_left = 0
+        prev_flow_uv_derotated = np.zeros((self.dataset.capture_shape[0], self.dataset.capture_shape[1], 2))
 
         while self.is_active():
             orig_frame = self.dataset.get_frame()
@@ -306,18 +307,28 @@ class Processor:
                 self.flow_uv_derotated = self.detector.derotate(self.frame_index - self.frame_step_size, self.frame_index, self.flow_uv)
                 self.flow_mag = im_helpers.get_magnitude(self.flow_uv_derotated)
 
-                self.gt_flow_uv: np.ndarray = utils.assert_type(self.dataset.get_gt_of(self.frame_index))
-                self.gt_flow_uv_derotated = self.detector.derotate(self.frame_index - self.frame_step_size, self.frame_index, self.gt_flow_uv)
+                flow_normalized = np.zeros_like(self.flow_uv)
+                flow_mag = im_helpers.get_magnitude(self.flow_uv)
+                flow_mag[flow_mag < 0.01] = 1
+                flow_normalized[..., 0] = self.flow_uv[..., 0] / flow_mag
+                flow_normalized[..., 1] = self.flow_uv[..., 1] / flow_mag
+
+                # self.gt_flow_uv: np.ndarray = utils.assert_type(self.dataset.get_gt_of(self.frame_index))
+                # self.gt_flow_uv_derotated = self.detector.derotate(self.frame_index - self.frame_step_size, self.frame_index, self.gt_flow_uv)
 
                 if self.flow_uv is None:
                     raise ValueError('Could not load flow field.')
 
-                self.sky_mask = self.dataset.get_sky_segmentation(self.frame_index)
-                depth_buffer: np.ndarray = utils.assert_type(self.dataset.get_depth(self.frame_index))
-                sky_tpr, sky_fpr = self.dataset.validate_sky_segment(self.sky_mask, depth_buffer)
+                # self.sky_mask = self.dataset.get_sky_segmentation(self.frame_index)
+                # depth_buffer: np.ndarray = utils.assert_type(self.dataset.get_depth(self.frame_index))
+                # sky_tpr, sky_fpr = self.dataset.validate_sky_segment(self.sky_mask, depth_buffer)
 
                 FoE_dense  = self.focus_of_expansion.get_FOE_dense(self.flow_uv_derotated)
-                FoE_gt = self.dataset.get_gt_foe(self.frame_index)
+                # FoE_dense = (self.dataset.capture_shape[1] / 2, self.dataset.capture_shape[0] / 3)
+                FoE_dense = (980, 185)
+                # print(FoE_dense)
+                prev_flow_uv_derotated = self.flow_uv_derotated
+                # FoE_gt = self.dataset.get_gt_foe(self.frame_index)
                 FoE: Tuple[float, float] = utils.assert_type(FoE_dense)
 
                 phi_angle = self.focus_of_expansion.get_phi(self.flow_uv_derotated, FoE)
@@ -326,44 +337,49 @@ class Processor:
 
                 frameresult = FrameResult()
                 frameresult.foe_dense = FoE_dense
-                frameresult.foe_gt = utils.assert_type(FoE_gt)
+                # frameresult.foe_gt = utils.assert_type(FoE_gt)
+                # print(self.flow_uv_derotated[-10, 1000])
 
                 if True:
-                    segmentation = self.dataset.get_segmentation(self.frame_index)[..., 0]
+                    # segmentation = self.dataset.get_segmentation(self.frame_index)[..., 0]
                     angle_threshold_max = phi_angle > (0.25 + (0.5 + 8 / self.flow_mag))
                     angle_threshold_min = phi_angle < (0.25 - (0.5 + 8 / self.flow_mag))
                     angle_threshold = np.logical_or(angle_threshold_min, angle_threshold_max)
 
-                    total_mask = (self.flow_mag > 0.5) * ~self.sky_mask * angle_threshold
+                    total_mask = (self.flow_mag > 0.5) * angle_threshold
                     estimate = phi_angle * total_mask
 
                     fixed_angle_threshold = 15
-                    estimate_fixed = phi_angle * (self.flow_mag > 1.0) * ~self.sky_mask > fixed_angle_threshold
+                    estimate_fixed = phi_angle * (self.flow_mag > 1.0) > fixed_angle_threshold
 
-                    drone_flow_avg = np.average(self.flow_uv_derotated[segmentation > 127], axis=0)
-                    drone_flow_avg_gt = np.average(self.gt_flow_uv_derotated[segmentation > 127], axis=0)
+                    # drone_flow_avg = np.average(self.flow_uv_derotated[segmentation > 127], axis=0)
+                    # drone_flow_avg_gt = np.average(self.gt_flow_uv_derotated[segmentation > 127], axis=0)
 
-                    bounding_box = im_helpers.get_simple_bounding_box(segmentation)
-                    center = bounding_box.get_center()
-                    center_phi = np.rad2deg(np.arctan2(center[1] - frameresult.foe_gt[1], center[0] - frameresult.foe_gt[0]))
+                    # bounding_box = im_helpers.get_simple_bounding_box(segmentation)
+                    # center = bounding_box.get_center()
+                    # center_phi = np.rad2deg(np.arctan2(center[1] - frameresult.foe_gt[1], center[0] - frameresult.foe_gt[0]))
 
-                    tpr_fixed, fpr_fixed = im_helpers.calculate_tpr_fpr(segmentation, 255 * estimate_fixed)
-                    tpr, fpr = im_helpers.calculate_tpr_fpr(segmentation, 255 * total_mask)
+                    # tpr_fixed, fpr_fixed = im_helpers.calculate_tpr_fpr(segmentation, 255 * estimate_fixed)
+                    # tpr, fpr = im_helpers.calculate_tpr_fpr(segmentation, 255 * total_mask)
 
-                    frameresult.tpr = tpr
-                    frameresult.fpr = fpr
-                    frameresult.tpr_fixed = tpr_fixed
-                    frameresult.fpr_fixed = fpr_fixed
-                    frameresult.sky_tpr = sky_tpr
-                    frameresult.sky_fpr = sky_fpr
-                    frameresult.drone_flow_pixels = (drone_flow_avg_gt[0], drone_flow_avg_gt[1])
-                    frameresult.drone_size_pixels = np.sum(segmentation > 127)
+                    # frameresult.tpr = tpr
+                    # frameresult.fpr = fpr
+                    # frameresult.tpr_fixed = tpr_fixed
+                    # frameresult.fpr_fixed = fpr_fixed
+                    # frameresult.sky_tpr = sky_tpr
+                    # frameresult.sky_fpr = sky_fpr
+                    # frameresult.drone_flow_pixels = (drone_flow_avg_gt[0], drone_flow_avg_gt[1])
+                    # frameresult.drone_size_pixels = np.sum(segmentation > 127)
                     frameresult.time = self.dataset.get_time(self.frame_index)
-                    frameresult.center_phi = center_phi
+                    # frameresult.center_phi = center_phi
 
                     utils.create_if_not_exists(self.dataset.result_imgs_path)
                     result_img = im_helpers.to_rgb(255 * estimate_fixed)
                     cv2.imwrite(f'{self.dataset.result_imgs_path}/image_{self.frame_index:05d}.png', result_img)
+
+                    flow_normalized_path = self.dataset.seq_path + '/normalized'
+                    utils.create_if_not_exists(flow_normalized_path)
+                    cv2.imwrite(f'{flow_normalized_path}/image_{self.frame_index:05d}.png', im_helpers.get_flow_vis(flow_normalized))
 
                     derotated_path = self.dataset.seq_path + '/derotated'
                     utils.create_if_not_exists(derotated_path)
@@ -376,8 +392,8 @@ class Processor:
                 for img in [orig_frame, result_img]:
                     img = self.focus_of_expansion.draw_FoE(img, FoE_dense,  [0, 255, 0])
 
-                    if FoE_gt is not None:
-                        img = self.focus_of_expansion.draw_FoE(img, FoE_gt, [255, 255, 255])
+                    # if FoE_gt is not None:
+                    #     img = self.focus_of_expansion.draw_FoE(img, FoE_gt, [255, 255, 255])
 
                 self.detection_results[self.frame_index] = frameresult
                 self.config.results[self.frame_index] = frameresult
