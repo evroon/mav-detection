@@ -297,6 +297,41 @@ class Validator:
         plt.ylabel('True Positive Rate')
         plt.ylim(0, 1.0)
         plt.savefig(f'{self.dataset.seq_path}/sky_roc', bbox_inches='tight')
+
+        # Plot object detection RoC
+        bins_roc = np.linspace(0, 5.2e-4, 30)
+
+        def get_avg_std_roc(fpr: np.ndarray, tpr: np.ndarray) -> np.ndarray:
+            avg_std_tmp = np.zeros((len(bins_roc), 3))
+            tpr_finite = tpr[~np.isnan(tpr)]
+
+            for i in range(1, len(bins_roc)):
+                bin_mask = (fpr >= bins_roc[i - 1]) * (fpr < bins_roc[i])
+                bin_mask_pr = bin_mask[~np.isnan(tpr)]
+                print(tpr_finite[bin_mask_pr])
+
+                avg_std_tmp[i-1, :] = [
+                    np.average(fpr[bin_mask]),
+                    np.average(tpr_finite[bin_mask_pr]),
+                    np.std(tpr_finite[bin_mask_pr])
+                ]
+
+            return avg_std_tmp
+
+        avg_std_roc = get_avg_std_roc(fpr_fixed, tpr_fixed)
+        x = avg_std_roc[..., 0]
+        y = avg_std_roc[..., 1]
+
+        plt.figure()
+        plt.grid()
+        # plt.plot(x, y, ls='', marker='o')
+        plt.errorbar(avg_std_roc[:-1, 0], avg_std_roc[:-1, 1], yerr=avg_std_roc[:-1, 2],
+            marker='o', markersize=6, capsize=3, barsabove=True, label='', zorder=1, color='indigo')
+        plt.xlabel('False Positive Rate')
+        plt.ylabel('True Positive Rate')
+        plt.ylim(0, 1.0)
+        plt.savefig(f'{self.dataset.seq_path}/roc.eps', bbox_inches='tight')
+        plt.savefig(f'{self.dataset.seq_path}/roc.png', bbox_inches='tight')
         return
 
         threshold = 0.5
